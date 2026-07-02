@@ -1,36 +1,69 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# rssapp
 
-## Getting Started
+A self-hosted RSS reader web app. See [docs/](docs/README.md) for the full plan: features, tech stack, design/UX decisions, competitive analysis, and business posture.
 
-First, run the development server:
+## Stack
+
+Next.js (App Router) + TypeScript · PostgreSQL + Drizzle · Tailwind CSS v4 + shadcn/ui · Biome
+
+## Development
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+docker compose up -d   # Postgres on localhost:5433 (5432 is taken by a local install)
+npm run db:migrate     # apply migrations
+npm run dev            # http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+On first visit the app redirects to `/login`; since no account exists yet, it shows a
+one-time **create account** form. After that, `/login` is sign-in only (single-user).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+The dev database URL defaults to the compose credentials (see `src/db/config.ts`); set
+`DATABASE_URL` in a `.env` file to override.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### Auth
 
-## Learn More
+Auth.js (credentials, single user). Config is split for edge compatibility:
+`src/auth.config.ts` (edge-safe, drives the route-protecting middleware) and `src/auth.ts`
+(the Credentials provider, which reads the DB). `getCurrentUserId()` in
+`src/lib/current-user.ts` is the single place the session becomes a user id.
 
-To learn more about Next.js, take a look at the following resources:
+Set **`AUTH_SECRET`** in production (used to sign session JWTs). In dev it falls back to an
+insecure constant so the app runs without config — generate a real one with
+`npx auth secret` before deploying.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### Database
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- Schema lives in `src/db/schema.ts`; the client in `src/db/index.ts`
+- `npm run db:generate` — generate a migration after schema changes
+- `npm run db:migrate` — apply migrations
+- `npm run db:studio` — browse the database
 
-## Deploy on Vercel
+### Background polling
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+An in-process scheduler (`src/lib/scheduler.ts`, started from `src/instrumentation.ts`)
+ticks every 60s, refreshes any feed whose `next_fetch_at` has passed, and reschedules
+it. The poll "queue" is just the `feeds.next_fetch_at` column — no Redis/queue. Tune the
+tick with `SCHEDULER_TICK_MS` (milliseconds); it runs only in the Node server, not during
+builds. It needs the long-running `npm run dev`/`npm start` server — not serverless.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+### Rules & filters
+
+Per-user automation on `/rules`: match articles by keyword or regex on
+title/content/author — scoped to one feed or all — and mute, mark read, or star them.
+Rules run at ingest (new items arrive with state already applied) and optionally
+retroactively on creation. Muted items vanish from lists and unread counts entirely.
+The pure matching engine lives in `src/lib/rules/engine.ts` with unit tests alongside.
+
+### Full-content extraction
+
+For truncated feeds, "Load full content" in the article view fetches the article page
+and extracts readable content (Readability + linkedom, `src/lib/feeds/extract.ts`).
+Results are sanitized like feed content and cached per article. A per-feed
+"Always load full content" toggle on `/feeds` extracts automatically at ingest.
+The "Open original ↗" link is always available as the escape hatch.
+
+### Quality
+
+- `npm run lint` — Biome check
+- `npm run format` — Biome format
+- `npm test` — Vitest unit tests
