@@ -9,9 +9,9 @@ Next.js (App Router) + TypeScript · PostgreSQL + Drizzle · Tailwind CSS v4 + s
 ## Development
 
 ```bash
-docker compose up -d   # Postgres on localhost:5433 (5432 is taken by a local install)
-npm run db:migrate     # apply migrations
-npm run dev            # http://localhost:3000
+docker compose up -d db   # Postgres on localhost:5433 (5432 is taken by a local install)
+npm run db:migrate        # apply migrations
+npm run dev               # http://localhost:3000
 ```
 
 On first visit the app redirects to `/login`; since no account exists yet, it shows a
@@ -67,3 +67,22 @@ The "Open original ↗" link is always available as the escape hatch.
 - `npm run lint` — Biome check
 - `npm run format` — Biome format
 - `npm test` — Vitest unit tests
+
+## Deployment (home server / VPS)
+
+The whole stack runs from the compose file — the app image builds from the
+[Dockerfile](Dockerfile) (Next.js standalone output), migrations apply automatically at
+boot, and the in-process poller starts with the server.
+
+```bash
+# once: create .env next to compose.yaml
+echo "AUTH_SECRET=$(npx auth secret --raw 2>/dev/null || openssl rand -base64 33)" > .env
+
+docker compose up -d --build    # app on http://<host>:3000 + Postgres
+```
+
+- The app **refuses to boot without `AUTH_SECRET`** (it signs the session cookies).
+- `APP_PORT=8080` in `.env` changes the published port.
+- Upgrades: `git pull && docker compose up -d --build` — migrations run on boot.
+- First visit shows the one-time create-account form; after that it's sign-in only.
+- Back up the `db-data` volume (or `pg_dump`); that's where everything lives.

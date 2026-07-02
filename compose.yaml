@@ -1,4 +1,20 @@
 services:
+  app:
+    build: .
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgres://rssapp:rssapp@db:5432/rssapp
+      # Required in production — generate with `npx auth secret` and put
+      # AUTH_SECRET=... in a .env file next to this compose file. The app
+      # refuses to boot without it (src/instrumentation.ts).
+      AUTH_SECRET: ${AUTH_SECRET:-}
+      SCHEDULER_TICK_MS: ${SCHEDULER_TICK_MS:-60000}
+    ports:
+      - "${APP_PORT:-3000}:3000"
+    depends_on:
+      db:
+        condition: service_healthy
+
   db:
     image: postgres:17
     restart: unless-stopped
@@ -7,7 +23,8 @@ services:
       POSTGRES_PASSWORD: rssapp
       POSTGRES_DB: rssapp
     ports:
-      # 5433 on the host: a local Postgres already listens on 5432
+      # 5433 on the host: a local Postgres already listens on 5432 (dev machine).
+      # Only the dev workflow needs this mapping; the app reaches db internally.
       - "5433:5432"
     volumes:
       - db-data:/var/lib/postgresql/data

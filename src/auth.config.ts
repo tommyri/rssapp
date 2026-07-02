@@ -4,8 +4,9 @@ import type { NextAuthConfig } from "next-auth";
 // NextAuth from this alone so it stays in the edge bundle; auth.ts extends it
 // with the Credentials provider (which touches the DB) for the Node runtime.
 export const authConfig = {
-  // Dev fallback mirrors src/db/config.ts. MUST be overridden in production.
-  secret: process.env.AUTH_SECRET ?? "dev-insecure-secret-change-me",
+  // Dev fallback mirrors src/db/config.ts. Production boot refuses to start
+  // without a real AUTH_SECRET (src/instrumentation.ts).
+  secret: process.env.AUTH_SECRET || "dev-insecure-secret-change-me",
   trustHost: true,
   session: { strategy: "jwt" },
   pages: { signIn: "/login" },
