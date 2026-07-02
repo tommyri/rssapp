@@ -34,7 +34,7 @@ Phased plan. Each phase should ship as a usable app — MVP alone should be good
 - **Rules & filters** — auto-mark-read, auto-star/tag, or mute by keyword/author/feed. Promoted from "later" after the competitive analysis: it's the #1 feature Inoreader power users pay for, the only real answer to unread overload, and the core of our "clean UI, powerful underneath" position (see competitive-analysis.md)
 - **Full-content extraction** — for truncated feeds, fetch the article page and extract readable content (Readability); per-feed toggle
 - **Search** — full-text search across titles and content (Postgres FTS)
-- **Keyboard shortcuts** — the full Google Reader canon: j/k, space smart-advance, m read, s star, v original, Shift+A mark-all, g-prefix navigation, `/` search, `?` overlay (table in design-ux.md; it's non-negotiable muscle memory for migrating reader users)
+- **Account settings** — change email and password in the app (currently only possible via direct database access; single-user means a forgotten password has no reset path)
 - **Overload valves** — displayed unread counts cap at "1k+"; optional auto-mark-read after N days (global + per-feed)
 - **Dark mode** — follow system, manual override
 - **Feed health view** — which feeds are failing, silent (no posts in N months), or redirected
@@ -44,6 +44,7 @@ Phased plan. Each phase should ship as a usable app — MVP alone should be good
 
 ## Later / ideas (not committed)
 
+- Keyboard shortcuts — the Google Reader canon (j/k, space, m, s, Shift+A, `?` overlay; table in design-ux.md). Demoted from v1 (July 2026): nice-to-have for a single-user app, non-negotiable only if this ever courts migrating power users
 - Fever or Google Reader–compatible API so native clients (NetNewsWire, Reeder) can sync against it
 - PWA with offline reading
 - Multi-user support (the schema is designed to allow this — see tech-stack.md)

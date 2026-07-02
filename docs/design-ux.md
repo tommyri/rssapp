@@ -40,7 +40,7 @@ Philosophy: we're building for "inbox people" (counts, j/k, mark-all-read) but t
 - **Auto-mark-read after N days** as an optional per-feed/global setting (Feedly does 30 days silently; FreshRSS has per-feed purge). High-volume feeds shouldn't accumulate guilt
 - Rules/filters (v1) are the real overload answer — and per the Miniflux complaint ("regex-only"), the rules UI must be **keyword-first with regex as the advanced option**
 
-## Keyboard shortcuts (v1): adopt the canon
+## Keyboard shortcuts (deferred to "later", July 2026): adopt the canon when built
 
 The Google Reader inheritance is non-negotiable muscle memory for anyone migrating from Feedbin/Inoreader/Feedly/NewsBlur:
 
