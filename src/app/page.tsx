@@ -198,6 +198,12 @@ export default async function Home({
             >
               Rules
             </Link>
+            <Link
+              href="/settings"
+              className="text-xs text-muted-foreground underline hover:text-foreground"
+            >
+              Settings
+            </Link>
             <ThemeToggle />
           </div>
         ) : null}
