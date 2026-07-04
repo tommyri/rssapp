@@ -3,6 +3,7 @@ import Link from "next/link";
 import {
   ChangeEmailForm,
   ChangePasswordForm,
+  ReadingPrefsForm,
 } from "@/components/account-forms";
 import { db } from "@/db";
 import { users } from "@/db/schema";
@@ -23,6 +24,7 @@ export default async function SettingsPage() {
         </Link>
       </div>
 
+      <ReadingPrefsForm autoReadDays={user?.settings.autoReadDays ?? null} />
       <ChangeEmailForm currentEmail={user?.email ?? ""} />
       <ChangePasswordForm />
 

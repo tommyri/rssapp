@@ -1,9 +1,11 @@
 import Link from "next/link";
 import { AddFeedForm } from "@/components/add-feed-form";
 import { ArticleList } from "@/components/article-list";
+import { FeedIcon } from "@/components/feed-icon";
 import { OpmlControls } from "@/components/opml-controls";
 import { RefreshButton } from "@/components/refresh-button";
 import { SearchForm } from "@/components/search-form";
+import { StarterFeeds } from "@/components/starter-feeds";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { getCurrentUserId } from "@/lib/current-user";
 import {
@@ -12,6 +14,7 @@ import {
   listItems,
   searchItems,
 } from "@/lib/reader";
+import { STARTER_FEEDS } from "@/lib/starter-feeds";
 import { signOutAction } from "./actions";
 
 interface SearchParams {
@@ -152,6 +155,7 @@ export default async function Home({
                   label={f.title ?? f.url}
                   count={f.unread}
                   error={f.lastError}
+                  icon={<FeedIcon siteUrl={f.siteUrl} feedUrl={f.url} />}
                 />
               ))}
             </div>
@@ -172,6 +176,7 @@ export default async function Home({
                   label={f.title ?? f.url}
                   count={f.unread}
                   error={f.lastError}
+                  icon={<FeedIcon siteUrl={f.siteUrl} feedUrl={f.url} />}
                 />
               ))}
             </div>
@@ -212,9 +217,7 @@ export default async function Home({
       {/* Article list */}
       <main className="min-w-0 flex-1">
         {feeds.length === 0 ? (
-          <p className="py-12 text-center text-sm text-muted-foreground">
-            Add a feed to see articles here.
-          </p>
+          <StarterFeeds feeds={STARTER_FEEDS} />
         ) : (
           <ArticleList
             key={viewKey}
@@ -238,12 +241,14 @@ function FeedLink({
   label,
   count,
   error,
+  icon,
 }: {
   href: string;
   active: boolean;
   label: string;
   count: number;
   error?: string | null;
+  icon?: React.ReactNode;
 }) {
   return (
     <Link
@@ -252,6 +257,7 @@ function FeedLink({
         active ? "bg-muted font-medium" : "hover:bg-muted/50"
       }`}
     >
+      {icon}
       {error ? (
         <span title={error} className="shrink-0 text-destructive">
           ⚠

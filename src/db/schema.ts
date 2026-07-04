@@ -29,6 +29,11 @@ export const users = pgTable("users", {
   id: id(),
   email: text("email").notNull().unique(),
   passwordHash: text("password_hash").notNull(),
+  // Reader preferences; per-feed overrides live in subscriptions.settings.
+  settings: jsonb("settings")
+    .notNull()
+    .default({})
+    .$type<{ autoReadDays?: number }>(),
   createdAt: createdAt(),
 });
 
@@ -89,10 +94,11 @@ export const subscriptions = pgTable(
     ),
     customTitle: text("custom_title"),
     // Per-feed preferences (docs/design-ux.md); extend the type as settings grow.
+    // autoReadDays overrides the user-level default from users.settings.
     settings: jsonb("settings")
       .notNull()
       .default({})
-      .$type<{ fullContent?: boolean }>(),
+      .$type<{ fullContent?: boolean; autoReadDays?: number }>(),
     createdAt: createdAt(),
   },
   (t) => [uniqueIndex("subscriptions_user_feed_idx").on(t.userId, t.feedId)],

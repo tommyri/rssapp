@@ -48,6 +48,29 @@ export async function changeEmailAction(
   return { ok: true, message: `Email changed to ${email.data}.` };
 }
 
+export async function updateReadingPrefsAction(
+  _prev: AccountActionState,
+  formData: FormData,
+): Promise<AccountActionState> {
+  const raw = String(formData.get("autoReadDays") ?? "").trim();
+  const days = raw === "" ? null : Number(raw);
+  if (days !== null && !(Number.isInteger(days) && days >= 1 && days <= 365)) {
+    return { ok: false, message: "Days must be a whole number from 1 to 365." };
+  }
+
+  const userId = await getCurrentUserId();
+  await db
+    .update(users)
+    .set({ settings: days ? { autoReadDays: days } : {} })
+    .where(eq(users.id, userId));
+  return {
+    ok: true,
+    message: days
+      ? `Articles auto-mark read after ${days} day${days === 1 ? "" : "s"}.`
+      : "Auto-mark read disabled.",
+  };
+}
+
 export async function changePasswordAction(
   _prev: AccountActionState,
   formData: FormData,

@@ -106,6 +106,24 @@ export default async function ManageFeedsPage() {
                     />
                     Always load full content
                   </label>
+                  <div className="space-y-1 text-xs text-muted-foreground">
+                    <label
+                      className="block"
+                      htmlFor={`autoread-${feed.feedId}`}
+                    >
+                      Auto-read after (days)
+                    </label>
+                    <Input
+                      id={`autoread-${feed.feedId}`}
+                      name="autoReadDays"
+                      type="number"
+                      min={1}
+                      max={365}
+                      defaultValue={feed.autoReadDays ?? ""}
+                      placeholder="default"
+                      className="h-8 w-24"
+                    />
+                  </div>
                   <Button type="submit" variant="outline" size="sm">
                     Save
                   </Button>

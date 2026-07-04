@@ -6,6 +6,7 @@ import {
   itemStates,
   items as itemsTable,
   subscriptions,
+  users,
 } from "@/db/schema";
 import type { ExportEntry } from "@/lib/opml";
 
@@ -13,6 +14,7 @@ export interface FeedSummary {
   feedId: number;
   title: string | null;
   url: string;
+  siteUrl: string | null;
   unread: number;
   lastError: string | null;
   folderId: number | null;
@@ -28,6 +30,7 @@ export async function listFeeds(userId: number): Promise<FeedSummary[]> {
         string | null
       >`coalesce(${subscriptions.customTitle}, ${feeds.title})`,
       url: feeds.url,
+      siteUrl: feeds.siteUrl,
       lastError: feeds.lastError,
       folderId: folders.id,
       folderName: folders.name,
@@ -62,6 +65,7 @@ export interface ManagedFeed {
   feedTitle: string | null;
   folderName: string | null;
   fullContent: boolean;
+  autoReadDays: number | null;
   unread: number;
   itemCount: number;
   lastFetchedAt: Date | null;
@@ -82,6 +86,9 @@ export async function listManagedFeeds(userId: number): Promise<ManagedFeed[]> {
       feedTitle: feeds.title,
       folderName: folders.name,
       fullContent: sql<boolean>`coalesce(${subscriptions.settings}->>'fullContent', 'false') = 'true'`,
+      autoReadDays: sql<
+        number | null
+      >`(${subscriptions.settings}->>'autoReadDays')::int`,
       unread: sql<number>`cast(count(${itemsTable.id}) filter (where ${itemStates.read} is not true and ${itemStates.muted} is not true) as int)`,
       itemCount: sql<number>`cast(count(${itemsTable.id}) as int)`,
       lastFetchedAt: feeds.lastFetchedAt,
@@ -340,6 +347,40 @@ export async function markAllRead(
   const ids = await unreadItemIds(userId, view, olderThan);
   await setItemsRead(userId, ids);
   return ids.length;
+}
+
+/**
+ * The auto-mark-read overload valve (docs/features.md v1): for every
+ * subscription whose effective autoReadDays is set (per-feed override, else
+ * the user default), mark unread items older than the cutoff as read. Called
+ * by the scheduler each tick; idempotent. Returns how many items were marked.
+ */
+export async function sweepAutoRead(): Promise<number> {
+  const effectiveDays = sql<
+    number | null
+  >`coalesce((${subscriptions.settings}->>'autoReadDays')::int, (${users.settings}->>'autoReadDays')::int)`;
+
+  const targets = await db
+    .select({
+      userId: subscriptions.userId,
+      feedId: subscriptions.feedId,
+      days: effectiveDays,
+    })
+    .from(subscriptions)
+    .innerJoin(users, eq(users.id, subscriptions.userId))
+    .where(sql`${effectiveDays} >= 1`);
+
+  let marked = 0;
+  for (const t of targets) {
+    if (t.days === null) continue;
+    const cutoff = new Date(Date.now() - t.days * 86_400_000);
+    const ids = await unreadItemIds(t.userId, { feedId: t.feedId }, cutoff);
+    if (ids.length > 0) {
+      await setItemsRead(t.userId, ids);
+      marked += ids.length;
+    }
+  }
+  return marked;
 }
 
 /** Set starred state for one item for one user. */

@@ -10,7 +10,9 @@ import { applyRulesToNewItems } from "@/lib/rules";
 import {
   COMMON_FEED_PATHS,
   discoverFeedLinks,
+  isYouTubeUrl,
   looksLikeHtml,
+  youtubeFeedUrl,
 } from "./discover";
 import { type FetchResult, fetchUrl } from "./fetch";
 import { autoExtractForFeed } from "./full-content";
@@ -77,13 +79,33 @@ async function upsertItems(
   return inserted.length;
 }
 
+/** Fetch a candidate feed URL and return it if it responds with feed content. */
+async function tryFeedUrl(
+  candidate: string,
+): Promise<{ feedUrl: string; ok: OkResult } | null> {
+  const res = await fetchUrl(candidate);
+  if (res.status === "ok" && !looksLikeHtml(res.body, res.contentType)) {
+    return { feedUrl: candidate, ok: res };
+  }
+  return null;
+}
+
 /**
- * Turn whatever URL the user pasted into a fetched feed body: if it's an HTML
- * page, autodiscover the feed link, then probe common paths as a fallback.
+ * Turn whatever URL the user pasted into a fetched feed body: YouTube URLs
+ * map to their native feeds; HTML pages get <link> autodiscovery, then
+ * common-path probing as a fallback.
  */
 async function resolveFeed(
   inputUrl: string,
 ): Promise<{ feedUrl: string; ok: OkResult }> {
+  // YouTube channel/playlist/user URLs resolve without fetching the page.
+  const ytDirect = youtubeFeedUrl(inputUrl);
+  if (ytDirect) {
+    const hit = await tryFeedUrl(ytDirect);
+    if (hit) return hit;
+    throw new Error(`YouTube feed not found for ${inputUrl}`);
+  }
+
   const first = await fetchUrl(inputUrl);
   if (first.status === "error") {
     throw new Error(`Could not fetch ${inputUrl}: ${first.error}`);
@@ -95,13 +117,23 @@ async function resolveFeed(
     return { feedUrl: inputUrl, ok: first };
   }
 
+  // Handle/vanity YouTube URLs: the channel id is only in the page HTML.
+  if (isYouTubeUrl(inputUrl)) {
+    const ytFromPage = youtubeFeedUrl(inputUrl, first.body);
+    if (ytFromPage) {
+      const hit = await tryFeedUrl(ytFromPage);
+      if (hit) return hit;
+    }
+    throw new Error(
+      `Could not find the channel id for ${inputUrl} — try the channel's /channel/UC… URL.`,
+    );
+  }
+
   const discovered = discoverFeedLinks(first.body, inputUrl);
   const probes = COMMON_FEED_PATHS.map((p) => new URL(p, inputUrl).toString());
   for (const candidate of [...discovered, ...probes]) {
-    const res = await fetchUrl(candidate);
-    if (res.status === "ok" && !looksLikeHtml(res.body, res.contentType)) {
-      return { feedUrl: candidate, ok: res };
-    }
+    const hit = await tryFeedUrl(candidate);
+    if (hit) return hit;
   }
   throw new Error(`No feed found at ${inputUrl}`);
 }

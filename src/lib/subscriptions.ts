@@ -41,6 +41,7 @@ export async function updateSubscription(
     customTitle: string | null;
     folderName: string | null;
     fullContent: boolean;
+    autoReadDays: number | null;
   },
 ): Promise<void> {
   const folderId = opts.folderName
@@ -51,7 +52,10 @@ export async function updateSubscription(
     .set({
       customTitle: opts.customTitle,
       folderId,
-      settings: { fullContent: opts.fullContent },
+      settings: {
+        fullContent: opts.fullContent,
+        ...(opts.autoReadDays ? { autoReadDays: opts.autoReadDays } : {}),
+      },
     })
     .where(
       and(eq(subscriptions.userId, userId), eq(subscriptions.feedId, feedId)),

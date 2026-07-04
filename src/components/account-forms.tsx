@@ -6,6 +6,7 @@ import {
   type AccountActionState,
   changeEmailAction,
   changePasswordAction,
+  updateReadingPrefsAction,
 } from "@/app/settings/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -60,6 +61,40 @@ export function ChangeEmailForm({ currentEmail }: { currentEmail: string }) {
         />
       </div>
       <SubmitButton label="Change email" />
+      <Message state={state} />
+    </form>
+  );
+}
+
+export function ReadingPrefsForm({
+  autoReadDays,
+}: {
+  autoReadDays: number | null;
+}) {
+  const [state, formAction] = useActionState(updateReadingPrefsAction, initial);
+  return (
+    <form action={formAction} className="space-y-3 rounded-lg border p-4">
+      <h2 className="font-medium">Reading</h2>
+      <div className="space-y-2">
+        <Label htmlFor="autoReadDays">
+          Auto-mark articles read after (days)
+        </Label>
+        <Input
+          id="autoReadDays"
+          name="autoReadDays"
+          type="number"
+          min={1}
+          max={365}
+          defaultValue={autoReadDays ?? ""}
+          placeholder="off"
+          className="w-28"
+        />
+        <p className="text-xs text-muted-foreground">
+          Default for all feeds; override per feed on the Manage feeds page.
+          Leave empty to keep unread articles forever.
+        </p>
+      </div>
+      <SubmitButton label="Save" />
       <Message state={state} />
     </form>
   );
