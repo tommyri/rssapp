@@ -11,7 +11,7 @@ const LABEL: Record<string, string> = {
 };
 
 /** Cycles system → light → dark. Follows the OS by default (docs/design-ux.md). */
-export function ThemeToggle() {
+export function ThemeToggle({ className = "" }: { className?: string }) {
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
 
@@ -30,7 +30,7 @@ export function ThemeToggle() {
       type="button"
       onClick={cycle}
       title="Theme (follows system by default)"
-      className="rounded-md border border-border/70 px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:border-border hover:bg-accent/60 hover:text-foreground"
+      className={`rounded-md border border-border/70 px-2 py-1 text-center text-xs text-muted-foreground transition-colors hover:border-border hover:bg-accent/60 hover:text-foreground ${className}`}
     >
       {mounted ? LABEL[current] : "◐ Auto"}
     </button>

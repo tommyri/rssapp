@@ -194,16 +194,20 @@ export default async function Home({
 
         <div className="space-y-3 border-t border-sidebar-border px-4 py-4">
           <AddFeedForm />
-          <div className="flex flex-wrap items-center gap-1.5">
-            <SidebarUtil href="/feeds" label="Manage" />
-            <SidebarUtil href="/rules" label="Rules" />
-            <SidebarUtil href="/settings" label="Settings" />
-            <ThemeToggle />
-            <form action={signOutAction} className="ml-auto">
-              <button type="submit" className={utilButtonClass}>
-                Sign out
-              </button>
-            </form>
+          <div className="space-y-1.5">
+            <div className="grid grid-cols-3 gap-1.5">
+              <SidebarUtil href="/feeds" label="Manage" />
+              <SidebarUtil href="/rules" label="Rules" />
+              <SidebarUtil href="/settings" label="Settings" />
+            </div>
+            <div className="grid grid-cols-2 gap-1.5">
+              <ThemeToggle className="w-full" />
+              <form action={signOutAction}>
+                <button type="submit" className={`${utilButtonClass} w-full`}>
+                  Sign out
+                </button>
+              </form>
+            </div>
           </div>
         </div>
       </aside>
@@ -235,7 +239,7 @@ export default async function Home({
 }
 
 const utilButtonClass =
-  "rounded-md border border-border/70 px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:border-border hover:bg-accent/60 hover:text-foreground";
+  "block rounded-md border border-border/70 px-2 py-1 text-center text-xs text-muted-foreground transition-colors hover:border-border hover:bg-accent/60 hover:text-foreground";
 
 function SidebarUtil({ href, label }: { href: string; label: string }) {
   return (
