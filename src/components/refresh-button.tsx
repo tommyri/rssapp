@@ -3,16 +3,22 @@
 import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
 import { type ActionState, refreshAction } from "@/app/actions";
-import { Button } from "@/components/ui/button";
 
 const initial: ActionState = { ok: true, message: "" };
 
 function Inner() {
   const { pending } = useFormStatus();
   return (
-    <Button type="submit" variant="outline" size="sm" disabled={pending}>
-      {pending ? "Refreshing…" : "Refresh all"}
-    </Button>
+    <button
+      type="submit"
+      disabled={pending}
+      title="Refresh all feeds"
+      className={`rounded-md border border-border/70 px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-accent/60 hover:text-foreground disabled:opacity-50 ${
+        pending ? "animate-pulse" : ""
+      }`}
+    >
+      {pending ? "Refreshing…" : "↻ Refresh"}
+    </button>
   );
 }
 

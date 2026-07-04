@@ -18,6 +18,7 @@ import type { ReaderItem } from "@/lib/reader";
 
 const SCROLL_MARK_KEY = "rssapp:markReadOnScroll";
 const SCROLL_FLUSH_MS = 800;
+const STAGGER_CAP = 10;
 
 interface Props {
   initialItems: ReaderItem[];
@@ -29,6 +30,19 @@ interface Props {
   showingAll: boolean;
   /** Search-results mode: no read filters, no mark-all, no scroll-marking. */
   isSearch?: boolean;
+  unreadCount?: number;
+}
+
+/** One-line preview derived from the stored (sanitized) HTML. */
+function snippetOf(item: ReaderItem): string {
+  const html = item.fullContentHtml ?? item.contentHtml ?? "";
+  const text = html
+    .replace(/<[^>]*>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  // Too short to preview anything (e.g. HN's bare "Comments" link) — skip.
+  if (text.length < 40 || text === item.title) return "";
+  return text.slice(0, 220);
 }
 
 export function ArticleList({
@@ -39,6 +53,7 @@ export function ArticleList({
   toggleHref,
   showingAll,
   isSearch = false,
+  unreadCount = 0,
 }: Props) {
   const router = useRouter();
   const [items, setItems] = useState<ReaderItem[]>(initialItems);
@@ -207,80 +222,120 @@ export function ArticleList({
   }
 
   return (
-    <div className="space-y-3">
+    <div>
       {/* View header */}
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-        <h2 className="text-lg font-semibold tracking-tight">{title}</h2>
-        {isSearch ? (
-          <Link
-            href="/"
-            className="text-xs text-muted-foreground underline hover:text-foreground"
-          >
-            ✕ Clear search
-          </Link>
-        ) : null}
-        {!view.starred && !isSearch ? (
-          <Link
-            href={toggleHref}
-            className="text-xs text-muted-foreground underline hover:text-foreground"
-          >
-            {showingAll ? "Unread only" : "Show read"}
-          </Link>
-        ) : null}
+      <header className="sticky top-0 z-10 -mx-4 border-b border-border/60 bg-background/85 px-4 pt-6 pb-3 backdrop-blur-sm md:-mx-8 md:px-8">
+        <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+          <h2 className="font-serif text-2xl font-bold tracking-tight">
+            {title}
+          </h2>
+          {!isSearch && unreadCount > 0 ? (
+            <span className="text-sm text-muted-foreground tabular-nums">
+              {unreadCount > 1000 ? "1k+" : unreadCount} unread
+            </span>
+          ) : null}
+          {isSearch ? (
+            <Link
+              href="/"
+              className="text-xs text-muted-foreground underline underline-offset-2 transition-colors hover:text-foreground"
+            >
+              ✕ Clear search
+            </Link>
+          ) : null}
+        </div>
         {!isSearch ? (
-          <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            <input
-              type="checkbox"
-              checked={scrollMark}
-              onChange={toggleScrollMark}
-            />
-            Mark read on scroll
-          </label>
+          <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-muted-foreground">
+            {!view.starred ? (
+              <Link
+                href={toggleHref}
+                className="underline underline-offset-2 transition-colors hover:text-foreground"
+              >
+                {showingAll ? "Unread only" : "Show read"}
+              </Link>
+            ) : null}
+            <label className="flex cursor-pointer items-center gap-1.5">
+              <input
+                type="checkbox"
+                checked={scrollMark}
+                onChange={toggleScrollMark}
+                className="accent-primary"
+              />
+              Mark read on scroll
+            </label>
+            {!view.starred ? (
+              <MarkAllControl onMark={markAll} statusMsg={statusMsg} />
+            ) : null}
+          </div>
         ) : null}
-        {!view.starred && !isSearch ? (
-          <MarkAllControl onMark={markAll} statusMsg={statusMsg} />
-        ) : null}
-      </div>
+      </header>
 
       {items.length === 0 ? (
-        <p className="py-12 text-center text-sm text-muted-foreground">
-          {isSearch
-            ? "No matching articles. Try fewer or different words — quotes for phrases, - to exclude."
-            : view.starred
-              ? "No starred articles yet — star something worth keeping."
-              : showingAll
-                ? "Nothing here yet — try refreshing."
-                : "All caught up. 🎉"}
-        </p>
+        <div className="py-24 text-center">
+          <p className="font-serif text-lg text-muted-foreground italic">
+            {isSearch
+              ? "No matching articles."
+              : view.starred
+                ? "Nothing starred yet."
+                : showingAll
+                  ? "Nothing here yet — try refreshing."
+                  : "All caught up."}
+          </p>
+          {isSearch ? (
+            <p className="mt-2 text-xs text-muted-foreground">
+              Try fewer or different words — quotes for phrases, - to exclude.
+            </p>
+          ) : null}
+        </div>
       ) : (
-        <ul className="divide-y divide-border rounded-lg border">
-          {items.map((item) => {
+        <ul>
+          {items.map((item, index) => {
             const isOpen = expanded.has(item.id);
             const contentHtml = item.fullContentHtml ?? item.contentHtml;
             const error = fullContentErrors.get(item.id);
+            const snippet = snippetOf(item);
             return (
-              <li key={item.id} ref={(el) => registerRow(el, item.id)}>
+              <li
+                key={item.id}
+                ref={(el) => registerRow(el, item.id)}
+                className={`row-enter border-b border-border/60 ${isOpen ? "border-border" : ""}`}
+                style={{
+                  animationDelay: `${Math.min(index, STAGGER_CAP) * 30}ms`,
+                }}
+              >
                 <button
                   type="button"
                   onClick={() => toggleExpanded(item)}
-                  className="flex w-full cursor-pointer items-start gap-3 px-4 py-3 text-left hover:bg-muted/50"
+                  className="group flex w-full cursor-pointer items-start gap-3 px-1 py-3.5 text-left transition-colors hover:bg-accent/40"
                 >
                   <span
                     aria-hidden
-                    className={`mt-1.5 size-2 shrink-0 rounded-full ${
-                      item.read ? "bg-transparent" : "bg-sky-500"
+                    className={`mt-[7px] size-2 shrink-0 rounded-full transition-colors ${
+                      item.read ? "bg-transparent" : "bg-primary"
                     }`}
                   />
                   <span className="min-w-0 flex-1">
                     <span
-                      className={`block truncate font-medium ${
+                      className={`block truncate text-[15px] leading-snug font-semibold ${
                         item.read ? "text-muted-foreground" : ""
                       }`}
                     >
-                      {item.starred ? "★ " : ""}
+                      {item.starred ? (
+                        <span className="text-primary">★ </span>
+                      ) : null}
                       {item.title ?? "(untitled)"}
                     </span>
-                    <span className="mt-0.5 block truncate text-xs text-muted-foreground">
+                    {!isOpen && snippet ? (
+                      <span
+                        className={`mt-0.5 line-clamp-2 block text-[13px] leading-normal ${
+                          item.read
+                            ? "text-muted-foreground/60"
+                            : "text-muted-foreground"
+                        }`}
+                      >
+                        {snippet}
+                      </span>
+                    ) : null}
+                    <span className="mt-1 block truncate text-xs text-muted-foreground/80">
                       {item.feedTitle}
                       {item.publishedAt
                         ? ` · ${relativeTime(new Date(item.publishedAt))}`
@@ -291,69 +346,72 @@ export function ArticleList({
                 </button>
 
                 {isOpen ? (
-                  <div className="space-y-3 px-4 pb-4 pl-9">
-                    {item.fullContentHtml ? (
-                      <p className="text-xs text-muted-foreground italic">
-                        Showing full content from the original page.
-                      </p>
-                    ) : null}
-                    {contentHtml ? (
-                      <div
-                        className="article-content max-w-prose text-sm"
-                        // Sanitized at ingest/extraction (src/lib/feeds/sanitize.ts).
-                        // biome-ignore lint/security/noDangerouslySetInnerHtml: content is sanitized before storage
-                        dangerouslySetInnerHTML={{ __html: contentHtml }}
-                      />
-                    ) : (
-                      <p className="text-sm text-muted-foreground">
-                        No content in this feed entry.
-                      </p>
-                    )}
-
-                    <div className="flex flex-wrap items-center gap-4 text-sm">
-                      {!item.fullContentHtml && item.url ? (
-                        <button
-                          type="button"
-                          disabled={loadingContent.has(item.id)}
-                          onClick={() => loadFullContent(item)}
-                          className="text-muted-foreground underline hover:text-foreground disabled:opacity-50"
-                        >
-                          {loadingContent.has(item.id)
-                            ? "Loading…"
-                            : "Load full content"}
-                        </button>
-                      ) : null}
-                      {error ? (
-                        <span className="text-xs text-destructive">
-                          {error}
-                        </span>
-                      ) : null}
+                  <article className="row-enter mb-4 rounded-lg border border-border/60 bg-card px-5 py-5 md:px-7">
+                    <h3 className="font-serif text-[22px] leading-tight font-bold">
                       {item.url ? (
                         <a
                           href={item.url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="text-primary underline"
+                          className="transition-colors hover:text-primary"
                         >
-                          Open original ↗
+                          {item.title ?? "(untitled)"}
                         </a>
+                      ) : (
+                        (item.title ?? "(untitled)")
+                      )}
+                    </h3>
+                    <p className="mt-1 mb-4 text-xs text-muted-foreground">
+                      {item.feedTitle}
+                      {item.author ? ` · ${item.author}` : ""}
+                      {item.publishedAt
+                        ? ` · ${new Date(item.publishedAt).toLocaleString()}`
+                        : ""}
+                      {item.fullContentHtml ? (
+                        <span className="italic"> · full content</span>
                       ) : null}
-                      <button
-                        type="button"
-                        onClick={() => toggleStarred(item)}
-                        className="text-muted-foreground underline hover:text-foreground"
-                      >
+                    </p>
+
+                    {contentHtml ? (
+                      <div
+                        className="article-content max-w-prose"
+                        // Sanitized at ingest/extraction (src/lib/feeds/sanitize.ts).
+                        // biome-ignore lint/security/noDangerouslySetInnerHtml: content is sanitized before storage
+                        dangerouslySetInnerHTML={{ __html: contentHtml }}
+                      />
+                    ) : (
+                      <p className="text-sm text-muted-foreground italic">
+                        No content in this feed entry.
+                      </p>
+                    )}
+
+                    <div className="mt-5 flex flex-wrap items-center gap-2 border-t border-border/60 pt-4 text-xs">
+                      {item.url ? (
+                        <ActionButton asLink href={item.url}>
+                          Open original ↗
+                        </ActionButton>
+                      ) : null}
+                      {!item.fullContentHtml && item.url ? (
+                        <ActionButton
+                          disabled={loadingContent.has(item.id)}
+                          onClick={() => loadFullContent(item)}
+                        >
+                          {loadingContent.has(item.id)
+                            ? "Loading…"
+                            : "Load full content"}
+                        </ActionButton>
+                      ) : null}
+                      <ActionButton onClick={() => toggleStarred(item)}>
                         {item.starred ? "★ Unstar" : "☆ Star"}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => toggleRead(item)}
-                        className="text-muted-foreground underline hover:text-foreground"
-                      >
+                      </ActionButton>
+                      <ActionButton onClick={() => toggleRead(item)}>
                         {item.read ? "Mark unread" : "Mark read"}
-                      </button>
+                      </ActionButton>
+                      {error ? (
+                        <span className="text-destructive">{error}</span>
+                      ) : null}
                     </div>
-                  </div>
+                  </article>
                 ) : null}
               </li>
             );
@@ -362,7 +420,7 @@ export function ArticleList({
       )}
 
       {hasMore ? (
-        <div className="flex justify-center py-2">
+        <div className="flex justify-center py-6">
           <Button
             variant="outline"
             size="sm"
@@ -374,6 +432,45 @@ export function ArticleList({
         </div>
       ) : null}
     </div>
+  );
+}
+
+function ActionButton({
+  children,
+  onClick,
+  disabled,
+  asLink,
+  href,
+}: {
+  children: React.ReactNode;
+  onClick?: () => void;
+  disabled?: boolean;
+  asLink?: boolean;
+  href?: string;
+}) {
+  const className =
+    "rounded-md border border-border/70 px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:border-border hover:bg-accent/60 hover:text-foreground disabled:opacity-50";
+  if (asLink && href) {
+    return (
+      <a
+        href={href}
+        target="_blank"
+        rel="noopener noreferrer"
+        className={className}
+      >
+        {children}
+      </a>
+    );
+  }
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className={className}
+    >
+      {children}
+    </button>
   );
 }
 
@@ -398,14 +495,12 @@ function MarkAllControl({
 
   return (
     <span className="ml-auto flex items-center gap-2">
-      {statusMsg ? (
-        <span className="text-xs text-muted-foreground">{statusMsg}</span>
-      ) : null}
+      {statusMsg ? <span>{statusMsg}</span> : null}
       <select
         value={scope}
         onChange={(e) => setScope(e.target.value)}
         aria-label="Mark all read scope"
-        className="border-input h-7 rounded-md border bg-transparent px-1.5 text-xs shadow-xs"
+        className="h-7 rounded-md border border-input bg-transparent px-1.5 text-xs"
       >
         <option value="all">everything</option>
         <option value="1">older than a day</option>

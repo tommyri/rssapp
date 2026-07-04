@@ -29,7 +29,7 @@ export default async function RulesPage() {
   return (
     <div className="mx-auto w-full max-w-3xl flex-1 px-4 py-6">
       <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-xl font-semibold tracking-tight">Rules</h1>
+        <h1 className="font-serif text-2xl font-bold tracking-tight">Rules</h1>
         <Link href="/" className="text-sm text-primary underline">
           ← Back to reader
         </Link>

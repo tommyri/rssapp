@@ -32,7 +32,9 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
   return (
     <div className="w-full max-w-sm space-y-6">
       <div className="space-y-1 text-center">
-        <h1 className="text-2xl font-semibold tracking-tight">rssapp</h1>
+        <h1 className="font-serif text-3xl font-bold tracking-tight">
+          rssapp<span className="text-primary">.</span>
+        </h1>
         <p className="text-sm text-muted-foreground">
           {isRegister
             ? "Create your account to get started."

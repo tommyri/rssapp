@@ -14,6 +14,7 @@ export function SearchForm({ query }: { query: string }) {
         placeholder="Search articles…"
         aria-label="Search articles"
         autoComplete="off"
+        className="h-8 bg-background text-sm"
       />
     </form>
   );

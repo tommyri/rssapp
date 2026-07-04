@@ -89,7 +89,7 @@ export default async function Home({
   );
 
   const title = isSearch
-    ? `Search: “${query}”`
+    ? `“${query}”`
     : starred
       ? "Starred"
       : feedId
@@ -98,51 +98,53 @@ export default async function Home({
           ? (byFolder.get(folderId)?.name ?? "Folder")
           : "All articles";
 
+  const unreadCount = feedId
+    ? (feeds.find((f) => f.feedId === feedId)?.unread ?? 0)
+    : folderId
+      ? (byFolder.get(folderId)?.feeds.reduce((s, f) => s + f.unread, 0) ?? 0)
+      : totalUnread;
+
   return (
-    <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 px-4 py-6 md:flex-row">
+    <div className="flex flex-1 flex-col md:h-dvh md:flex-row md:overflow-hidden">
       {/* Sidebar */}
-      <aside className="w-full shrink-0 space-y-5 md:w-72">
-        <div className="flex items-center justify-between">
-          <h1 className="text-xl font-semibold tracking-tight">rssapp</h1>
-          <div className="flex items-center gap-3">
-            <RefreshButton />
-            <form action={signOutAction}>
-              <button
-                type="submit"
-                className="text-xs text-muted-foreground underline hover:text-foreground"
-              >
-                Sign out
-              </button>
-            </form>
-          </div>
+      <aside className="flex w-full shrink-0 flex-col border-b border-sidebar-border bg-sidebar text-sidebar-foreground md:w-72 md:overflow-y-auto md:border-r md:border-b-0">
+        <div className="flex items-center justify-between px-4 pt-5 pb-3">
+          <Link
+            href="/"
+            className="font-serif text-2xl font-bold tracking-tight"
+          >
+            rssapp<span className="text-primary">.</span>
+          </Link>
+          <RefreshButton />
         </div>
 
-        <AddFeedForm />
-        <OpmlControls />
-        <SearchForm query={query} />
+        <div className="px-4 pb-4">
+          <SearchForm query={query} />
+        </div>
 
-        <nav className="space-y-1">
+        <nav className="flex-1 space-y-0.5 px-2 pb-4">
           <FeedLink
             href="/"
-            active={!feedId && !folderId && !starred}
+            active={!feedId && !folderId && !starred && !isSearch}
             label="All articles"
             count={totalUnread}
           />
           <FeedLink
             href="/?view=starred"
             active={starred}
-            label="★ Starred"
+            label="Starred"
+            marker="★"
             count={0}
           />
 
           {folderGroups.map(([id, group]) => (
-            <div key={id} className="pt-2">
+            <div key={id} className="pt-3">
               <Link
                 href={`/?folder=${id}`}
-                className={`block rounded-md px-2 py-1 text-xs font-medium tracking-wide uppercase ${
+                className={`block rounded-md px-2 py-1 text-[11px] font-semibold tracking-[0.08em] uppercase transition-colors ${
                   folderId === id
-                    ? "bg-muted text-foreground"
-                    : "text-muted-foreground hover:bg-muted/50"
+                    ? "text-primary"
+                    : "text-muted-foreground hover:text-foreground"
                 }`}
               >
                 {group.name}
@@ -162,10 +164,10 @@ export default async function Home({
           ))}
 
           {ungrouped.length > 0 ? (
-            <div className="pt-2">
+            <div className="pt-3">
               {folderGroups.length > 0 ? (
-                <div className="px-2 py-1 text-xs font-medium tracking-wide text-muted-foreground uppercase">
-                  No folder
+                <div className="px-2 py-1 text-[11px] font-semibold tracking-[0.08em] text-muted-foreground uppercase">
+                  Feeds
                 </div>
               ) : null}
               {ungrouped.map((f) => (
@@ -184,54 +186,65 @@ export default async function Home({
 
           {feeds.length === 0 ? (
             <p className="px-2 py-4 text-sm text-muted-foreground">
-              No feeds yet. Paste a feed or site URL above to get started.
+              No feeds yet — pick a starter on the right, or add one below.
             </p>
           ) : null}
         </nav>
 
-        {feeds.length > 0 ? (
-          <div className="flex gap-4 px-2">
-            <Link
-              href="/feeds"
-              className="text-xs text-muted-foreground underline hover:text-foreground"
-            >
-              Manage feeds
-            </Link>
-            <Link
-              href="/rules"
-              className="text-xs text-muted-foreground underline hover:text-foreground"
-            >
-              Rules
-            </Link>
-            <Link
-              href="/settings"
-              className="text-xs text-muted-foreground underline hover:text-foreground"
-            >
-              Settings
-            </Link>
+        <div className="space-y-3 border-t border-sidebar-border px-4 py-4">
+          <AddFeedForm />
+          <OpmlControls />
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 pt-1">
+            <SidebarUtil href="/feeds" label="Manage" />
+            <SidebarUtil href="/rules" label="Rules" />
+            <SidebarUtil href="/settings" label="Settings" />
             <ThemeToggle />
+            <form action={signOutAction} className="ml-auto">
+              <button
+                type="submit"
+                className="text-xs text-muted-foreground transition-colors hover:text-foreground"
+              >
+                Sign out
+              </button>
+            </form>
           </div>
-        ) : null}
+        </div>
       </aside>
 
-      {/* Article list */}
-      <main className="min-w-0 flex-1">
-        {feeds.length === 0 ? (
-          <StarterFeeds feeds={STARTER_FEEDS} />
-        ) : (
-          <ArticleList
-            key={viewKey}
-            initialItems={page.items}
-            initialHasMore={page.hasMore}
-            view={view}
-            title={title}
-            toggleHref={toggleShowHref(params)}
-            showingAll={showingAll}
-            isSearch={isSearch}
-          />
-        )}
+      {/* Content pane */}
+      <main className="min-w-0 flex-1 md:overflow-y-auto">
+        <div className="mx-auto w-full max-w-3xl px-4 pb-16 md:px-8">
+          {feeds.length === 0 ? (
+            <div className="pt-10">
+              <StarterFeeds feeds={STARTER_FEEDS} />
+            </div>
+          ) : (
+            <ArticleList
+              key={viewKey}
+              initialItems={page.items}
+              initialHasMore={page.hasMore}
+              view={view}
+              title={title}
+              toggleHref={toggleShowHref(params)}
+              showingAll={showingAll}
+              isSearch={isSearch}
+              unreadCount={unreadCount}
+            />
+          )}
+        </div>
       </main>
     </div>
+  );
+}
+
+function SidebarUtil({ href, label }: { href: string; label: string }) {
+  return (
+    <Link
+      href={href}
+      className="text-xs text-muted-foreground transition-colors hover:text-foreground"
+    >
+      {label}
+    </Link>
   );
 }
 
@@ -242,6 +255,7 @@ function FeedLink({
   count,
   error,
   icon,
+  marker,
 }: {
   href: string;
   active: boolean;
@@ -249,23 +263,32 @@ function FeedLink({
   count: number;
   error?: string | null;
   icon?: React.ReactNode;
+  marker?: string;
 }) {
   return (
     <Link
       href={href}
-      className={`flex items-center gap-2 rounded-md px-2 py-1.5 text-sm ${
-        active ? "bg-muted font-medium" : "hover:bg-muted/50"
+      className={`group flex items-center gap-2.5 rounded-md px-2 py-1.5 text-sm transition-colors ${
+        active
+          ? "bg-sidebar-accent font-medium text-sidebar-accent-foreground"
+          : "hover:bg-sidebar-accent/60"
       }`}
     >
-      {icon}
+      {marker ? (
+        <span aria-hidden className="w-4 text-center text-xs text-primary">
+          {marker}
+        </span>
+      ) : (
+        icon
+      )}
       {error ? (
-        <span title={error} className="shrink-0 text-destructive">
+        <span title={error} className="shrink-0 text-xs text-destructive">
           ⚠
         </span>
       ) : null}
       <span className="min-w-0 flex-1 truncate">{label}</span>
       {count > 0 ? (
-        <span className="shrink-0 rounded-full bg-muted-foreground/15 px-2 py-0.5 text-xs tabular-nums">
+        <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
           {count > 1000 ? "1k+" : count}
         </span>
       ) : null}

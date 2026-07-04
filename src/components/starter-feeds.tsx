@@ -39,12 +39,12 @@ function StarterCard({ feed }: { feed: StarterFeed }) {
 export function StarterFeeds({ feeds }: { feeds: StarterFeed[] }) {
   return (
     <div className="space-y-3">
-      <h2 className="text-lg font-semibold tracking-tight">
-        Welcome — let's fill this up
+      <h2 className="font-serif text-3xl font-bold tracking-tight">
+        Welcome<span className="text-primary">.</span>
       </h2>
-      <p className="text-sm text-muted-foreground">
-        Import an OPML file from your old reader (in the sidebar), paste any
-        feed or site URL above — or start with a few good ones:
+      <p className="max-w-prose text-sm text-muted-foreground">
+        Import an OPML file from your old reader, paste any feed or site URL
+        (both in the sidebar) — or start with a few good ones:
       </p>
       <div className="grid gap-2 sm:grid-cols-2">
         {feeds.map((feed) => (

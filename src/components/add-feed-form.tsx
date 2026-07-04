@@ -11,8 +11,8 @@ const initial: ActionState = { ok: true, message: "" };
 function SubmitButton() {
   const { pending } = useFormStatus();
   return (
-    <Button type="submit" disabled={pending}>
-      {pending ? "Adding…" : "Add"}
+    <Button type="submit" size="sm" disabled={pending} className="shrink-0">
+      {pending ? "…" : "Add"}
     </Button>
   );
 }
@@ -20,20 +20,21 @@ function SubmitButton() {
 export function AddFeedForm() {
   const [state, formAction] = useActionState(addFeedAction, initial);
   return (
-    <form action={formAction} className="space-y-2">
+    <form action={formAction} className="space-y-1.5">
       <div className="flex gap-2">
         <Input
           name="url"
           type="text"
-          placeholder="Feed or site URL"
+          placeholder="Add feed or site URL"
           aria-label="Feed or site URL"
           autoComplete="off"
+          className="h-8 bg-background text-sm"
         />
         <SubmitButton />
       </div>
       {state.message ? (
         <p
-          className={`text-sm ${state.ok ? "text-muted-foreground" : "text-destructive"}`}
+          className={`text-xs ${state.ok ? "text-muted-foreground" : "text-destructive"}`}
         >
           {state.message}
         </p>
