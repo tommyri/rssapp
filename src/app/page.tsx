@@ -2,6 +2,7 @@ import Link from "next/link";
 import { AddFeedForm } from "@/components/add-feed-form";
 import { ArticleList } from "@/components/article-list";
 import { FeedIcon } from "@/components/feed-icon";
+import { FeedMenu } from "@/components/feed-menu";
 import { RefreshButton } from "@/components/refresh-button";
 import { SearchForm } from "@/components/search-form";
 import { StarterFeeds } from "@/components/starter-feeds";
@@ -86,6 +87,7 @@ export default async function Home({
   const folderGroups = [...byFolder.entries()].sort((a, b) =>
     a[1].name.localeCompare(b[1].name),
   );
+  const folderNames = folderGroups.map(([, g]) => g.name);
 
   const title = isSearch
     ? `“${query}”`
@@ -159,6 +161,7 @@ export default async function Home({
                   count={f.unread}
                   error={f.lastError}
                   icon={<FeedIcon siteUrl={f.siteUrl} feedUrl={f.url} />}
+                  menu={<FeedMenu feed={f} folderNames={folderNames} />}
                 />
               ))}
             </div>
@@ -180,6 +183,7 @@ export default async function Home({
                   count={f.unread}
                   error={f.lastError}
                   icon={<FeedIcon siteUrl={f.siteUrl} feedUrl={f.url} />}
+                  menu={<FeedMenu feed={f} folderNames={folderNames} />}
                 />
               ))}
             </div>
@@ -257,6 +261,7 @@ function FeedLink({
   error,
   icon,
   marker,
+  menu,
 }: {
   href: string;
   active: boolean;
@@ -265,34 +270,40 @@ function FeedLink({
   error?: string | null;
   icon?: React.ReactNode;
   marker?: string;
+  menu?: React.ReactNode;
 }) {
   return (
-    <Link
-      href={href}
-      className={`group flex items-center gap-2.5 rounded-md px-2 py-1.5 text-sm transition-colors ${
+    <div
+      className={`group flex items-center rounded-md transition-colors ${
         active
           ? "bg-sidebar-accent font-medium text-sidebar-accent-foreground"
           : "hover:bg-sidebar-accent/60"
       }`}
     >
-      {marker ? (
-        <span aria-hidden className="w-4 text-center text-xs text-primary">
-          {marker}
-        </span>
-      ) : (
-        icon
-      )}
-      {error ? (
-        <span title={error} className="shrink-0 text-xs text-destructive">
-          ⚠
-        </span>
-      ) : null}
-      <span className="min-w-0 flex-1 truncate">{label}</span>
-      {count > 0 ? (
-        <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
-          {count > 1000 ? "1k+" : count}
-        </span>
-      ) : null}
-    </Link>
+      <Link
+        href={href}
+        className="flex min-w-0 flex-1 items-center gap-2.5 px-2 py-1.5 text-sm"
+      >
+        {marker ? (
+          <span aria-hidden className="w-4 text-center text-xs text-primary">
+            {marker}
+          </span>
+        ) : (
+          icon
+        )}
+        {error ? (
+          <span title={error} className="shrink-0 text-xs text-destructive">
+            ⚠
+          </span>
+        ) : null}
+        <span className="min-w-0 flex-1 truncate">{label}</span>
+        {count > 0 ? (
+          <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
+            {count > 1000 ? "1k+" : count}
+          </span>
+        ) : null}
+      </Link>
+      {menu ? <span className="shrink-0 pr-1.5">{menu}</span> : null}
+    </div>
   );
 }

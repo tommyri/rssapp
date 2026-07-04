@@ -19,6 +19,11 @@ export interface FeedSummary {
   lastError: string | null;
   folderId: number | null;
   folderName: string | null;
+  /* Raw values for the per-feed edit menu: */
+  customTitle: string | null;
+  feedTitle: string | null;
+  fullContent: boolean;
+  autoReadDays: number | null;
 }
 
 /** The user's subscribed feeds with per-feed unread counts, for the sidebar. */
@@ -34,6 +39,12 @@ export async function listFeeds(userId: number): Promise<FeedSummary[]> {
       lastError: feeds.lastError,
       folderId: folders.id,
       folderName: folders.name,
+      customTitle: subscriptions.customTitle,
+      feedTitle: feeds.title,
+      fullContent: sql<boolean>`coalesce(${subscriptions.settings}->>'fullContent', 'false') = 'true'`,
+      autoReadDays: sql<
+        number | null
+      >`(${subscriptions.settings}->>'autoReadDays')::int`,
       unread: sql<number>`cast(count(${itemsTable.id}) filter (where ${itemStates.read} is not true and ${itemStates.muted} is not true) as int)`,
     })
     .from(subscriptions)
@@ -48,6 +59,7 @@ export async function listFeeds(userId: number): Promise<FeedSummary[]> {
     .groupBy(
       feeds.id,
       subscriptions.customTitle,
+      subscriptions.settings,
       feeds.title,
       feeds.url,
       feeds.lastError,
