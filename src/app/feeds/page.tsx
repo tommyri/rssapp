@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { BackLink } from "@/components/back-link";
 import { ConfirmButton } from "@/components/confirm-button";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,9 +26,7 @@ export default async function ManageFeedsPage() {
         <h1 className="font-serif text-2xl font-bold tracking-tight">
           Manage feeds
         </h1>
-        <Link href="/" className="text-sm text-primary underline">
-          ← Back to reader
-        </Link>
+        <BackLink />
       </div>
 
       <datalist id="folder-names">

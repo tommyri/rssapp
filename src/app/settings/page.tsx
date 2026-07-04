@@ -1,10 +1,10 @@
 import { eq } from "drizzle-orm";
-import Link from "next/link";
 import {
   ChangeEmailForm,
   ChangePasswordForm,
   ReadingPrefsForm,
 } from "@/components/account-forms";
+import { BackLink } from "@/components/back-link";
 import { OpmlControls } from "@/components/opml-controls";
 import { db } from "@/db";
 import { users } from "@/db/schema";
@@ -22,9 +22,7 @@ export default async function SettingsPage() {
         <h1 className="font-serif text-2xl font-bold tracking-tight">
           Settings
         </h1>
-        <Link href="/" className="text-sm text-primary underline">
-          ← Back to reader
-        </Link>
+        <BackLink />
       </div>
 
       <ReadingPrefsForm autoReadDays={user?.settings.autoReadDays ?? null} />

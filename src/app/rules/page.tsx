@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { BackLink } from "@/components/back-link";
 import { ConfirmButton } from "@/components/confirm-button";
 import { RuleForm } from "@/components/rule-form";
 import { Button } from "@/components/ui/button";
@@ -30,9 +30,7 @@ export default async function RulesPage() {
     <div className="mx-auto w-full max-w-3xl flex-1 px-4 py-6">
       <div className="mb-6 flex items-center justify-between">
         <h1 className="font-serif text-2xl font-bold tracking-tight">Rules</h1>
-        <Link href="/" className="text-sm text-primary underline">
-          ← Back to reader
-        </Link>
+        <BackLink />
       </div>
 
       <div className="space-y-6">

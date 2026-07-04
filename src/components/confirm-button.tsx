@@ -17,9 +17,9 @@ export function ConfirmButton({
   return (
     <Button
       type="submit"
-      variant="ghost"
+      variant="outline"
       size="sm"
-      className="text-destructive hover:text-destructive"
+      className="border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive"
       onClick={(e) => {
         if (!window.confirm(message)) e.preventDefault();
       }}
