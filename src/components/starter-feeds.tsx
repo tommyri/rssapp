@@ -3,6 +3,7 @@
 import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
 import { type ActionState, addFeedAction } from "@/app/actions";
+import { OpmlControls } from "@/components/opml-controls";
 import { Button } from "@/components/ui/button";
 import type { StarterFeed } from "@/lib/starter-feeds";
 
@@ -43,9 +44,10 @@ export function StarterFeeds({ feeds }: { feeds: StarterFeed[] }) {
         Welcome<span className="text-primary">.</span>
       </h2>
       <p className="max-w-prose text-sm text-muted-foreground">
-        Import an OPML file from your old reader, paste any feed or site URL
-        (both in the sidebar) — or start with a few good ones:
+        Import an OPML file from your old reader, paste any feed or site URL in
+        the sidebar — or start with a few good ones:
       </p>
+      <OpmlControls />
       <div className="grid gap-2 sm:grid-cols-2">
         {feeds.map((feed) => (
           <StarterCard key={feed.url} feed={feed} />

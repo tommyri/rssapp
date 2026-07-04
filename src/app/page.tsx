@@ -2,7 +2,6 @@ import Link from "next/link";
 import { AddFeedForm } from "@/components/add-feed-form";
 import { ArticleList } from "@/components/article-list";
 import { FeedIcon } from "@/components/feed-icon";
-import { OpmlControls } from "@/components/opml-controls";
 import { RefreshButton } from "@/components/refresh-button";
 import { SearchForm } from "@/components/search-form";
 import { StarterFeeds } from "@/components/starter-feeds";
@@ -195,17 +194,13 @@ export default async function Home({
 
         <div className="space-y-3 border-t border-sidebar-border px-4 py-4">
           <AddFeedForm />
-          <OpmlControls />
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 pt-1">
+          <div className="flex flex-wrap items-center gap-1.5">
             <SidebarUtil href="/feeds" label="Manage" />
             <SidebarUtil href="/rules" label="Rules" />
             <SidebarUtil href="/settings" label="Settings" />
             <ThemeToggle />
             <form action={signOutAction} className="ml-auto">
-              <button
-                type="submit"
-                className="text-xs text-muted-foreground transition-colors hover:text-foreground"
-              >
+              <button type="submit" className={utilButtonClass}>
                 Sign out
               </button>
             </form>
@@ -239,12 +234,12 @@ export default async function Home({
   );
 }
 
+const utilButtonClass =
+  "rounded-md border border-border/70 px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:border-border hover:bg-accent/60 hover:text-foreground";
+
 function SidebarUtil({ href, label }: { href: string; label: string }) {
   return (
-    <Link
-      href={href}
-      className="text-xs text-muted-foreground transition-colors hover:text-foreground"
-    >
+    <Link href={href} className={utilButtonClass}>
       {label}
     </Link>
   );

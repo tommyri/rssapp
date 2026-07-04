@@ -17,11 +17,14 @@ export function OpmlControls() {
   const [fileName, setFileName] = useState<string | null>(null);
   const formRef = useRef<HTMLFormElement>(null);
 
+  const buttonClass =
+    "cursor-pointer rounded-md border border-border/70 px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:border-border hover:bg-accent/60 hover:text-foreground";
+
   return (
     <div className="space-y-1.5">
-      <div className="flex items-center gap-3 text-xs text-muted-foreground">
+      <div className="flex items-center gap-2">
         <form ref={formRef} action={formAction} className="contents">
-          <label className="cursor-pointer underline underline-offset-2 transition-colors hover:text-foreground">
+          <label className={buttonClass}>
             <input
               type="file"
               name="file"
@@ -38,11 +41,7 @@ export function OpmlControls() {
             <ImportLabel fileName={fileName} />
           </label>
         </form>
-        <a
-          href="/api/opml/export"
-          download
-          className="underline underline-offset-2 transition-colors hover:text-foreground"
-        >
+        <a href="/api/opml/export" download className={buttonClass}>
           Export OPML
         </a>
       </div>

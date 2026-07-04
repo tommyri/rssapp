@@ -5,6 +5,7 @@ import {
   ChangePasswordForm,
   ReadingPrefsForm,
 } from "@/components/account-forms";
+import { OpmlControls } from "@/components/opml-controls";
 import { db } from "@/db";
 import { users } from "@/db/schema";
 import { getCurrentUserId } from "@/lib/current-user";
@@ -27,14 +28,18 @@ export default async function SettingsPage() {
       </div>
 
       <ReadingPrefsForm autoReadDays={user?.settings.autoReadDays ?? null} />
+
+      <section className="space-y-3 rounded-lg border p-4">
+        <h2 className="font-medium">Subscriptions</h2>
+        <p className="text-xs text-muted-foreground">
+          Move your subscriptions in or out as an OPML file — the format every
+          reader speaks.
+        </p>
+        <OpmlControls />
+      </section>
+
       <ChangeEmailForm currentEmail={user?.email ?? ""} />
       <ChangePasswordForm />
-
-      <p className="text-xs text-muted-foreground">
-        Single-user app: there's no password reset. If you lose the password,
-        clear the account directly in the database (see README) and register
-        again.
-      </p>
     </div>
   );
 }

@@ -30,7 +30,7 @@ export function ThemeToggle() {
       type="button"
       onClick={cycle}
       title="Theme (follows system by default)"
-      className="text-xs text-muted-foreground underline hover:text-foreground"
+      className="rounded-md border border-border/70 px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:border-border hover:bg-accent/60 hover:text-foreground"
     >
       {mounted ? LABEL[current] : "◐ Auto"}
     </button>
