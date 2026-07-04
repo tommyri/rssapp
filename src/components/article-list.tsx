@@ -27,6 +27,8 @@ interface Props {
   /** Href that toggles between unread-only and show-all for this view. */
   toggleHref: string;
   showingAll: boolean;
+  /** Search-results mode: no read filters, no mark-all, no scroll-marking. */
+  isSearch?: boolean;
 }
 
 export function ArticleList({
@@ -36,6 +38,7 @@ export function ArticleList({
   title,
   toggleHref,
   showingAll,
+  isSearch = false,
 }: Props) {
   const router = useRouter();
   const [items, setItems] = useState<ReaderItem[]>(initialItems);
@@ -78,8 +81,9 @@ export function ArticleList({
   }, [router, setItemState]);
 
   // Scroll-marking: when an unread row leaves the top of the viewport, queue it.
+  // Never in search — scanning results must not consume unread state.
   useEffect(() => {
-    if (!scrollMark) return;
+    if (!scrollMark || isSearch) return;
     const unreadIds = new Set(
       items
         .filter((i) => !i.read && !manuallyUnread.current.has(i.id))
@@ -101,7 +105,7 @@ export function ArticleList({
       if (unreadIds.has(id)) observer.observe(el);
     }
     return () => observer.disconnect();
-  }, [items, scrollMark, flushScrollMarks]);
+  }, [items, scrollMark, isSearch, flushScrollMarks]);
 
   function registerRow(el: HTMLLIElement | null, id: number) {
     if (el) rowRefs.current.set(el, id);
@@ -207,7 +211,15 @@ export function ArticleList({
       {/* View header */}
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
         <h2 className="text-lg font-semibold tracking-tight">{title}</h2>
-        {!view.starred ? (
+        {isSearch ? (
+          <Link
+            href="/"
+            className="text-xs text-muted-foreground underline hover:text-foreground"
+          >
+            ✕ Clear search
+          </Link>
+        ) : null}
+        {!view.starred && !isSearch ? (
           <Link
             href={toggleHref}
             className="text-xs text-muted-foreground underline hover:text-foreground"
@@ -215,26 +227,30 @@ export function ArticleList({
             {showingAll ? "Unread only" : "Show read"}
           </Link>
         ) : null}
-        <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
-          <input
-            type="checkbox"
-            checked={scrollMark}
-            onChange={toggleScrollMark}
-          />
-          Mark read on scroll
-        </label>
-        {!view.starred ? (
+        {!isSearch ? (
+          <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <input
+              type="checkbox"
+              checked={scrollMark}
+              onChange={toggleScrollMark}
+            />
+            Mark read on scroll
+          </label>
+        ) : null}
+        {!view.starred && !isSearch ? (
           <MarkAllControl onMark={markAll} statusMsg={statusMsg} />
         ) : null}
       </div>
 
       {items.length === 0 ? (
         <p className="py-12 text-center text-sm text-muted-foreground">
-          {view.starred
-            ? "No starred articles yet — star something worth keeping."
-            : showingAll
-              ? "Nothing here yet — try refreshing."
-              : "All caught up. 🎉"}
+          {isSearch
+            ? "No matching articles. Try fewer or different words — quotes for phrases, - to exclude."
+            : view.starred
+              ? "No starred articles yet — star something worth keeping."
+              : showingAll
+                ? "Nothing here yet — try refreshing."
+                : "All caught up. 🎉"}
         </p>
       ) : (
         <ul className="divide-y divide-border rounded-lg border">

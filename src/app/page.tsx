@@ -3,9 +3,15 @@ import { AddFeedForm } from "@/components/add-feed-form";
 import { ArticleList } from "@/components/article-list";
 import { OpmlControls } from "@/components/opml-controls";
 import { RefreshButton } from "@/components/refresh-button";
+import { SearchForm } from "@/components/search-form";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { getCurrentUserId } from "@/lib/current-user";
-import { type FeedSummary, listFeeds, listItems } from "@/lib/reader";
+import {
+  type FeedSummary,
+  listFeeds,
+  listItems,
+  searchItems,
+} from "@/lib/reader";
 import { signOutAction } from "./actions";
 
 interface SearchParams {
@@ -13,6 +19,7 @@ interface SearchParams {
   folder?: string;
   view?: string;
   show?: string;
+  q?: string;
 }
 
 function parseId(value: string | undefined): number | undefined {
@@ -44,13 +51,18 @@ export default async function Home({
   // Starred is an archive view — read state doesn't gate it.
   const unreadOnly = !showingAll && !starred;
 
+  const query = (params.q ?? "").trim();
+  const isSearch = query.length > 0;
+
   const view = { feedId, folderId, starred, unreadOnly };
-  const viewKey = `${feedId ?? ""}:${folderId ?? ""}:${starred}:${showingAll}`;
+  const viewKey = `${feedId ?? ""}:${folderId ?? ""}:${starred}:${showingAll}:${query}`;
 
   const userId = await getCurrentUserId();
   const [feeds, page] = await Promise.all([
     listFeeds(userId),
-    listItems(userId, { ...view, limit: 50 }),
+    isSearch
+      ? searchItems(userId, query).then((items) => ({ items, hasMore: false }))
+      : listItems(userId, { ...view, limit: 50 }),
   ]);
   const totalUnread = feeds.reduce((sum, f) => sum + f.unread, 0);
 
@@ -73,13 +85,15 @@ export default async function Home({
     a[1].name.localeCompare(b[1].name),
   );
 
-  const title = starred
-    ? "Starred"
-    : feedId
-      ? (feeds.find((f) => f.feedId === feedId)?.title ?? "Feed")
-      : folderId
-        ? (byFolder.get(folderId)?.name ?? "Folder")
-        : "All articles";
+  const title = isSearch
+    ? `Search: “${query}”`
+    : starred
+      ? "Starred"
+      : feedId
+        ? (feeds.find((f) => f.feedId === feedId)?.title ?? "Feed")
+        : folderId
+          ? (byFolder.get(folderId)?.name ?? "Folder")
+          : "All articles";
 
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 px-4 py-6 md:flex-row">
@@ -102,6 +116,7 @@ export default async function Home({
 
         <AddFeedForm />
         <OpmlControls />
+        <SearchForm query={query} />
 
         <nav className="space-y-1">
           <FeedLink
@@ -203,6 +218,7 @@ export default async function Home({
             title={title}
             toggleHref={toggleShowHref(params)}
             showingAll={showingAll}
+            isSearch={isSearch}
           />
         )}
       </main>

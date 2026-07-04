@@ -222,6 +222,63 @@ export async function listItems(
   return { items: rows.slice(0, limit), hasMore: rows.length > limit };
 }
 
+const SEARCH_LIMIT = 50;
+
+/**
+ * Full-text search across the user's subscribed items — title, author, and
+ * body (extracted content when present). websearch syntax: quoted phrases,
+ * OR, -exclusions. Includes read items (search is an archive operation);
+ * excludes muted ones. Top results by rank, recency as tiebreak.
+ */
+export async function searchItems(
+  userId: number,
+  query: string,
+): Promise<ReaderItem[]> {
+  const tsquery = sql`websearch_to_tsquery('english', ${query})`;
+
+  return db
+    .select({
+      id: itemsTable.id,
+      title: itemsTable.title,
+      url: itemsTable.url,
+      author: itemsTable.author,
+      contentHtml: itemsTable.contentHtml,
+      fullContentHtml: itemsTable.fullContentHtml,
+      publishedAt: itemsTable.publishedAt,
+      sortTs: sql<Date>`${sortKey}`.mapWith((v) => new Date(v)),
+      feedId: feeds.id,
+      feedTitle: sql<
+        string | null
+      >`coalesce(${subscriptions.customTitle}, ${feeds.title})`,
+      read: sql<boolean>`coalesce(${itemStates.read}, false)`,
+      starred: sql<boolean>`coalesce(${itemStates.starred}, false)`,
+    })
+    .from(itemsTable)
+    .innerJoin(
+      subscriptions,
+      and(
+        eq(subscriptions.feedId, itemsTable.feedId),
+        eq(subscriptions.userId, userId),
+      ),
+    )
+    .innerJoin(feeds, eq(feeds.id, itemsTable.feedId))
+    .leftJoin(
+      itemStates,
+      and(eq(itemStates.itemId, itemsTable.id), eq(itemStates.userId, userId)),
+    )
+    .where(
+      and(
+        sql`${itemStates.muted} is not true`,
+        sql`${itemsTable.searchVector} @@ ${tsquery}`,
+      ),
+    )
+    .orderBy(
+      sql`ts_rank(${itemsTable.searchVector}, ${tsquery}) desc`,
+      sql`${sortKey} desc`,
+    )
+    .limit(SEARCH_LIMIT);
+}
+
 /** Ids of the user's unread items in a view, optionally only older than a cutoff. */
 async function unreadItemIds(
   userId: number,

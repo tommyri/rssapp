@@ -46,6 +46,13 @@ it. The poll "queue" is just the `feeds.next_fetch_at` column — no Redis/queue
 tick with `SCHEDULER_TICK_MS` (milliseconds); it runs only in the Node server, not during
 builds. It needs the long-running `npm run dev`/`npm start` server — not serverless.
 
+### Search
+
+Full-text search (Postgres FTS) across titles, authors, and article bodies — including
+Readability-extracted full content. Weighted ranking (title > author > body), websearch
+syntax (`"quoted phrases"`, `-exclusions`, `OR`). Muted articles never appear. The index
+is a generated `tsvector` column with a GIN index; searches are just `/?q=…`.
+
 ### Rules & filters
 
 Per-user automation on `/rules`: match articles by keyword or regex on

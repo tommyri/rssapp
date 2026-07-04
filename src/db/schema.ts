@@ -1,6 +1,8 @@
+import { sql } from "drizzle-orm";
 import {
   bigint,
   boolean,
+  customType,
   index,
   integer,
   jsonb,
@@ -10,6 +12,10 @@ import {
   timestamp,
   uniqueIndex,
 } from "drizzle-orm/pg-core";
+
+const tsvector = customType<{ data: string }>({
+  dataType: () => "tsvector",
+});
 
 // Bigint identity PKs throughout: the Google Reader-compat API expects int64
 // item ids (docs/tech-stack.md). JS numbers are safe far beyond our scale.
@@ -110,10 +116,17 @@ export const items = pgTable(
     fullContentHtml: text("full_content_html"),
     publishedAt: timestamp("published_at", { withTimezone: true }),
     createdAt: createdAt(),
+    // Weighted FTS document: title > author > body (extracted content when
+    // present, tags stripped). 'english' config — most subscribed feeds are
+    // English; revisit if stemming misses too much on other languages.
+    searchVector: tsvector("search_vector").generatedAlwaysAs(
+      sql`setweight(to_tsvector('english', coalesce(title, '')), 'A') || setweight(to_tsvector('english', coalesce(author, '')), 'B') || setweight(to_tsvector('english', regexp_replace(coalesce(full_content_html, content_html, ''), '<[^>]*>', ' ', 'g')), 'C')`,
+    ),
   },
   (t) => [
     uniqueIndex("items_feed_guid_idx").on(t.feedId, t.guid),
     index("items_feed_published_idx").on(t.feedId, t.publishedAt),
+    index("items_search_idx").using("gin", t.searchVector),
   ],
 );
 
