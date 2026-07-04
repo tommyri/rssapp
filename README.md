@@ -53,6 +53,11 @@ Readability-extracted full content. Weighted ranking (title > author > body), we
 syntax (`"quoted phrases"`, `-exclusions`, `OR`). Muted articles never appear. The index
 is a generated `tsvector` column with a GIN index; searches are just `/?q=…`.
 
+Content is indexed with **both English and Norwegian stemmers** and queries are parsed
+through both, so inflections match in either language ("bolig" finds "boliger",
+"transaction" finds "transactions"). Supporting arbitrary languages is a
+scaling/business question — see docs/business-option.md.
+
 ### Rules & filters
 
 Per-user automation on `/rules`: match articles by keyword or regex on

@@ -45,3 +45,9 @@ Two findings from competitive-analysis.md sharpen this:
 1. Open-source or not — and if so, MIT-style goodwill vs. AGPL protection.
 2. Which angle: hosted reader UI, sync backend, or both.
 3. Whether the Reader-compat API should move up the roadmap on business grounds alone.
+4. **Multilingual search at scale.** Today search indexes with English + Norwegian
+   stemmers (the builder's actual mix — one migration to change, not a lock-in).
+   Customers in arbitrary languages need a real strategy: per-feed language detection
+   with per-language configs, language-neutral `simple` + trigram matching, or an
+   external engine (Meilisearch/Typesense). Decide when there are non-EN/NO users;
+   the generated-column design makes any of these a contained migration.

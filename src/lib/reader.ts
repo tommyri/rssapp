@@ -234,7 +234,9 @@ export async function searchItems(
   userId: number,
   query: string,
 ): Promise<ReaderItem[]> {
-  const tsquery = sql`websearch_to_tsquery('english', ${query})`;
+  // The index holds english + norwegian stems (schema.ts); parse the query
+  // with both and OR them so either language's inflections match.
+  const tsquery = sql`(websearch_to_tsquery('english', ${query}) || websearch_to_tsquery('norwegian', ${query}))`;
 
   return db
     .select({

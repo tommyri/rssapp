@@ -117,10 +117,12 @@ export const items = pgTable(
     publishedAt: timestamp("published_at", { withTimezone: true }),
     createdAt: createdAt(),
     // Weighted FTS document: title > author > body (extracted content when
-    // present, tags stripped). 'english' config — most subscribed feeds are
-    // English; revisit if stemming misses too much on other languages.
+    // present, tags stripped). Indexed with BOTH english and norwegian
+    // stemmers — the user's feeds mix the two; queries OR both parsers
+    // (src/lib/reader.ts). Scaling beyond two known languages is a business
+    // question, parked in docs/business-option.md.
     searchVector: tsvector("search_vector").generatedAlwaysAs(
-      sql`setweight(to_tsvector('english', coalesce(title, '')), 'A') || setweight(to_tsvector('english', coalesce(author, '')), 'B') || setweight(to_tsvector('english', regexp_replace(coalesce(full_content_html, content_html, ''), '<[^>]*>', ' ', 'g')), 'C')`,
+      sql`setweight(to_tsvector('english', coalesce(title, '')), 'A') || setweight(to_tsvector('norwegian', coalesce(title, '')), 'A') || setweight(to_tsvector('english', coalesce(author, '')), 'B') || setweight(to_tsvector('english', regexp_replace(coalesce(full_content_html, content_html, ''), '<[^>]*>', ' ', 'g')), 'C') || setweight(to_tsvector('norwegian', regexp_replace(coalesce(full_content_html, content_html, ''), '<[^>]*>', ' ', 'g')), 'C')`,
     ),
   },
   (t) => [
