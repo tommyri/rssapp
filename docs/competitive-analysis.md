@@ -32,16 +32,17 @@ What paying users actually praise: rules/filters taming high-volume feeds, monit
 
 ## Table stakes (must-match) vs. our plan
 
-| Table-stakes feature | Our plan |
+| Table-stakes feature | Status |
 |---|---|
-| OPML import/export | ✅ MVP |
-| Folders + unread management | ✅ MVP |
-| Mark-read-while-scrolling | ⚠️ was missing — added to MVP |
-| Full-content extraction for truncated feeds | ✅ v1 |
-| Full-text search | ✅ v1 (free at Inoreader; Feedly paywalling it is resented) |
-| Keyboard shortcuts, dark mode | ✅ v1 |
-| Mobile: apps, great PWA, or GReader API for third-party clients | ⚠️ responsive web in MVP; PWA "later" — acceptable for personal use, gating for business |
-| YouTube channels as feeds | ⚠️ was missing — cheap (YouTube publishes channel RSS); added to v1 as an add-flow nicety |
+| OPML import/export | ✅ shipped |
+| Folders + unread management | ✅ shipped |
+| Mark-read-while-scrolling | ✅ shipped (on by default, toggleable) |
+| Full-content extraction for truncated feeds | ✅ shipped |
+| Full-text search | ✅ shipped (free at Inoreader; Feedly paywalling it is resented) |
+| Dark mode | ✅ shipped (Auto/Light/Dark) |
+| Keyboard shortcuts | ⏳ deferred to "later" — nice-to-have for a single user, non-negotiable only if courting migrating power users |
+| Mobile: apps, great PWA, or GReader API for third-party clients | ⚠️ responsive web shipped; PWA "later" — acceptable for personal use, gating for business |
+| YouTube channels as feeds | ✅ shipped (paste a channel URL → resolves its native RSS) |
 | Podcasts as feeds | "later" — fine |
 | Newsletter-to-feed | "later" — fine personally; near-expected on paid tiers commercially |
 | Longevity signaling | Post-Pocket/Omnivore, "will this exist in 3 years" is an explicit purchase criterion — self-hosting answers it for us personally |

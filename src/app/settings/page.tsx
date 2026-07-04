@@ -6,6 +6,7 @@ import {
 } from "@/components/account-forms";
 import { BackLink } from "@/components/back-link";
 import { OpmlControls } from "@/components/opml-controls";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { db } from "@/db";
 import { users } from "@/db/schema";
 import { getCurrentUserId } from "@/lib/current-user";
@@ -26,6 +27,16 @@ export default async function SettingsPage() {
       </div>
 
       <ReadingPrefsForm autoReadDays={user?.settings.autoReadDays ?? null} />
+
+      <section className="space-y-3 rounded-lg border p-4">
+        <div className="space-y-1">
+          <h2 className="font-medium">Appearance</h2>
+          <p className="text-xs text-muted-foreground">
+            Choose light, dark, or follow your system.
+          </p>
+        </div>
+        <ThemeToggle />
+      </section>
 
       <section className="space-y-3 rounded-lg border p-4">
         <h2 className="font-medium">Subscriptions</h2>

@@ -1,5 +1,15 @@
 "use client";
 
+import {
+  BookmarkCheckIcon,
+  BookmarkIcon,
+  CheckIcon,
+  CircleIcon,
+  ExternalLinkIcon,
+  FileTextIcon,
+  StarIcon,
+  XIcon,
+} from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -9,6 +19,7 @@ import {
   loadFullContentAction,
   markAllReadAction,
   setItemReadAction,
+  setItemReadLaterAction,
   setItemStarredAction,
   setItemsReadAction,
 } from "@/app/actions";
@@ -56,10 +67,13 @@ export function ArticleList({
   unreadCount = 0,
 }: Props) {
   const router = useRouter();
+  // Starred / Read later are archive views: no unread filter or mark-all.
+  const isArchiveView = Boolean(view.starred || view.readLater);
   const [items, setItems] = useState<ReaderItem[]>(initialItems);
   const [hasMore, setHasMore] = useState(initialHasMore);
   const [loadingMore, setLoadingMore] = useState(false);
-  const [expanded, setExpanded] = useState<Set<number>>(new Set());
+  // Only one article is open at a time — opening another closes the previous.
+  const [expandedId, setExpandedId] = useState<number | null>(null);
   const [scrollMark, setScrollMark] = useState(true);
   const [statusMsg, setStatusMsg] = useState("");
   const [fullContentErrors, setFullContentErrors] = useState<
@@ -132,13 +146,8 @@ export function ArticleList({
   }
 
   function toggleExpanded(item: ReaderItem) {
-    const isOpen = expanded.has(item.id);
-    setExpanded((prev) => {
-      const next = new Set(prev);
-      if (isOpen) next.delete(item.id);
-      else next.add(item.id);
-      return next;
-    });
+    const isOpen = expandedId === item.id;
+    setExpandedId(isOpen ? null : item.id);
     // Opening an unread article marks it read (docs/features.md MVP).
     if (!isOpen && !item.read) {
       manuallyUnread.current.delete(item.id);
@@ -157,6 +166,13 @@ export function ArticleList({
   function toggleStarred(item: ReaderItem) {
     setItemState([item.id], { starred: !item.starred });
     void setItemStarredAction(item.id, !item.starred).then(() =>
+      router.refresh(),
+    );
+  }
+
+  function toggleReadLater(item: ReaderItem) {
+    setItemState([item.id], { readLater: !item.readLater });
+    void setItemReadLaterAction(item.id, !item.readLater).then(() =>
       router.refresh(),
     );
   }
@@ -237,15 +253,16 @@ export function ArticleList({
           {isSearch ? (
             <Link
               href="/"
-              className="rounded-md border border-border/70 px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:border-border hover:bg-accent/60 hover:text-foreground"
+              className="inline-flex items-center gap-1.5 rounded-md border border-border/70 px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:border-border hover:bg-accent/60 hover:text-foreground"
             >
-              ✕ Clear search
+              <XIcon className="size-3.5" />
+              Clear search
             </Link>
           ) : null}
         </div>
         {!isSearch ? (
           <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-muted-foreground">
-            {!view.starred ? (
+            {!isArchiveView ? (
               <Link
                 href={toggleHref}
                 className="rounded-md border border-border/70 px-2.5 py-1 transition-colors hover:border-border hover:bg-accent/60 hover:text-foreground"
@@ -262,7 +279,7 @@ export function ArticleList({
               />
               Mark read on scroll
             </label>
-            {!view.starred ? (
+            {!isArchiveView ? (
               <MarkAllControl onMark={markAll} statusMsg={statusMsg} />
             ) : null}
           </div>
@@ -276,9 +293,11 @@ export function ArticleList({
               ? "No matching articles."
               : view.starred
                 ? "Nothing starred yet."
-                : showingAll
-                  ? "Nothing here yet — try refreshing."
-                  : "All caught up."}
+                : view.readLater
+                  ? "Nothing saved for later yet."
+                  : showingAll
+                    ? "Nothing here yet — try refreshing."
+                    : "All caught up."}
           </p>
           {isSearch ? (
             <p className="mt-2 text-xs text-muted-foreground">
@@ -289,7 +308,7 @@ export function ArticleList({
       ) : (
         <ul>
           {items.map((item, index) => {
-            const isOpen = expanded.has(item.id);
+            const isOpen = expandedId === item.id;
             const contentHtml = item.fullContentHtml ?? item.contentHtml;
             const error = fullContentErrors.get(item.id);
             const snippet = snippetOf(item);
@@ -315,12 +334,19 @@ export function ArticleList({
                   />
                   <span className="min-w-0 flex-1">
                     <span
-                      className={`block truncate text-[15px] leading-snug font-semibold ${
-                        item.read ? "text-muted-foreground" : ""
-                      }`}
+                      className={
+                        isOpen
+                          ? "block font-serif text-[22px] leading-tight font-bold"
+                          : `block truncate text-[15px] leading-snug font-semibold ${
+                              item.read ? "text-muted-foreground" : ""
+                            }`
+                      }
                     >
                       {item.starred ? (
-                        <span className="text-primary">★ </span>
+                        <StarIcon className="mr-1 inline-block size-3.5 fill-current align-[-0.15em] text-primary" />
+                      ) : null}
+                      {item.readLater ? (
+                        <BookmarkCheckIcon className="mr-1 inline-block size-3.5 align-[-0.15em] text-primary" />
                       ) : null}
                       {item.title ?? "(untitled)"}
                     </span>
@@ -335,43 +361,29 @@ export function ArticleList({
                         {snippet}
                       </span>
                     ) : null}
-                    <span className="mt-1 block truncate text-xs text-muted-foreground/80">
+                    <span
+                      className={`mt-1 block text-xs text-muted-foreground/80 ${
+                        isOpen ? "" : "truncate"
+                      }`}
+                    >
                       {item.feedTitle}
                       {item.publishedAt
-                        ? ` · ${relativeTime(new Date(item.publishedAt))}`
+                        ? ` · ${
+                            isOpen
+                              ? new Date(item.publishedAt).toLocaleString()
+                              : relativeTime(new Date(item.publishedAt))
+                          }`
                         : ""}
                       {item.author ? ` · ${item.author}` : ""}
+                      {isOpen && item.fullContentHtml ? (
+                        <span className="italic"> · full content</span>
+                      ) : null}
                     </span>
                   </span>
                 </button>
 
                 {isOpen ? (
-                  <article className="row-enter mb-4 rounded-lg border border-border/60 bg-card px-5 py-5 md:px-7">
-                    <h3 className="font-serif text-[22px] leading-tight font-bold">
-                      {item.url ? (
-                        <a
-                          href={item.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="transition-colors hover:text-primary"
-                        >
-                          {item.title ?? "(untitled)"}
-                        </a>
-                      ) : (
-                        (item.title ?? "(untitled)")
-                      )}
-                    </h3>
-                    <p className="mt-1 mb-4 text-xs text-muted-foreground">
-                      {item.feedTitle}
-                      {item.author ? ` · ${item.author}` : ""}
-                      {item.publishedAt
-                        ? ` · ${new Date(item.publishedAt).toLocaleString()}`
-                        : ""}
-                      {item.fullContentHtml ? (
-                        <span className="italic"> · full content</span>
-                      ) : null}
-                    </p>
-
+                  <div className="row-enter pr-1 pb-5 pl-6">
                     {contentHtml ? (
                       <div
                         className="article-content max-w-prose"
@@ -388,7 +400,8 @@ export function ArticleList({
                     <div className="mt-5 flex flex-wrap items-center gap-2 border-t border-border/60 pt-4 text-xs">
                       {item.url ? (
                         <ActionButton asLink href={item.url}>
-                          Open original ↗
+                          <ExternalLinkIcon className="size-3.5" />
+                          Open original
                         </ActionButton>
                       ) : null}
                       {!item.fullContentHtml && item.url ? (
@@ -396,22 +409,39 @@ export function ArticleList({
                           disabled={loadingContent.has(item.id)}
                           onClick={() => loadFullContent(item)}
                         >
+                          <FileTextIcon className="size-3.5" />
                           {loadingContent.has(item.id)
                             ? "Loading…"
                             : "Load full content"}
                         </ActionButton>
                       ) : null}
                       <ActionButton onClick={() => toggleStarred(item)}>
-                        {item.starred ? "★ Unstar" : "☆ Star"}
+                        <StarIcon
+                          className={`size-3.5 ${item.starred ? "fill-current text-primary" : ""}`}
+                        />
+                        {item.starred ? "Unstar" : "Star"}
+                      </ActionButton>
+                      <ActionButton onClick={() => toggleReadLater(item)}>
+                        {item.readLater ? (
+                          <BookmarkCheckIcon className="size-3.5 text-primary" />
+                        ) : (
+                          <BookmarkIcon className="size-3.5" />
+                        )}
+                        {item.readLater ? "Saved" : "Read later"}
                       </ActionButton>
                       <ActionButton onClick={() => toggleRead(item)}>
+                        {item.read ? (
+                          <CircleIcon className="size-3.5" />
+                        ) : (
+                          <CheckIcon className="size-3.5" />
+                        )}
                         {item.read ? "Mark unread" : "Mark read"}
                       </ActionButton>
                       {error ? (
                         <span className="text-destructive">{error}</span>
                       ) : null}
                     </div>
-                  </article>
+                  </div>
                 ) : null}
               </li>
             );
@@ -449,7 +479,7 @@ function ActionButton({
   href?: string;
 }) {
   const className =
-    "rounded-md border border-border/70 px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:border-border hover:bg-accent/60 hover:text-foreground disabled:opacity-50";
+    "inline-flex items-center gap-1.5 rounded-md border border-border/70 px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:border-border hover:bg-accent/60 hover:text-foreground disabled:opacity-50";
   if (asLink && href) {
     return (
       <a

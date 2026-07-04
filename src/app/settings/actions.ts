@@ -6,6 +6,7 @@ import { db } from "@/db";
 import { users } from "@/db/schema";
 import { getCurrentUserId } from "@/lib/current-user";
 import { hashPassword, verifyPassword } from "@/lib/password";
+import { DEFAULT_AUTO_READ_DAYS } from "@/lib/reading-prefs";
 
 export interface AccountActionState {
   ok: boolean;
@@ -67,7 +68,7 @@ export async function updateReadingPrefsAction(
     ok: true,
     message: days
       ? `Articles auto-mark read after ${days} day${days === 1 ? "" : "s"}.`
-      : "Auto-mark read disabled.",
+      : `Using the default — articles auto-mark read after ${DEFAULT_AUTO_READ_DAYS} days.`,
   };
 }
 

@@ -1,23 +1,23 @@
 # Tech Stack
 
-Recommended stack, optimized for: one codebase, boring/durable choices, easy self-hosting, and a background fetcher that's a first-class citizen (the part most "just use serverless" setups get wrong).
+The stack in use, chosen for: one codebase, boring/durable choices, easy self-hosting, and a background fetcher that's a first-class citizen (the part most "just use serverless" setups get wrong).
 
 ## Summary
 
 | Layer | Choice | Notes |
 |---|---|---|
 | Language | TypeScript | End to end |
-| Framework | Next.js (App Router) | UI + API in one app |
-| Database | PostgreSQL | Articles, feeds, state; FTS later |
+| Framework | Next.js 16 (App Router) | UI + API in one app |
+| Database | PostgreSQL | Articles, feeds, state, full-text search |
 | ORM / migrations | Drizzle | Schema in TS, SQL-first, light |
-| Feed fetching | Node worker in-app | `node-cron` scheduler, see below |
+| Feed fetching | In-process Node worker | `setInterval` poller, see below |
 | Feed parsing | `rss-parser` | RSS/Atom; small JSON Feed handling ourselves |
 | Sanitization | `sanitize-html` | Never render feed HTML unsanitized |
-| Content extraction (v1) | `@mozilla/readability` + `linkedom` | For truncated feeds |
-| Styling / UI | Tailwind CSS + shadcn/ui | Fast to build, easy to customize |
+| Content extraction | `@mozilla/readability` + `linkedom` | For truncated feeds |
+| Styling / UI | Tailwind CSS v4 + Radix UI (shadcn-style) | Fast to build, easy to customize |
 | Auth | Auth.js (credentials, single user) | Multi-user-ready if we ever want it |
-| Validation | Zod | API inputs, feed URL forms |
-| Testing | Vitest + Playwright | Unit/parsing tests + a few E2E flows |
+| Validation | Zod | Server-action inputs, feed URL forms |
+| Testing | Vitest | Unit/parsing tests (E2E via Playwright is a later addition) |
 | Lint/format | Biome | One tool instead of ESLint+Prettier |
 | Deployment | Docker Compose (app + Postgres) | Home server / VPS |
 
@@ -30,13 +30,13 @@ An RSS reader is mostly server-rendered lists with a bit of interactivity. One N
 SQLite would honestly work for a personal reader, but Postgres buys us: proper full-text search for v1, no write-lock concerns between the web app and the fetcher, and no migration cliff if this grows (multi-user, compat API). Docker Compose makes running it trivial.
 
 ### In-process worker over external job queue
-Feed polling is the one "always running" part. Plan:
+Feed polling is the one "always running" part. How it works today:
 
-- A scheduler (started via Next.js `instrumentation.ts`, or a separate small Node process in the same image) ticks every minute
-- It selects feeds due for refresh (`next_fetch_at <= now`), fetches with concurrency limits and per-host politeness, parses, upserts items
-- Failure → exponential backoff stored per feed
+- A `setInterval` scheduler (`src/lib/scheduler.ts`), started from `instrumentation.ts` — which only runs it in the Node runtime, never the Edge runtime or during builds, via `instrumentation-node.ts` — ticks every 60s (`SCHEDULER_TICK_MS`)
+- Each tick selects feeds due for refresh (`next_fetch_at <= now`), fetches a batch with a concurrency limit and conditional GET, parses, upserts items, then runs the auto-mark-read sweep
+- Failure → backoff stored per feed (`consecutive_failures`, pushed-out `next_fetch_at`)
 
-No Redis, no BullMQ in the MVP — a `fetch_log` table plus `next_fetch_at` on feeds is our "queue". If we ever need more (content extraction at scale, many users), BullMQ is the designated upgrade path.
+No Redis, no BullMQ — a `fetch_log` table plus `next_fetch_at` on feeds is our "queue". If we ever need more (content extraction at scale, many users), BullMQ is the designated upgrade path, claiming rows with `SKIP LOCKED`.
 
 **Consequence:** we need a long-running Node server. That rules out Vercel/serverless as the primary target and is why Docker on a home server/VPS is the deployment plan.
 
@@ -58,12 +58,13 @@ A hand-rolled password check would do, but Auth.js credentials provider is barel
 
 ### Core data model
 
-- `users` — single row for now; everything user-owned hangs off it
-- `feeds` — url, title, site_url, etag, last_modified, next_fetch_at, error state (shared across users)
-- `subscriptions` — user ↔ feed, custom title, folder_id, per-feed settings
+- `users` — single row for now; everything user-owned hangs off it. `settings` holds reader prefs (e.g. `autoReadDays`)
+- `feeds` — url, title, site_url, etag, last_modified, next_fetch_at, fetch_interval_minutes, error state (shared across users)
+- `subscriptions` — user ↔ feed, custom title, folder_id, per-feed `settings` (`fullContent`, `autoReadDays`)
 - `folders` — per user
-- `items` — feed_id, guid (unique per feed), url, title, author, content_html (sanitized), published_at
-- `item_states` — user ↔ item: read, starred, timestamps
+- `items` — feed_id, guid (unique per feed), url, title, author, content_html (sanitized), full_content_html (Readability, cached), published_at, and a generated `search_vector` (weighted, GIN-indexed)
+- `item_states` — user ↔ item: read, starred, read_later, muted, and their timestamps (rows written only when state diverges from default)
+- `rules` — per-user automation: match by keyword/regex on title/content/author, scoped to one feed or all, action mute/mark_read/star
 - `fetch_log` — per-fetch outcome for the feed health view
 
 Splitting `feeds`/`items` (global) from `subscriptions`/`item_states` (per user) costs nothing now and is exactly what multi-user and the Reader-compat API would need. Application code follows the same rule: every query is scoped by the session's `user_id` even while there's only one user (see business-option.md).
@@ -73,6 +74,6 @@ One deliberate detail: primary keys are `bigint` identity columns, not UUIDs. Th
 ## Open decisions
 
 1. **Deployment target** — assumed Docker Compose on a home server. If you'd rather use a managed platform (Fly.io, Railway, Hetzner + Coolify), the stack holds; only pure-serverless (Vercel) conflicts with the in-process worker.
-2. **shadcn/ui vs. hand-rolled UI** — shadcn assumed for speed. If this app is partly a design playground, we can go custom.
+2. ~~**shadcn/ui vs. hand-rolled UI**~~ — **Decided:** shadcn-style components built on Radix UI primitives (`src/components/ui/*`), plus `lucide-react` for icons. Fast to ship, fully editable, no runtime lock-in.
 3. ~~**How seriously to take multi-user**~~ — **Decided:** schema and app code are multi-tenant from day one; user-facing multi-user features stay off the roadmap until the business option is exercised. See business-option.md.
 4. ~~**Reader-compat API priority**~~ — **Decided:** stays in "later". Tommy reads in Inoreader's own apps (not a native sync client), so there's no personal need; the compat API remains a business-leverage feature only (see business-option.md), and bigint ids keep it cheap whenever we want it.

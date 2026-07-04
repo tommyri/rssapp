@@ -2,42 +2,42 @@
 
 Decisions for the interface, distilled from a UX survey of the current reader landscape (July 2026). North star: **Feedbin's restraint with Inoreader's power underneath** — the same wedge as the feature plan. Feedbin is the consensus "most beautiful web reader" and the proof that a web app can be the best mobile experience too; we copy its philosophy, not its pixels.
 
-## Layout: three-pane, collapsing to stacked on mobile
+## Layout: sidebar + list, article opens inline
 
-Sidebar (feeds/folders) → article list → reading pane. This is the convention every migrating reader user already knows (NetNewsWire established it in 2002, Google Reader cemented it), and the evidence says it's the safe default: even Reeder's radical 2024 redesign kept the three-pane skeleton, and FeedFlow/FreshRSS/NewsBlur all converged on offering it.
+What we shipped is a two-pane shell — sidebar (feeds/folders) → article list — where clicking an article **expands it inline in the list** (accordion: the row becomes the full article, only one open at a time) rather than opening a separate third reading pane. The classic three-pane layout (sidebar → list → reading pane) is what every migrating reader user knows (NetNewsWire established it in 2002, Google Reader cemented it, even Reeder's 2024 redesign kept the skeleton), but for a single reader on a centered max-width column, inline expansion keeps scan position and reading in one place and avoids a perpetually-empty third column. A separate reading pane stays a possible later option if it earns its keep.
 
-- **Mobile:** panes collapse to drill-down navigation (feeds → list → article), each a full screen with back navigation — the universal pattern.
+- **Mobile / narrow:** the layout is responsive — the sidebar gives way to the list as the primary surface, and articles expand in place. No separate full-screen article drill-down for now.
 - **Later option, not now:** a single-column "river" reading mode. There's a real 2026 zeitgeist around pressure-free timeline readers (new Reeder, Current, Tapestry), but the HN reader census shows inbox-style users are still the bulk of the audience — and we are one.
 
 ## Article list rows
 
 Follow the NetNewsWire timeline recipe (the best-documented design reasoning in the category — inessential.com, 2018):
 
-- Row = feed favicon, **bold title**, lighter 1–2 line snippet, relative time, uniform row height, generous ellipsizing
-- **Blue dot for unread** — the de-facto convention (NNW, Reeder, Feedbin); dot beats star when both apply
+- Row = leading unread dot, **bold title** (with inline star / read-later markers), lighter 1–2 line snippet, and a meta line (feed · relative time · author); generous ellipsizing. Per-feed favicons live in the sidebar, not the row
+- **Colored dot for unread** — the de-facto convention (NNW, Reeder, Feedbin); ours is the primary accent
 - **No auto-extracted thumbnails.** NNW documents the failure modes: cropped faces, social-share icons, tracking pixels picked by mistake. If we ever add thumbnails it's per-feed opt-in for image-heavy feeds
 - No grid lines; whitespace separation reads more "publication," less "spreadsheet"
-- One good default density in MVP; compact/comfortable modes can come later
-- **Per-feed view settings** (sort order, full-content default, later density) — every mature product converged on this; our `subscriptions` row already has a settings column for it
+- One good default density; compact/comfortable modes can come later
+- **Per-feed settings** live on the `subscriptions.settings` column. Shipped so far: full-content default and auto-read-days override. Sort order and density are designed-for but not yet per-feed.
 
-Sorting: newest-first default; oldest-first as a per-feed option (a persistent, vocal minority reads oldest-first "so nothing gets buried").
+Sorting: newest-first (the shipped default). Oldest-first as a per-feed option (a persistent, vocal minority reads oldest-first "so nothing gets buried") is a later addition.
 
-## Reading pane
+## Reading (inline-expanded article)
 
-- Centered single column, ~65–75ch max width, generous margins
-- **System font stack by default** — Feedbin deliberately moved off font-CDNs for privacy; we get the same result for free. Text-size control; font choice can come later
-- Sanitized article HTML; images constrained to column width; one-key **full-content extraction toggle inside the article view, remembered per feed** (the UX consensus across Miniflux `d`, Feedbin `c`, NNW Reader View)
-- `space` = smart advance: scroll the article, then jump to next unread when done (Google Reader inheritance, in every praised reader)
-- Open-original always one key (`v`) / one tap away
+- Article opens in place within a centered max-width column; generous margins. Opening an unread article auto-marks it read
+- **System font stack by default** — Feedbin deliberately moved off font-CDNs for privacy; we get the same result for free. Text-size and font choice can come later
+- Sanitized article HTML; images constrained to column width; **full-content extraction** via a "Load full content" button in the expanded article, plus a per-feed "always load full content" default that extracts at ingest (the UX consensus across Miniflux `d`, Feedbin `c`, NNW Reader View)
+- **Open original** is always one tap away (a link in the expanded article)
+- The keyboard equivalents — `space` smart-advance, `v` open original, `c` full-content — are part of the deferred keyboard canon (see below), not yet bound
 
 ## Unread & overload management
 
 Philosophy: we're building for "inbox people" (counts, j/k, mark-all-read) but the research on unread anxiety is real — so ship the count, and ship every escape hatch:
 
-- **Cap displayed counts at "1k+"** — Feedly's vague number is documented as less stressful than an exact one
-- **Mark-all-read everywhere**, always with "older than a day/week" variants (Feedly), plus `o` = mark-older-than-current-article (NNW's catch-up primitive)
-- **Mark-read-on-scroll: on by default, prominent setting to disable.** It's praised Inoreader behavior and Tommy's habit — but it has articulate haters (birchtree.me), so it must never be unchangeable
-- **Auto-mark-read after N days** as an optional per-feed/global setting (Feedly does 30 days silently; FreshRSS has per-feed purge). High-volume feeds shouldn't accumulate guilt
+- **Cap displayed counts at "1k+"** (shipped) — Feedly's vague number is documented as less stressful than an exact one
+- **Mark-all-read** (shipped) with "older than a day/week" variants (Feedly). `o` = mark-older-than-current-article (NNW's catch-up primitive) waits on the keyboard canon
+- **Mark-read-on-scroll: on by default, toggle to disable** (shipped). It's praised Inoreader behavior and Tommy's habit — but it has articulate haters (birchtree.me), so it must never be unchangeable
+- **Auto-mark-read after N days** (shipped): global default of **30 days** (matching Feedly's silent behavior), overridable per feed. High-volume feeds shouldn't accumulate guilt
 - Rules/filters (v1) are the real overload answer — and per the Miniflux complaint ("regex-only"), the rules UI must be **keyword-first with regex as the advanced option**
 
 ## Keyboard shortcuts (deferred to "later", July 2026): adopt the canon when built
@@ -63,11 +63,11 @@ The Google Reader inheritance is non-negotiable muscle memory for anyone migrati
 
 - **OPML import on the first-run screen** — it's the switching lubricant; every product treats it as day-one table stakes
 - Add-feed accepts any site URL: autodiscovery via `<link rel="alternate">`, then probe common paths (`/feed`, `/rss.xml`, `/atom.xml`, `/index.xml`), JSON Feed included
-- Nobody praises a blank "no feeds yet" screen. Cheap fix: a small curated starter list (the `plenaryapp/awesome-rss-feeds` repo is a usable seed catalog). v1, not MVP — Tommy onboards via OPML
+- Nobody praises a blank "no feeds yet" screen. Shipped: the empty state pairs OPML import with a small curated starter list of feeds to add in one click
 
 ## Theming
 
-- Dark mode follows system, manual override; dark surfaces at `#121212–#1E1E1E`, not pure black (halation)
+- Dark mode follows system, manual override (shipped; the Auto/Light/Dark picker lives in Settings); dark surfaces at `#121212–#1E1E1E`, not pure black (halation)
 - Light + dark done *well* beats a theme gallery; custom themes are a "later" at most
 
 ## Mobile web

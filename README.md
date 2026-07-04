@@ -23,9 +23,10 @@ The dev database URL defaults to the compose credentials (see `src/db/config.ts`
 ### Auth
 
 Auth.js (credentials, single user). Config is split for edge compatibility:
-`src/auth.config.ts` (edge-safe, drives the route-protecting middleware) and `src/auth.ts`
-(the Credentials provider, which reads the DB). `getCurrentUserId()` in
-`src/lib/current-user.ts` is the single place the session becomes a user id.
+`src/auth.config.ts` (edge-safe, drives the route-protecting proxy in `src/proxy.ts` —
+Next 16's successor to `middleware.ts`) and `src/auth.ts` (the Credentials provider, which
+reads the DB). `getCurrentUserId()` in `src/lib/current-user.ts` is the single place the
+session becomes a user id.
 
 Set **`AUTH_SECRET`** in production (used to sign session JWTs). In dev it falls back to an
 insecure constant so the app runs without config — generate a real one with
@@ -72,7 +73,7 @@ For truncated feeds, "Load full content" in the article view fetches the article
 and extracts readable content (Readability + linkedom, `src/lib/feeds/extract.ts`).
 Results are sanitized like feed content and cached per article. A per-feed
 "Always load full content" toggle on `/feeds` extracts automatically at ingest.
-The "Open original ↗" link is always available as the escape hatch.
+The "Open original" link is always available as the escape hatch.
 
 ### Quality
 

@@ -150,14 +150,19 @@ export const itemStates = pgTable(
       .references(() => items.id, { onDelete: "cascade" }),
     read: boolean("read").notNull().default(false),
     starred: boolean("starred").notNull().default(false),
+    // Saved to the "Read later" queue: kept regardless of read state so the
+    // user can clean out a feed but hold onto specific posts.
+    readLater: boolean("read_later").notNull().default(false),
     // Set by mute rules: excluded from lists and unread counts entirely.
     muted: boolean("muted").notNull().default(false),
     readAt: timestamp("read_at", { withTimezone: true }),
     starredAt: timestamp("starred_at", { withTimezone: true }),
+    readLaterAt: timestamp("read_later_at", { withTimezone: true }),
   },
   (t) => [
     primaryKey({ columns: [t.userId, t.itemId] }),
     index("item_states_user_starred_idx").on(t.userId, t.starred),
+    index("item_states_user_read_later_idx").on(t.userId, t.readLater),
   ],
 );
 

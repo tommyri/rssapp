@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { useFormStatus } from "react-dom";
 import {
   type AccountActionState,
@@ -11,6 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { DEFAULT_AUTO_READ_DAYS } from "@/lib/reading-prefs";
 
 const initial: AccountActionState = { ok: true, message: "" };
 
@@ -72,6 +73,14 @@ export function ReadingPrefsForm({
   autoReadDays: number | null;
 }) {
   const [state, formAction] = useActionState(updateReadingPrefsAction, initial);
+  // Controlled so React 19's post-action form reset doesn't revert what the
+  // user just typed (the value is saved, but an uncontrolled field would snap
+  // back to its stale defaultValue).
+  const [days, setDays] = useState(
+    autoReadDays == null
+      ? String(DEFAULT_AUTO_READ_DAYS)
+      : String(autoReadDays),
+  );
   return (
     <form action={formAction} className="space-y-3 rounded-lg border p-4">
       <h2 className="font-medium">Reading</h2>
@@ -85,13 +94,15 @@ export function ReadingPrefsForm({
           type="number"
           min={1}
           max={365}
-          defaultValue={autoReadDays ?? ""}
-          placeholder="off"
+          value={days}
+          onChange={(e) => setDays(e.target.value)}
+          placeholder={String(DEFAULT_AUTO_READ_DAYS)}
           className="w-28"
         />
         <p className="text-xs text-muted-foreground">
-          Default for all feeds; override per feed on the Manage feeds page.
-          Leave empty to keep unread articles forever.
+          Applies to every feed unless you override it per feed on the Manage
+          feeds page. Leave empty to use the {DEFAULT_AUTO_READ_DAYS}-day
+          default.
         </p>
       </div>
       <SubmitButton label="Save" />

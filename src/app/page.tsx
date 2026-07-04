@@ -1,3 +1,4 @@
+import { BookmarkIcon, StarIcon, TriangleAlertIcon } from "lucide-react";
 import Link from "next/link";
 import { AddFeedForm } from "@/components/add-feed-form";
 import { ArticleList } from "@/components/article-list";
@@ -6,12 +7,12 @@ import { FeedMenu } from "@/components/feed-menu";
 import { RefreshButton } from "@/components/refresh-button";
 import { SearchForm } from "@/components/search-form";
 import { StarterFeeds } from "@/components/starter-feeds";
-import { ThemeToggle } from "@/components/theme-toggle";
 import { getCurrentUserId } from "@/lib/current-user";
 import {
   type FeedSummary,
   listFeeds,
   listItems,
+  savedCounts,
   searchItems,
 } from "@/lib/reader";
 import { STARTER_FEEDS } from "@/lib/starter-feeds";
@@ -50,22 +51,24 @@ export default async function Home({
   const feedId = parseId(params.feed);
   const folderId = parseId(params.folder);
   const starred = params.view === "starred";
+  const readLater = params.view === "later";
   const showingAll = params.show === "all";
-  // Starred is an archive view — read state doesn't gate it.
-  const unreadOnly = !showingAll && !starred;
+  // Starred and Read later are archive views — read state doesn't gate them.
+  const unreadOnly = !showingAll && !starred && !readLater;
 
   const query = (params.q ?? "").trim();
   const isSearch = query.length > 0;
 
-  const view = { feedId, folderId, starred, unreadOnly };
-  const viewKey = `${feedId ?? ""}:${folderId ?? ""}:${starred}:${showingAll}:${query}`;
+  const view = { feedId, folderId, starred, readLater, unreadOnly };
+  const viewKey = `${feedId ?? ""}:${folderId ?? ""}:${starred}:${readLater}:${showingAll}:${query}`;
 
   const userId = await getCurrentUserId();
-  const [feeds, page] = await Promise.all([
+  const [feeds, page, saved] = await Promise.all([
     listFeeds(userId),
     isSearch
       ? searchItems(userId, query).then((items) => ({ items, hasMore: false }))
       : listItems(userId, { ...view, limit: 50 }),
+    savedCounts(userId),
   ]);
   const totalUnread = feeds.reduce((sum, f) => sum + f.unread, 0);
 
@@ -93,11 +96,13 @@ export default async function Home({
     ? `“${query}”`
     : starred
       ? "Starred"
-      : feedId
-        ? (feeds.find((f) => f.feedId === feedId)?.title ?? "Feed")
-        : folderId
-          ? (byFolder.get(folderId)?.name ?? "Folder")
-          : "All articles";
+      : readLater
+        ? "Read later"
+        : feedId
+          ? (feeds.find((f) => f.feedId === feedId)?.title ?? "Feed")
+          : folderId
+            ? (byFolder.get(folderId)?.name ?? "Folder")
+            : "All articles";
 
   const unreadCount = feedId
     ? (feeds.find((f) => f.feedId === feedId)?.unread ?? 0)
@@ -128,7 +133,7 @@ export default async function Home({
         <nav className="flex-1 space-y-0.5 px-2 pb-4">
           <FeedLink
             href="/"
-            active={!feedId && !folderId && !starred && !isSearch}
+            active={!feedId && !folderId && !starred && !readLater && !isSearch}
             label="All articles"
             count={totalUnread}
           />
@@ -136,8 +141,15 @@ export default async function Home({
             href="/?view=starred"
             active={starred}
             label="Starred"
-            marker="★"
-            count={0}
+            marker={<StarIcon className="size-4" />}
+            count={saved.starred}
+          />
+          <FeedLink
+            href="/?view=later"
+            active={readLater}
+            label="Read later"
+            marker={<BookmarkIcon className="size-4" />}
+            count={saved.readLater}
           />
 
           {folderGroups.map(([id, group]) => (
@@ -204,14 +216,11 @@ export default async function Home({
               <SidebarUtil href="/rules" label="Rules" />
               <SidebarUtil href="/settings" label="Settings" />
             </div>
-            <div className="grid grid-cols-2 gap-1.5">
-              <ThemeToggle className="w-full" />
-              <form action={signOutAction}>
-                <button type="submit" className={`${utilButtonClass} w-full`}>
-                  Sign out
-                </button>
-              </form>
-            </div>
+            <form action={signOutAction}>
+              <button type="submit" className={`${utilButtonClass} w-full`}>
+                Sign out
+              </button>
+            </form>
           </div>
         </div>
       </aside>
@@ -269,7 +278,7 @@ function FeedLink({
   count: number;
   error?: string | null;
   icon?: React.ReactNode;
-  marker?: string;
+  marker?: React.ReactNode;
   menu?: React.ReactNode;
 }) {
   return (
@@ -285,15 +294,18 @@ function FeedLink({
         className="flex min-w-0 flex-1 items-center gap-2.5 px-2 py-1.5 text-sm"
       >
         {marker ? (
-          <span aria-hidden className="w-4 text-center text-xs text-primary">
+          <span
+            aria-hidden
+            className="flex w-4 items-center justify-center text-primary"
+          >
             {marker}
           </span>
         ) : (
           icon
         )}
         {error ? (
-          <span title={error} className="shrink-0 text-xs text-destructive">
-            ⚠
+          <span title={error} className="shrink-0 text-destructive">
+            <TriangleAlertIcon className="size-3.5" />
           </span>
         ) : null}
         <span className="min-w-0 flex-1 truncate">{label}</span>

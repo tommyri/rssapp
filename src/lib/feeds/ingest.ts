@@ -1,4 +1,4 @@
-import { and, asc, eq, exists, lte, sql } from "drizzle-orm";
+import { and, asc, count, eq, exists, lte, sql } from "drizzle-orm";
 import { db } from "@/db";
 import {
   feeds,
@@ -23,6 +23,10 @@ type OkResult = Extract<FetchResult, { status: "ok" }>;
 
 const DEFAULT_INTERVAL_MIN = 15;
 const MAX_BACKOFF_MIN = 6 * 60;
+// A feed's first successful fetch only backfills this many of its most recent
+// posts, so importing a feed with a long archive doesn't store hundreds of
+// entries at once. Later fetches ingest everything new (see upsertItems).
+const INITIAL_BACKFILL_ITEMS = 25;
 
 function minutesFromNow(minutes: number): Date {
   return new Date(Date.now() + minutes * 60_000);
@@ -41,6 +45,12 @@ function normalizeInputUrl(raw: string): string {
 /**
  * Insert new items, skipping any already stored for this feed, then run the
  * subscribers' rules over whatever was actually new. Returns the count added.
+ *
+ * A feed's very first fetch only backfills INITIAL_BACKFILL_ITEMS posts so
+ * importing a feed with a long archive doesn't store hundreds of entries at
+ * once: dated posts are taken newest-first, then undated posts in feed order
+ * fill any remaining slots. Once the feed has stored items, later fetches
+ * ingest every new post so high-volume feeds never skip anything.
  */
 async function upsertItems(
   feedId: number,
@@ -51,7 +61,28 @@ async function upsertItems(
   for (const item of parsedItems) byGuid.set(item.guid, item);
   if (byGuid.size === 0) return 0;
 
-  const rows = [...byGuid.values()].map((item) => ({
+  let candidates = [...byGuid.values()];
+
+  // On the first fetch (no stored items yet) keep only INITIAL_BACKFILL_ITEMS;
+  // afterwards ingest everything new so busy feeds never lose posts.
+  const [{ value: storedCount }] = await db
+    .select({ value: count() })
+    .from(itemsTable)
+    .where(eq(itemsTable.feedId, feedId));
+  if (storedCount === 0) {
+    // Prefer posts that carry a publish date, newest first; then fall back to
+    // undated posts in feed order to fill any remaining slots up to the cap.
+    const dated = candidates
+      .filter((item) => item.publishedAt !== null)
+      .sort(
+        (a, b) =>
+          (b.publishedAt?.getTime() ?? 0) - (a.publishedAt?.getTime() ?? 0),
+      );
+    const undated = candidates.filter((item) => item.publishedAt === null);
+    candidates = [...dated, ...undated].slice(0, INITIAL_BACKFILL_ITEMS);
+  }
+
+  const rows = candidates.map((item) => ({
     feedId,
     guid: item.guid,
     url: item.url,

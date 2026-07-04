@@ -15,6 +15,7 @@ import {
   listItems,
   markAllRead,
   setItemRead,
+  setItemReadLater,
   setItemStarred,
   setItemsRead,
 } from "@/lib/reader";
@@ -23,6 +24,7 @@ const viewSchema = z.object({
   feedId: z.number().int().positive().optional(),
   folderId: z.number().int().positive().optional(),
   starred: z.boolean().optional(),
+  readLater: z.boolean().optional(),
   unreadOnly: z.boolean().optional(),
 });
 
@@ -153,6 +155,15 @@ export async function setItemStarredAction(
   if (!Number.isInteger(itemId)) return;
   const userId = await getCurrentUserId();
   await setItemStarred(userId, itemId, starred === true);
+}
+
+export async function setItemReadLaterAction(
+  itemId: number,
+  readLater: boolean,
+): Promise<void> {
+  if (!Number.isInteger(itemId)) return;
+  const userId = await getCurrentUserId();
+  await setItemReadLater(userId, itemId, readLater === true);
 }
 
 export async function markAllReadAction(

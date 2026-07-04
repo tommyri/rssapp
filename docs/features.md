@@ -2,7 +2,11 @@
 
 Phased plan. Each phase should ship as a usable app — MVP alone should be good enough to replace a hosted reader for daily use.
 
+**Status (July 2026):** MVP and v1 are built and in daily use. The "later / ideas" list below is the remaining backlog.
+
 ## MVP (v0.1) — daily-drivable reader
+
+*Shipped.*
 
 ### Subscriptions
 - Add a feed by URL; paste a site URL and autodiscover its feed(s) (`<link rel="alternate">`, plus probing common paths like `/feed`, `/rss.xml`, `/index.xml`)
@@ -12,7 +16,7 @@ Phased plan. Each phase should ship as a usable app — MVP alone should be good
 - OPML import and export
 
 ### Fetching
-- Background polling on a schedule (default ~15 min, per-feed interval override)
+- Background polling on a schedule (default 15 min per feed, with automatic backoff on repeated failures)
 - Polite fetching: conditional GET (ETag / Last-Modified), gzip, sane User-Agent, per-host rate limiting
 - Deduplication by GUID/id with URL fallback, so re-fetches never create duplicates
 - Per-feed fetch status: last fetched, last error, backoff on repeated failures
@@ -21,23 +25,26 @@ Phased plan. Each phase should ship as a usable app — MVP alone should be good
 - Article list: unread by default, newest first; per-feed, per-folder, and "all" views
 - Read/unread: auto-mark on open and mark-read-on-scroll in list views (table stakes; specifically praised Inoreader behavior), manual toggle, mark-all-read (per feed/folder, and "older than X")
 - Star/save articles (starred view)
-- Clean reading pane: sanitized article HTML, images, code blocks; open original in new tab
+- Read later: save articles to a dedicated queue independent of star and read state, so a feed can be cleared while specific posts are kept; counts shown in the sidebar
+- Clean reading: articles expand inline in the list (sanitized HTML, images, code blocks); open original in new tab
 - Unread counts per feed/folder in the sidebar
 
 ### App basics
 - Single-user login (the app will be reachable on the network, so it needs auth)
 - Responsive layout that works on a phone browser
-- Fast: article list paginates/virtualizes, no fetch-on-render for content we already have
+- Fast: article list paginates (load-older), no fetch-on-render for content we already have
 
 ## v1 — comfort features
+
+*Shipped.*
 
 - **Rules & filters** — auto-mark-read, auto-star/tag, or mute by keyword/author/feed. Promoted from "later" after the competitive analysis: it's the #1 feature Inoreader power users pay for, the only real answer to unread overload, and the core of our "clean UI, powerful underneath" position (see competitive-analysis.md)
 - **Full-content extraction** — for truncated feeds, fetch the article page and extract readable content (Readability); per-feed toggle
 - **Search** — full-text search across titles and content (Postgres FTS)
 - **Account settings** — change email and password in the app (currently only possible via direct database access; single-user means a forgotten password has no reset path)
-- **Overload valves** — displayed unread counts cap at "1k+"; optional auto-mark-read after N days (global + per-feed)
+- **Overload valves** — displayed unread counts cap at "1k+"; mark-all-read with "older than a day/week"; mark-read-on-scroll (on by default, toggleable); auto-mark-read after N days (defaults to 30, overridable globally and per-feed)
 - **Dark mode** — follow system, manual override
-- **Feed health view** — which feeds are failing, silent (no posts in N months), or redirected
+- **Feed health** — the Manage feeds page shows each feed's article/unread counts, last-fetched time, and failing feeds with their error and consecutive-failure count (silent/redirected detection is a later refinement)
 - **Favicons** per feed in the sidebar
 - **YouTube channels as feeds** — paste a channel URL and we resolve its native RSS feed; nearly free to build, disproportionately appreciated
 - **First-run onboarding** — OPML import front and center, plus a small curated starter list so the empty state is never blank

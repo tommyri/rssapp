@@ -9,6 +9,7 @@ import {
   users,
 } from "@/db/schema";
 import type { ExportEntry } from "@/lib/opml";
+import { DEFAULT_AUTO_READ_DAYS } from "@/lib/reading-prefs";
 
 export interface FeedSummary {
   feedId: number;
@@ -152,13 +153,15 @@ export interface ReaderItem {
   feedTitle: string | null;
   read: boolean;
   starred: boolean;
+  readLater: boolean;
 }
 
-/** Which articles to show — a feed, a folder, starred, or everything. */
+/** Which articles to show — a feed, a folder, starred, read-later, or everything. */
 export interface ReaderView {
   feedId?: number;
   folderId?: number;
   starred?: boolean;
+  readLater?: boolean;
   unreadOnly?: boolean;
 }
 
@@ -187,6 +190,7 @@ function viewConditions(userId: number, view: ReaderView) {
   if (view.feedId) conditions.push(eq(itemsTable.feedId, view.feedId));
   if (view.folderId) conditions.push(eq(subscriptions.folderId, view.folderId));
   if (view.starred) conditions.push(eq(itemStates.starred, true));
+  if (view.readLater) conditions.push(eq(itemStates.readLater, true));
   if (view.unreadOnly) conditions.push(sql`${itemStates.read} is not true`);
   return conditions;
 }
@@ -220,6 +224,7 @@ export async function listItems(
       >`coalesce(${subscriptions.customTitle}, ${feeds.title})`,
       read: sql<boolean>`coalesce(${itemStates.read}, false)`,
       starred: sql<boolean>`coalesce(${itemStates.starred}, false)`,
+      readLater: sql<boolean>`coalesce(${itemStates.readLater}, false)`,
     })
     .from(itemsTable)
     .innerJoin(
@@ -273,6 +278,7 @@ export async function searchItems(
       >`coalesce(${subscriptions.customTitle}, ${feeds.title})`,
       read: sql<boolean>`coalesce(${itemStates.read}, false)`,
       starred: sql<boolean>`coalesce(${itemStates.starred}, false)`,
+      readLater: sql<boolean>`coalesce(${itemStates.readLater}, false)`,
     })
     .from(itemsTable)
     .innerJoin(
@@ -363,14 +369,14 @@ export async function markAllRead(
 
 /**
  * The auto-mark-read overload valve (docs/features.md v1): for every
- * subscription whose effective autoReadDays is set (per-feed override, else
- * the user default), mark unread items older than the cutoff as read. Called
- * by the scheduler each tick; idempotent. Returns how many items were marked.
+ * subscription, mark unread items older than the effective cutoff as read —
+ * per-feed override, else the user's setting, else DEFAULT_AUTO_READ_DAYS.
+ * Called by the scheduler each tick; idempotent. Returns how many were marked.
  */
 export async function sweepAutoRead(): Promise<number> {
   const effectiveDays = sql<
     number | null
-  >`coalesce((${subscriptions.settings}->>'autoReadDays')::int, (${users.settings}->>'autoReadDays')::int)`;
+  >`coalesce((${subscriptions.settings}->>'autoReadDays')::int, (${users.settings}->>'autoReadDays')::int, ${DEFAULT_AUTO_READ_DAYS})`;
 
   const targets = await db
     .select({
@@ -408,6 +414,49 @@ export async function setItemStarred(
     .onConflictDoUpdate({
       target: [itemStates.userId, itemStates.itemId],
       set: { starred, starredAt },
+    });
+}
+
+/**
+ * Totals for the Starred and Read later sidebar entries — scoped to the user's
+ * current subscriptions and excluding muted items, so they match those views.
+ */
+export async function savedCounts(
+  userId: number,
+): Promise<{ starred: number; readLater: number }> {
+  const [row] = await db
+    .select({
+      starred: sql<number>`cast(count(*) filter (where ${itemStates.starred}) as int)`,
+      readLater: sql<number>`cast(count(*) filter (where ${itemStates.readLater}) as int)`,
+    })
+    .from(itemStates)
+    .innerJoin(itemsTable, eq(itemsTable.id, itemStates.itemId))
+    .innerJoin(
+      subscriptions,
+      and(
+        eq(subscriptions.feedId, itemsTable.feedId),
+        eq(subscriptions.userId, userId),
+      ),
+    )
+    .where(
+      and(eq(itemStates.userId, userId), sql`${itemStates.muted} is not true`),
+    );
+  return row ?? { starred: 0, readLater: 0 };
+}
+
+/** Set read-later ("save for later") state for one item for one user. */
+export async function setItemReadLater(
+  userId: number,
+  itemId: number,
+  readLater: boolean,
+): Promise<void> {
+  const readLaterAt = readLater ? new Date() : null;
+  await db
+    .insert(itemStates)
+    .values({ userId, itemId, readLater, readLaterAt })
+    .onConflictDoUpdate({
+      target: [itemStates.userId, itemStates.itemId],
+      set: { readLater, readLaterAt },
     });
 }
 

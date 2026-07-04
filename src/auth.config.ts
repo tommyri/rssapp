@@ -1,7 +1,7 @@
 import type { NextAuthConfig } from "next-auth";
 
-// Edge-safe base config: no database, no node:crypto. The middleware builds
-// NextAuth from this alone so it stays in the edge bundle; auth.ts extends it
+// Edge-safe base config: no database, no node:crypto. The proxy builds
+// NextAuth from this alone so it stays lightweight; auth.ts extends it
 // with the Credentials provider (which touches the DB) for the Node runtime.
 export const authConfig = {
   // Dev fallback mirrors src/db/config.ts. Production boot refuses to start

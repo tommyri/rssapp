@@ -1,3 +1,4 @@
+import { FolderIcon, TriangleAlertIcon } from "lucide-react";
 import { BackLink } from "@/components/back-link";
 import { ConfirmButton } from "@/components/confirm-button";
 import { Button } from "@/components/ui/button";
@@ -59,10 +60,16 @@ export default async function ManageFeedsPage() {
                 <span>{feed.itemCount} articles</span>
                 <span>{feed.unread} unread</span>
                 <span>fetched {fetchedLabel(feed.lastFetchedAt)}</span>
-                {feed.folderName ? <span>📁 {feed.folderName}</span> : null}
+                {feed.folderName ? (
+                  <span className="inline-flex items-center gap-1">
+                    <FolderIcon className="size-3.5" />
+                    {feed.folderName}
+                  </span>
+                ) : null}
                 {feed.lastError ? (
-                  <span className="text-destructive">
-                    ⚠ failing ({feed.consecutiveFailures}×): {feed.lastError}
+                  <span className="inline-flex items-center gap-1 text-destructive">
+                    <TriangleAlertIcon className="size-3.5" />
+                    failing ({feed.consecutiveFailures}×): {feed.lastError}
                   </span>
                 ) : null}
               </div>

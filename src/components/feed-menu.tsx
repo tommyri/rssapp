@@ -1,10 +1,12 @@
 "use client";
 
+import { EllipsisIcon } from "lucide-react";
 import { useState } from "react";
 import { unsubscribeAction, updateFeedAction } from "@/app/feeds/actions";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
+  DialogClose,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -34,7 +36,10 @@ export function FeedMenu({
   folderNames: string[];
 }) {
   const [editOpen, setEditOpen] = useState(false);
+  const [unsubscribeOpen, setUnsubscribeOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [unsubscribing, setUnsubscribing] = useState(false);
+  const label = feed.title ?? feed.url;
 
   async function submitEdit(formData: FormData) {
     setSaving(true);
@@ -47,17 +52,15 @@ export function FeedMenu({
   }
 
   async function unsubscribe() {
-    const label = feed.title ?? feed.url;
-    if (
-      !window.confirm(
-        `Unsubscribe from “${label}”? Its stored articles will be removed.`,
-      )
-    ) {
-      return;
-    }
+    setUnsubscribing(true);
     const formData = new FormData();
     formData.set("feedId", String(feed.feedId));
-    await unsubscribeAction(formData);
+    try {
+      await unsubscribeAction(formData);
+      setUnsubscribeOpen(false);
+    } finally {
+      setUnsubscribing(false);
+    }
   }
 
   return (
@@ -70,7 +73,7 @@ export function FeedMenu({
             className="rounded p-0.5 text-muted-foreground opacity-100 transition-opacity outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring md:opacity-0 md:group-hover:opacity-100 md:focus-visible:opacity-100 md:data-[state=open]:opacity-100"
             onClick={(e) => e.preventDefault()}
           >
-            ⋯
+            <EllipsisIcon className="size-4" />
           </button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" className="w-44">
@@ -78,7 +81,10 @@ export function FeedMenu({
             Edit feed…
           </DropdownMenuItem>
           <DropdownMenuSeparator />
-          <DropdownMenuItem variant="destructive" onSelect={unsubscribe}>
+          <DropdownMenuItem
+            variant="destructive"
+            onSelect={() => setUnsubscribeOpen(true)}
+          >
             Unsubscribe
           </DropdownMenuItem>
         </DropdownMenuContent>
@@ -155,6 +161,32 @@ export function FeedMenu({
               </Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={unsubscribeOpen} onOpenChange={setUnsubscribeOpen}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Unsubscribe from this feed?</DialogTitle>
+            <DialogDescription>
+              Unsubscribe from “{label}”? Its stored articles will be removed.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button type="button" variant="outline" disabled={unsubscribing}>
+                Cancel
+              </Button>
+            </DialogClose>
+            <Button
+              type="button"
+              variant="destructive"
+              disabled={unsubscribing}
+              onClick={unsubscribe}
+            >
+              {unsubscribing ? "Unsubscribing…" : "Unsubscribe"}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </>

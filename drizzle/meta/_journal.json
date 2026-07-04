@@ -43,6 +43,13 @@
       "when": 1783197338728,
       "tag": "0005_real_thunderbolt_ross",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1783203099347,
+      "tag": "0006_elite_jack_murdock",
+      "breakpoints": true
     }
   ]
 }

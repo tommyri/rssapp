@@ -1,5 +1,6 @@
 "use client";
 
+import { RefreshCwIcon } from "lucide-react";
 import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
 import { type ActionState, refreshAction } from "@/app/actions";
@@ -13,11 +14,10 @@ function Inner() {
       type="submit"
       disabled={pending}
       title="Refresh all feeds"
-      className={`rounded-md border border-border/70 px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-accent/60 hover:text-foreground disabled:opacity-50 ${
-        pending ? "animate-pulse" : ""
-      }`}
+      className="inline-flex items-center gap-1.5 rounded-md border border-border/70 px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-accent/60 hover:text-foreground disabled:opacity-50"
     >
-      {pending ? "Refreshing…" : "↻ Refresh"}
+      <RefreshCwIcon className={`size-3.5 ${pending ? "animate-spin" : ""}`} />
+      {pending ? "Refreshing…" : "Refresh"}
     </button>
   );
 }
