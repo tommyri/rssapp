@@ -105,7 +105,9 @@ export default async function Home({
       : totalUnread;
 
   return (
-    <div className="flex flex-1 flex-col md:h-dvh md:flex-row md:overflow-hidden">
+    // md:flex-none matters: flex-1 sets flex-basis:0%, which overrides h-dvh
+    // and lets the frame grow with content — breaking the independent panes.
+    <div className="flex flex-1 flex-col md:h-dvh md:flex-none md:flex-row md:overflow-hidden">
       {/* Sidebar */}
       <aside className="flex w-full shrink-0 flex-col border-b border-sidebar-border bg-sidebar text-sidebar-foreground md:w-72 md:overflow-y-auto md:border-r md:border-b-0">
         <div className="flex items-center justify-between px-4 pt-5 pb-3">
