@@ -1,6 +1,11 @@
 import { and, count, eq } from "drizzle-orm";
 import { db } from "@/db";
 import { feeds, folders, subscriptions } from "@/db/schema";
+import {
+  buildSubscriptionSettings,
+  type SortOrder,
+  type SubscriptionSettings,
+} from "@/lib/subscription-settings";
 
 /**
  * Return the id of the user's folder with this name, creating it if needed.
@@ -42,20 +47,32 @@ export async function updateSubscription(
     folderName: string | null;
     fullContent: boolean;
     autoReadDays: number | null;
+    sortOrder: SortOrder;
+    defaultUnreadOnly: boolean;
   },
 ): Promise<void> {
   const folderId = opts.folderName
     ? await ensureFolder(userId, opts.folderName)
     : null;
+
+  const [row] = await db
+    .select({ settings: subscriptions.settings })
+    .from(subscriptions)
+    .where(
+      and(eq(subscriptions.userId, userId), eq(subscriptions.feedId, feedId)),
+    );
+
+  const settings = buildSubscriptionSettings(
+    (row?.settings ?? {}) as SubscriptionSettings,
+    opts,
+  );
+
   await db
     .update(subscriptions)
     .set({
       customTitle: opts.customTitle,
       folderId,
-      settings: {
-        fullContent: opts.fullContent,
-        ...(opts.autoReadDays ? { autoReadDays: opts.autoReadDays } : {}),
-      },
+      settings,
     })
     .where(
       and(eq(subscriptions.userId, userId), eq(subscriptions.feedId, feedId)),

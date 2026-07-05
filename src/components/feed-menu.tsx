@@ -155,6 +155,29 @@ export function FeedMenu({
               Always load full content
             </label>
 
+            <div className="space-y-2">
+              <Label htmlFor={`menu-sort-${feed.feedId}`}>Sort order</Label>
+              <select
+                id={`menu-sort-${feed.feedId}`}
+                name="sortOrder"
+                defaultValue={feed.sortOrder}
+                className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs"
+              >
+                <option value="newest">Newest first</option>
+                <option value="oldest">Oldest first</option>
+              </select>
+            </div>
+
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                name="defaultUnreadOnly"
+                defaultChecked={feed.defaultUnreadOnly}
+                className="accent-primary"
+              />
+              Unread only by default
+            </label>
+
             <DialogFooter>
               <Button type="submit" size="sm" disabled={saving}>
                 {saving ? "Saving…" : "Save"}

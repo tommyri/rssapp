@@ -18,9 +18,9 @@ Follow the NetNewsWire timeline recipe (the best-documented design reasoning in 
 - **No auto-extracted thumbnails.** NNW documents the failure modes: cropped faces, social-share icons, tracking pixels picked by mistake. If we ever add thumbnails it's per-feed opt-in for image-heavy feeds
 - No grid lines; whitespace separation reads more "publication," less "spreadsheet"
 - One good default density; compact/comfortable modes can come later
-- **Per-feed settings** live on the `subscriptions.settings` column. Shipped so far: full-content default and auto-read-days override. Sort order and density are designed-for but not yet per-feed.
+- **Per-feed settings** live on the `subscriptions.settings` column. Shipped: full-content default, auto-read-days override, **sort order** (newest vs oldest first), and **unread-only by default** (feeds can open on all articles instead).
 
-Sorting: newest-first (the shipped default). Oldest-first as a per-feed option (a persistent, vocal minority reads oldest-first "so nothing gets buried") is a later addition.
+Sorting: newest-first globally and for folder/all views. A feed can opt into oldest-first so nothing gets buried; pagination follows the chosen order.
 
 ## Reading (inline-expanded article)
 

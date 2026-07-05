@@ -10,6 +10,7 @@ import {
 } from "@/db/schema";
 import type { ExportEntry } from "@/lib/opml";
 import { DEFAULT_AUTO_READ_DAYS } from "@/lib/reading-prefs";
+import type { SortOrder } from "@/lib/subscription-settings";
 import {
   listSavedPages,
   type SavedPage,
@@ -31,6 +32,8 @@ export interface FeedSummary {
   feedTitle: string | null;
   fullContent: boolean;
   autoReadDays: number | null;
+  sortOrder: SortOrder;
+  defaultUnreadOnly: boolean;
 }
 
 /** The user's subscribed feeds with per-feed unread counts, for the sidebar. */
@@ -52,6 +55,8 @@ export async function listFeeds(userId: number): Promise<FeedSummary[]> {
       autoReadDays: sql<
         number | null
       >`(${subscriptions.settings}->>'autoReadDays')::int`,
+      sortOrder: sql<SortOrder>`case when ${subscriptions.settings}->>'sortOrder' = 'oldest' then 'oldest' else 'newest' end`,
+      defaultUnreadOnly: sql<boolean>`coalesce((${subscriptions.settings}->>'defaultUnreadOnly')::boolean, true)`,
       unread: sql<number>`cast(count(${itemsTable.id}) filter (where ${itemStates.read} is not true and ${itemStates.muted} is not true) as int)`,
     })
     .from(subscriptions)
@@ -85,6 +90,8 @@ export interface ManagedFeed {
   folderName: string | null;
   fullContent: boolean;
   autoReadDays: number | null;
+  sortOrder: SortOrder;
+  defaultUnreadOnly: boolean;
   unread: number;
   itemCount: number;
   lastFetchedAt: Date | null;
@@ -108,6 +115,8 @@ export async function listManagedFeeds(userId: number): Promise<ManagedFeed[]> {
       autoReadDays: sql<
         number | null
       >`(${subscriptions.settings}->>'autoReadDays')::int`,
+      sortOrder: sql<SortOrder>`case when ${subscriptions.settings}->>'sortOrder' = 'oldest' then 'oldest' else 'newest' end`,
+      defaultUnreadOnly: sql<boolean>`coalesce((${subscriptions.settings}->>'defaultUnreadOnly')::boolean, true)`,
       unread: sql<number>`cast(count(${itemsTable.id}) filter (where ${itemStates.read} is not true and ${itemStates.muted} is not true) as int)`,
       itemCount: sql<number>`cast(count(${itemsTable.id}) as int)`,
       lastFetchedAt: feeds.lastFetchedAt,
@@ -179,6 +188,8 @@ export interface ReaderView {
   starred?: boolean;
   readLater?: boolean;
   unreadOnly?: boolean;
+  /** Oldest-first when viewing a single feed; ignored for folder/all views. */
+  sortOrder?: SortOrder;
 }
 
 export interface ItemCursor {
@@ -211,16 +222,19 @@ function viewConditions(userId: number, view: ReaderView) {
   return conditions;
 }
 
-/** One page of articles for a view, newest first, keyset-paginated. */
+/** One page of articles for a view, keyset-paginated (newest-first unless feed is oldest-first). */
 export async function listItems(
   userId: number,
   opts: ListItemsOptions = {},
 ): Promise<ItemsPage> {
   const { cursor, limit = 50, ...view } = opts;
+  const oldestFirst = view.feedId !== undefined && view.sortOrder === "oldest";
   const conditions = viewConditions(userId, view);
   if (cursor) {
     conditions.push(
-      sql`(${sortKey}, ${itemsTable.id}) < (${cursor.ts}, ${cursor.id})`,
+      oldestFirst
+        ? sql`(${sortKey}, ${itemsTable.id}) > (${cursor.ts}, ${cursor.id})`
+        : sql`(${sortKey}, ${itemsTable.id}) < (${cursor.ts}, ${cursor.id})`,
     );
   }
 
@@ -257,7 +271,10 @@ export async function listItems(
       and(eq(itemStates.itemId, itemsTable.id), eq(itemStates.userId, userId)),
     )
     .where(and(...conditions))
-    .orderBy(sql`${sortKey} desc`, desc(itemsTable.id))
+    .orderBy(
+      oldestFirst ? sql`${sortKey} asc` : sql`${sortKey} desc`,
+      oldestFirst ? asc(itemsTable.id) : desc(itemsTable.id),
+    )
     .limit(limit + 1); // one extra row to detect whether more exist
 
   return { items: rows.slice(0, limit), hasMore: rows.length > limit };

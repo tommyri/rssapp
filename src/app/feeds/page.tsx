@@ -114,6 +114,28 @@ export default async function ManageFeedsPage() {
                     Always load full content
                   </label>
                   <div className="space-y-1 text-xs text-muted-foreground">
+                    <label className="block" htmlFor={`sort-${feed.feedId}`}>
+                      Sort
+                    </label>
+                    <select
+                      id={`sort-${feed.feedId}`}
+                      name="sortOrder"
+                      defaultValue={feed.sortOrder}
+                      className="h-8 rounded-md border border-input bg-transparent px-2 text-xs"
+                    >
+                      <option value="newest">Newest first</option>
+                      <option value="oldest">Oldest first</option>
+                    </select>
+                  </div>
+                  <label className="flex h-8 items-center gap-2 text-xs text-muted-foreground">
+                    <input
+                      type="checkbox"
+                      name="defaultUnreadOnly"
+                      defaultChecked={feed.defaultUnreadOnly}
+                    />
+                    Unread only by default
+                  </label>
+                  <div className="space-y-1 text-xs text-muted-foreground">
                     <label
                       className="block"
                       htmlFor={`autoread-${feed.feedId}`}

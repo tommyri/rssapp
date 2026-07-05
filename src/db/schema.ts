@@ -98,7 +98,7 @@ export const subscriptions = pgTable(
     settings: jsonb("settings")
       .notNull()
       .default({})
-      .$type<{ fullContent?: boolean; autoReadDays?: number }>(),
+      .$type<import("@/lib/subscription-settings").SubscriptionSettings>(),
     createdAt: createdAt(),
   },
   (t) => [uniqueIndex("subscriptions_user_feed_idx").on(t.userId, t.feedId)],

@@ -18,6 +18,10 @@ import {
   searchEverything,
 } from "@/lib/reader";
 import { STARTER_FEEDS } from "@/lib/starter-feeds";
+import {
+  effectiveShowingAll,
+  toggleShowHref,
+} from "@/lib/subscription-settings";
 import { signOutAction } from "./actions";
 
 interface SearchParams {
@@ -33,17 +37,6 @@ function parseId(value: string | undefined): number | undefined {
   return Number.isInteger(n) && n > 0 ? n : undefined;
 }
 
-/** Build the querystring for the current view with show=all toggled. */
-function toggleShowHref(params: SearchParams): string {
-  const query = new URLSearchParams();
-  if (params.feed) query.set("feed", params.feed);
-  if (params.folder) query.set("folder", params.folder);
-  if (params.view) query.set("view", params.view);
-  if (params.show !== "all") query.set("show", "all");
-  const qs = query.toString();
-  return qs ? `/?${qs}` : "/";
-}
-
 export default async function Home({
   searchParams,
 }: {
@@ -54,18 +47,29 @@ export default async function Home({
   const folderId = parseId(params.folder);
   const starred = params.view === "starred";
   const readLater = params.view === "later";
-  const showingAll = params.show === "all";
-  // Starred and Read later are archive views — read state doesn't gate them.
-  const unreadOnly = !showingAll && !starred && !readLater;
-
   const query = (params.q ?? "").trim();
   const isSearch = query.length > 0;
 
-  const view = { feedId, folderId, starred, readLater, unreadOnly };
-
   const userId = await getCurrentUserId();
-  const [feeds, page, saved] = await Promise.all([
-    listFeeds(userId),
+  const feeds = await listFeeds(userId);
+  const activeFeed = feedId
+    ? feeds.find((f) => f.feedId === feedId)
+    : undefined;
+
+  const showingAll = effectiveShowingAll(
+    params.show,
+    feedId ? (activeFeed?.defaultUnreadOnly ?? true) : undefined,
+  );
+  // Starred and Read later are archive views — read state doesn't gate them.
+  const unreadOnly = !showingAll && !starred && !readLater;
+  const sortOrder =
+    feedId && !starred && !readLater && !isSearch
+      ? (activeFeed?.sortOrder ?? "newest")
+      : undefined;
+
+  const view = { feedId, folderId, starred, readLater, unreadOnly, sortOrder };
+
+  const [page, saved] = await Promise.all([
     isSearch
       ? searchEverything(userId, query).then((items) => ({
           items,
@@ -81,7 +85,7 @@ export default async function Home({
   // Read later is a client-owned list that also grows via the save form; folding
   // the saved count into its key remounts it after a save so the new page shows,
   // without remounting other views on every router.refresh().
-  const viewKey = `${feedId ?? ""}:${folderId ?? ""}:${starred}:${readLater}:${showingAll}:${query}${
+  const viewKey = `${feedId ?? ""}:${folderId ?? ""}:${starred}:${readLater}:${showingAll}:${sortOrder ?? ""}:${query}${
     readLater && !isSearch ? `:${saved.readLater}` : ""
   }`;
 
@@ -252,7 +256,10 @@ export default async function Home({
               initialHasMore={page.hasMore}
               view={view}
               title={title}
-              toggleHref={toggleShowHref(params)}
+              toggleHref={toggleShowHref(
+                params,
+                activeFeed?.defaultUnreadOnly,
+              )}
               showingAll={showingAll}
               isSearch={isSearch}
               unreadCount={unreadCount}

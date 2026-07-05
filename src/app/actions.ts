@@ -33,6 +33,7 @@ const viewSchema = z.object({
   starred: z.boolean().optional(),
   readLater: z.boolean().optional(),
   unreadOnly: z.boolean().optional(),
+  sortOrder: z.enum(["newest", "oldest"]).optional(),
 });
 
 export type ClientView = z.infer<typeof viewSchema>;

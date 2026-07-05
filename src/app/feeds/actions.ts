@@ -21,6 +21,9 @@ export async function updateFeedAction(formData: FormData): Promise<void> {
     Number.isInteger(autoReadRaw) && autoReadRaw >= 1 && autoReadRaw <= 365
       ? autoReadRaw
       : null;
+  const sortOrder =
+    formData.get("sortOrder") === "oldest" ? "oldest" : "newest";
+  const defaultUnreadOnly = formData.get("defaultUnreadOnly") === "on";
 
   const userId = await getCurrentUserId();
   await updateSubscription(userId, feedId, {
@@ -28,6 +31,8 @@ export async function updateFeedAction(formData: FormData): Promise<void> {
     folderName,
     fullContent,
     autoReadDays,
+    sortOrder,
+    defaultUnreadOnly,
   });
   revalidatePath("/feeds");
   revalidatePath("/");
