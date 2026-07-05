@@ -632,7 +632,10 @@ export function ArticleList({
                             }`
                           : ""}
                       {item.author ? ` · ${item.author}` : ""}
-                      {minutes !== null ? ` · ~${minutes} min` : ""}
+                      {/* "N min read" (the Medium convention): no "~" — it
+                          doubles up punctuation after the separator dot, and
+                          "read" keeps it from scanning as a second timestamp. */}
+                      {minutes !== null ? ` · ${minutes} min read` : ""}
                       {isOpen && !isPage && item.fullContentHtml ? (
                         <span className="italic"> · full content</span>
                       ) : null}

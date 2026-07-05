@@ -63,7 +63,7 @@ Phased plan. Each phase should ship as a usable app — MVP alone should be good
 
 ### Reading pane polish
 - **Reader typography controls** — text size, column width, and serif/sans toggle, remembered (design-ux.md parks these as "later"). Direct quality-of-reading lever.
-- **Estimated reading time** *(shipped July 2026)* — "~5 min" in the meta line on rows and in the expanded header, from the stored content's word count at ~225 wpm (`src/lib/reading-time.ts`), computed client-side from HTML the list already ships. Rounds up; suppressed for stub entries (<30 words) so truncated one-liners don't show a noisy "~1 min"; recomputes from full content once extracted. Tiny, proven scanning aid.
+- **Estimated reading time** *(shipped July 2026)* — "5 min read" (the Medium convention: no "~", which doubled up punctuation after the separator dot, and "read" keeps it from scanning as a second timestamp) in the meta line on rows and in the expanded header, from the stored content's word count at ~225 wpm (`src/lib/reading-time.ts`), computed client-side from HTML the list already ships. Rounds up; suppressed for stub entries (<30 words) so truncated one-liners don't show a noisy "1 min read"; recomputes from full content once extracted. Tiny, proven scanning aid.
 - **In-article rendering polish** — lazy-load images, click-to-zoom (lightbox), code-block syntax highlighting, and click-to-load embeds (YouTube/tweets as light placeholders); all within the already-sanitized content.
 - **Distraction-free reading mode** — collapse the sidebar/chrome for a full-focus single column.
 - **Reading progress + resume** — a thin progress bar and remembered scroll position so long articles resume where you left off.
