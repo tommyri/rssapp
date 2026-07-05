@@ -1,8 +1,8 @@
 "use client";
 
 import { CheckIcon, MonitorIcon, MoonIcon, SunIcon } from "lucide-react";
-import { useTheme } from "next-themes";
 import { useEffect, useState } from "react";
+import { useTheme } from "@/components/theme-provider";
 
 const OPTIONS = [
   {
