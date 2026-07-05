@@ -7,6 +7,17 @@ export type ExtractResult =
   | { status: "ok"; html: string }
   | { status: "error"; error: string };
 
+export type ReadablePage =
+  | {
+      status: "ok";
+      html: string;
+      title: string | null;
+      byline: string | null;
+      siteName: string | null;
+      excerpt: string | null;
+    }
+  | { status: "error"; error: string };
+
 /**
  * Inject a <base href> so the parsed document knows its own URL — Readability
  * resolves relative image/link URLs against it (linkedom has no url option the
@@ -20,12 +31,16 @@ function withBase(html: string, url: string): string {
   return `${baseTag}${html}`;
 }
 
+const clean = (s: string | null | undefined): string | null =>
+  s?.trim() ? s.trim() : null;
+
 /**
- * Fetch an article page and extract its readable content. The result is
- * sanitized with the same pipeline as feed content, so it's safe to store
- * and render directly.
+ * Fetch a page and extract its readable content plus metadata (title, byline,
+ * site name, excerpt). The HTML is sanitized with the same pipeline as feed
+ * content, so it's safe to store and render directly. Used for saved links,
+ * which have no feed-provided title/metadata of their own.
  */
-export async function extractFullContent(url: string): Promise<ExtractResult> {
+export async function extractReadablePage(url: string): Promise<ReadablePage> {
   const res = await fetchUrl(url);
   if (res.status === "error") {
     return { status: "error", error: `Could not fetch page: ${res.error}` };
@@ -53,9 +68,28 @@ export async function extractFullContent(url: string): Promise<ExtractResult> {
         error: "Could not find readable content on the page.",
       };
     }
-    return { status: "ok", html: sanitizeArticleHtml(article.content) };
+    return {
+      status: "ok",
+      html: sanitizeArticleHtml(article.content),
+      title: clean(article.title),
+      byline: clean(article.byline),
+      siteName: clean(article.siteName),
+      excerpt: clean(article.excerpt),
+    };
   } catch (err) {
     const error = err instanceof Error ? err.message : String(err);
     return { status: "error", error: `Extraction failed: ${error}` };
   }
+}
+
+/**
+ * Fetch an article page and extract its readable content. The result is
+ * sanitized with the same pipeline as feed content, so it's safe to store
+ * and render directly.
+ */
+export async function extractFullContent(url: string): Promise<ExtractResult> {
+  const page = await extractReadablePage(url);
+  return page.status === "ok"
+    ? { status: "ok", html: page.html }
+    : { status: "error", error: page.error };
 }

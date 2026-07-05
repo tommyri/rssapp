@@ -7,7 +7,10 @@ import {
   CircleIcon,
   ExternalLinkIcon,
   FileTextIcon,
+  LinkIcon,
+  RotateCwIcon,
   StarIcon,
+  Trash2Icon,
   XIcon,
 } from "lucide-react";
 import Link from "next/link";
@@ -18,11 +21,15 @@ import {
   fetchItemsAction,
   loadFullContentAction,
   markAllReadAction,
+  removeSavedPageAction,
+  retrySavedPageAction,
   setItemReadAction,
   setItemReadLaterAction,
   setItemStarredAction,
   setItemsReadAction,
+  setSavedPageReadAction,
 } from "@/app/actions";
+import { SaveLinkForm } from "@/components/save-link-form";
 import { Button } from "@/components/ui/button";
 import { relativeTime } from "@/lib/format";
 import type { ReaderItem } from "@/lib/reader";
@@ -43,6 +50,10 @@ interface Props {
   isSearch?: boolean;
   unreadCount?: number;
 }
+
+/** Composite key: ids are only unique within a kind (feed item vs saved page). */
+const keyOf = (item: Pick<ReaderItem, "kind" | "id">) =>
+  `${item.kind}:${item.id}`;
 
 /** One-line preview derived from the stored (sanitized) HTML. */
 function snippetOf(item: ReaderItem): string {
@@ -73,7 +84,8 @@ export function ArticleList({
   const [hasMore, setHasMore] = useState(initialHasMore);
   const [loadingMore, setLoadingMore] = useState(false);
   // Only one article is open at a time — opening another closes the previous.
-  const [expandedId, setExpandedId] = useState<number | null>(null);
+  // Keyed by kind+id since ids collide across kinds in the Read later view.
+  const [expandedId, setExpandedId] = useState<string | null>(null);
   const [scrollMark, setScrollMark] = useState(true);
   const [statusMsg, setStatusMsg] = useState("");
   const [fullContentErrors, setFullContentErrors] = useState<
@@ -91,11 +103,13 @@ export function ArticleList({
     setScrollMark(localStorage.getItem(SCROLL_MARK_KEY) !== "off");
   }, []);
 
-  const setItemState = useCallback(
-    (ids: number[], patch: Partial<ReaderItem>) => {
-      const idSet = new Set(ids);
+  // Patch entries by composite key so a feed item and a saved page that happen
+  // to share a numeric id in the Read later view don't clobber each other.
+  const setEntryState = useCallback(
+    (keys: string[], patch: Partial<ReaderItem>) => {
+      const keySet = new Set(keys);
       setItems((prev) =>
-        prev.map((it) => (idSet.has(it.id) ? { ...it, ...patch } : it)),
+        prev.map((it) => (keySet.has(keyOf(it)) ? { ...it, ...patch } : it)),
       );
     },
     [],
@@ -105,9 +119,13 @@ export function ArticleList({
     const ids = [...pendingScrollIds.current];
     pendingScrollIds.current.clear();
     if (ids.length === 0) return;
-    setItemState(ids, { read: true });
+    // Only feed items are scroll-observed, so these are all item ids.
+    setEntryState(
+      ids.map((id) => `item:${id}`),
+      { read: true },
+    );
     void setItemsReadAction(ids).then(() => router.refresh());
-  }, [router, setItemState]);
+  }, [router, setEntryState]);
 
   // Scroll-marking: when an unread row leaves the top of the viewport, queue it.
   // Never in search — scanning results must not consume unread state.
@@ -115,7 +133,10 @@ export function ArticleList({
     if (!scrollMark || isSearch) return;
     const unreadIds = new Set(
       items
-        .filter((i) => !i.read && !manuallyUnread.current.has(i.id))
+        .filter(
+          (i) =>
+            i.kind === "item" && !i.read && !manuallyUnread.current.has(i.id),
+        )
         .map((i) => i.id),
     );
     const observer = new IntersectionObserver((entries) => {
@@ -145,35 +166,61 @@ export function ArticleList({
     }
   }
 
+  // Read state lives in different tables per kind; route to the right action.
+  function persistRead(item: ReaderItem, read: boolean) {
+    const call =
+      item.kind === "page"
+        ? setSavedPageReadAction(item.id, read)
+        : setItemReadAction(item.id, read);
+    void call.then(() => router.refresh());
+  }
+
   function toggleExpanded(item: ReaderItem) {
-    const isOpen = expandedId === item.id;
-    setExpandedId(isOpen ? null : item.id);
+    const isOpen = expandedId === keyOf(item);
+    setExpandedId(isOpen ? null : keyOf(item));
     // Opening an unread article marks it read (docs/features.md MVP).
     if (!isOpen && !item.read) {
-      manuallyUnread.current.delete(item.id);
-      setItemState([item.id], { read: true });
-      void setItemReadAction(item.id, true).then(() => router.refresh());
+      if (item.kind === "item") manuallyUnread.current.delete(item.id);
+      setEntryState([keyOf(item)], { read: true });
+      persistRead(item, true);
     }
   }
 
   function toggleRead(item: ReaderItem) {
     const read = !item.read;
-    if (!read) manuallyUnread.current.add(item.id);
-    setItemState([item.id], { read });
-    void setItemReadAction(item.id, read).then(() => router.refresh());
+    if (!read && item.kind === "item") manuallyUnread.current.add(item.id);
+    setEntryState([keyOf(item)], { read });
+    persistRead(item, read);
   }
 
   function toggleStarred(item: ReaderItem) {
-    setItemState([item.id], { starred: !item.starred });
+    setEntryState([keyOf(item)], { starred: !item.starred });
     void setItemStarredAction(item.id, !item.starred).then(() =>
       router.refresh(),
     );
   }
 
   function toggleReadLater(item: ReaderItem) {
-    setItemState([item.id], { readLater: !item.readLater });
+    setEntryState([keyOf(item)], { readLater: !item.readLater });
     void setItemReadLaterAction(item.id, !item.readLater).then(() =>
       router.refresh(),
+    );
+  }
+
+  function removePage(item: ReaderItem) {
+    setItems((prev) => prev.filter((it) => keyOf(it) !== keyOf(item)));
+    if (expandedId === keyOf(item)) setExpandedId(null);
+    void removeSavedPageAction(item.id).then(() => router.refresh());
+  }
+
+  async function retryPage(item: ReaderItem) {
+    setEntryState([keyOf(item)], { pageStatus: "pending", pageError: null });
+    const result = await retrySavedPageAction(item.id);
+    setEntryState(
+      [keyOf(item)],
+      result.ok
+        ? { pageStatus: "ready", contentHtml: result.html, pageError: null }
+        : { pageStatus: "error", pageError: result.error ?? "Failed." },
     );
   }
 
@@ -182,7 +229,7 @@ export function ArticleList({
     try {
       const result = await loadFullContentAction(item.id);
       if (result.ok && result.html) {
-        setItemState([item.id], { fullContentHtml: result.html });
+        setEntryState([keyOf(item)], { fullContentHtml: result.html });
       } else {
         setFullContentErrors((prev) =>
           new Map(prev).set(item.id, result.error ?? "Extraction failed."),
@@ -206,10 +253,10 @@ export function ArticleList({
         ts: new Date(last.sortTs).toISOString(),
         id: last.id,
       });
-      const known = new Set(items.map((i) => i.id));
+      const known = new Set(items.map((i) => keyOf(i)));
       setItems((prev) => [
         ...prev,
-        ...page.items.filter((i) => !known.has(i.id)),
+        ...page.items.filter((i) => !known.has(keyOf(i))),
       ]);
       setHasMore(page.hasMore);
     } finally {
@@ -286,6 +333,8 @@ export function ArticleList({
         ) : null}
       </header>
 
+      {view.readLater && !isSearch ? <SaveLinkForm /> : null}
+
       {items.length === 0 ? (
         <div className="py-24 text-center">
           <p className="font-serif text-lg text-muted-foreground italic">
@@ -308,14 +357,24 @@ export function ArticleList({
       ) : (
         <ul>
           {items.map((item, index) => {
-            const isOpen = expandedId === item.id;
+            const key = keyOf(item);
+            const isOpen = expandedId === key;
+            const isPage = item.kind === "page";
             const contentHtml = item.fullContentHtml ?? item.contentHtml;
             const error = fullContentErrors.get(item.id);
             const snippet = snippetOf(item);
+            const pageSubtitle =
+              isPage && item.pageStatus === "pending"
+                ? "Fetching a readable copy…"
+                : isPage && item.pageStatus === "error"
+                  ? "Couldn't fetch a readable copy — open the original."
+                  : "";
             return (
               <li
-                key={item.id}
-                ref={(el) => registerRow(el, item.id)}
+                key={key}
+                ref={(el) => {
+                  if (item.kind === "item") registerRow(el, item.id);
+                }}
                 className={`row-enter border-b border-border/60 ${isOpen ? "border-border" : ""}`}
                 style={{
                   animationDelay: `${Math.min(index, STAGGER_CAP) * 30}ms`,
@@ -345,12 +404,14 @@ export function ArticleList({
                       {item.starred ? (
                         <StarIcon className="mr-1 inline-block size-3.5 fill-current align-[-0.15em] text-primary" />
                       ) : null}
-                      {item.readLater ? (
+                      {isPage ? (
+                        <LinkIcon className="mr-1 inline-block size-3.5 align-[-0.15em] text-muted-foreground" />
+                      ) : item.readLater ? (
                         <BookmarkCheckIcon className="mr-1 inline-block size-3.5 align-[-0.15em] text-primary" />
                       ) : null}
                       {item.title ?? "(untitled)"}
                     </span>
-                    {!isOpen && snippet ? (
+                    {!isOpen && (pageSubtitle || snippet) ? (
                       <span
                         className={`mt-0.5 line-clamp-2 block text-[13px] leading-normal ${
                           item.read
@@ -358,7 +419,7 @@ export function ArticleList({
                             : "text-muted-foreground"
                         }`}
                       >
-                        {snippet}
+                        {pageSubtitle || snippet}
                       </span>
                     ) : null}
                     <span
@@ -367,15 +428,17 @@ export function ArticleList({
                       }`}
                     >
                       {item.feedTitle}
-                      {item.publishedAt
-                        ? ` · ${
-                            isOpen
-                              ? new Date(item.publishedAt).toLocaleString()
-                              : relativeTime(new Date(item.publishedAt))
-                          }`
-                        : ""}
+                      {isPage
+                        ? ` · saved ${relativeTime(new Date(item.sortTs))}`
+                        : item.publishedAt
+                          ? ` · ${
+                              isOpen
+                                ? new Date(item.publishedAt).toLocaleString()
+                                : relativeTime(new Date(item.publishedAt))
+                            }`
+                          : ""}
                       {item.author ? ` · ${item.author}` : ""}
-                      {isOpen && item.fullContentHtml ? (
+                      {isOpen && !isPage && item.fullContentHtml ? (
                         <span className="italic"> · full content</span>
                       ) : null}
                     </span>
@@ -384,7 +447,16 @@ export function ArticleList({
 
                 {isOpen ? (
                   <div className="row-enter pr-1 pb-5 pl-6">
-                    {contentHtml ? (
+                    {isPage && item.pageStatus === "pending" ? (
+                      <p className="text-sm text-muted-foreground italic">
+                        Fetching a readable copy — refresh in a moment.
+                      </p>
+                    ) : isPage && item.pageStatus === "error" ? (
+                      <p className="text-sm text-muted-foreground italic">
+                        {item.pageError ??
+                          "Couldn't fetch a readable copy of this page."}
+                      </p>
+                    ) : contentHtml ? (
                       <div
                         className="article-content max-w-prose"
                         // Sanitized at ingest/extraction (src/lib/feeds/sanitize.ts).
@@ -404,42 +476,67 @@ export function ArticleList({
                           Open original
                         </ActionButton>
                       ) : null}
-                      {!item.fullContentHtml && item.url ? (
-                        <ActionButton
-                          disabled={loadingContent.has(item.id)}
-                          onClick={() => loadFullContent(item)}
-                        >
-                          <FileTextIcon className="size-3.5" />
-                          {loadingContent.has(item.id)
-                            ? "Loading…"
-                            : "Load full content"}
-                        </ActionButton>
-                      ) : null}
-                      <ActionButton onClick={() => toggleStarred(item)}>
-                        <StarIcon
-                          className={`size-3.5 ${item.starred ? "fill-current text-primary" : ""}`}
-                        />
-                        {item.starred ? "Unstar" : "Star"}
-                      </ActionButton>
-                      <ActionButton onClick={() => toggleReadLater(item)}>
-                        {item.readLater ? (
-                          <BookmarkCheckIcon className="size-3.5 text-primary" />
-                        ) : (
-                          <BookmarkIcon className="size-3.5" />
-                        )}
-                        {item.readLater ? "Saved" : "Read later"}
-                      </ActionButton>
-                      <ActionButton onClick={() => toggleRead(item)}>
-                        {item.read ? (
-                          <CircleIcon className="size-3.5" />
-                        ) : (
-                          <CheckIcon className="size-3.5" />
-                        )}
-                        {item.read ? "Mark unread" : "Mark read"}
-                      </ActionButton>
-                      {error ? (
-                        <span className="text-destructive">{error}</span>
-                      ) : null}
+                      {isPage ? (
+                        <>
+                          {item.pageStatus === "error" ? (
+                            <ActionButton onClick={() => retryPage(item)}>
+                              <RotateCwIcon className="size-3.5" />
+                              Retry
+                            </ActionButton>
+                          ) : null}
+                          <ActionButton onClick={() => toggleRead(item)}>
+                            {item.read ? (
+                              <CircleIcon className="size-3.5" />
+                            ) : (
+                              <CheckIcon className="size-3.5" />
+                            )}
+                            {item.read ? "Mark unread" : "Mark read"}
+                          </ActionButton>
+                          <ActionButton onClick={() => removePage(item)}>
+                            <Trash2Icon className="size-3.5" />
+                            Remove
+                          </ActionButton>
+                        </>
+                      ) : (
+                        <>
+                          {!item.fullContentHtml && item.url ? (
+                            <ActionButton
+                              disabled={loadingContent.has(item.id)}
+                              onClick={() => loadFullContent(item)}
+                            >
+                              <FileTextIcon className="size-3.5" />
+                              {loadingContent.has(item.id)
+                                ? "Loading…"
+                                : "Load full content"}
+                            </ActionButton>
+                          ) : null}
+                          <ActionButton onClick={() => toggleStarred(item)}>
+                            <StarIcon
+                              className={`size-3.5 ${item.starred ? "fill-current text-primary" : ""}`}
+                            />
+                            {item.starred ? "Unstar" : "Star"}
+                          </ActionButton>
+                          <ActionButton onClick={() => toggleReadLater(item)}>
+                            {item.readLater ? (
+                              <BookmarkCheckIcon className="size-3.5 text-primary" />
+                            ) : (
+                              <BookmarkIcon className="size-3.5" />
+                            )}
+                            {item.readLater ? "Saved" : "Read later"}
+                          </ActionButton>
+                          <ActionButton onClick={() => toggleRead(item)}>
+                            {item.read ? (
+                              <CircleIcon className="size-3.5" />
+                            ) : (
+                              <CheckIcon className="size-3.5" />
+                            )}
+                            {item.read ? "Mark unread" : "Mark read"}
+                          </ActionButton>
+                          {error ? (
+                            <span className="text-destructive">{error}</span>
+                          ) : null}
+                        </>
+                      )}
                     </div>
                   </div>
                 ) : null}

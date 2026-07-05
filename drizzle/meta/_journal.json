@@ -50,6 +50,13 @@
       "when": 1783203099347,
       "tag": "0006_elite_jack_murdock",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1783249861697,
+      "tag": "0007_greedy_wendell_rand",
+      "breakpoints": true
     }
   ]
 }

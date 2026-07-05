@@ -75,6 +75,24 @@ Results are sanitized like feed content and cached per article. A per-feed
 "Always load full content" toggle on `/feeds` extracts automatically at ingest.
 The "Open original" link is always available as the escape hatch.
 
+### Read later & saved links
+
+**Read later** keeps posts you want to hold onto even after clearing a feed. It's a
+unified view: flagged feed articles (`item_states.read_later`) and **saved web pages**
+merged newest-saved-first. Save any link two ways:
+
+- Paste a URL into the field at the top of Read later (`SaveLinkForm` → `saveLinkAction`),
+  which extracts a readable copy right away.
+- Drag the **bookmarklet** from Settings to your bookmarks bar; clicking it on any page
+  hits `GET /save?url=…` (`src/app/save/route.ts`), saves the link, and bounces to Read
+  later. Extraction runs in the background — the scheduler's `sweepPendingSavedPages` tick
+  is the backstop.
+
+Saved pages live in a per-user `saved_pages` table (arbitrary URLs have no feed, so they
+don't fit `items`). Each gets a Readability-extracted, sanitized copy (`extractReadablePage`
+in `src/lib/feeds/extract.ts`) with a `pending → ready | error` lifecycle, and is indexed
+into full-text search alongside feed articles. Domain logic is in `src/lib/saved-pages.ts`.
+
 ### Quality
 
 - `npm run lint` — Biome check

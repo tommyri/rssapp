@@ -19,6 +19,13 @@ import {
   setItemStarred,
   setItemsRead,
 } from "@/lib/reader";
+import {
+  extractSavedPage,
+  removeSavedPage,
+  retrySavedPage,
+  saveLink,
+  setSavedPageRead,
+} from "@/lib/saved-pages";
 
 const viewSchema = z.object({
   feedId: z.number().int().positive().optional(),
@@ -114,6 +121,60 @@ export async function importOpmlAction(
 
 export async function signOutAction(): Promise<void> {
   await signOut({ redirectTo: "/login" });
+}
+
+// --- Save any link to read later (docs/features.md v0.2).
+
+export async function saveLinkAction(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const url = String(formData.get("url") ?? "").trim();
+  if (!url) return { ok: false, message: "Paste a link to save." };
+
+  const userId = await getCurrentUserId();
+  const result = await saveLink(userId, url);
+  if (!result.ok) return { ok: false, message: result.error };
+
+  if (result.alreadySaved) {
+    return { ok: true, message: "Already in your Read later." };
+  }
+  // Fetch the readable copy now so it's ready when the view refreshes; the
+  // scheduler sweep is the backstop if this fails or times out.
+  try {
+    await extractSavedPage(result.id);
+  } catch {
+    // Left pending — sweepPendingSavedPages will retry it.
+  }
+  revalidatePath("/");
+  return { ok: true, message: "Saved to Read later." };
+}
+
+export async function setSavedPageReadAction(
+  id: number,
+  read: boolean,
+): Promise<void> {
+  if (!Number.isInteger(id)) return;
+  const userId = await getCurrentUserId();
+  await setSavedPageRead(userId, id, read === true);
+}
+
+export async function removeSavedPageAction(id: number): Promise<void> {
+  if (!Number.isInteger(id)) return;
+  const userId = await getCurrentUserId();
+  await removeSavedPage(userId, id);
+}
+
+export async function retrySavedPageAction(
+  id: number,
+): Promise<{ ok: boolean; html?: string; error?: string }> {
+  if (!Number.isInteger(id)) return { ok: false, error: "Invalid page." };
+  const userId = await getCurrentUserId();
+  const result = await retrySavedPage(userId, id);
+  if (!result.ok) return { ok: false, error: result.error };
+  return result.page.status === "ready"
+    ? { ok: true, html: result.page.contentHtml ?? "" }
+    : { ok: false, error: result.page.error ?? "Extraction failed." };
 }
 
 // --- Reading-loop actions, called directly from the client article list.

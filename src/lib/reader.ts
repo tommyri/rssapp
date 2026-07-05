@@ -10,6 +10,12 @@ import {
 } from "@/db/schema";
 import type { ExportEntry } from "@/lib/opml";
 import { DEFAULT_AUTO_READ_DAYS } from "@/lib/reading-prefs";
+import {
+  listSavedPages,
+  type SavedPage,
+  savedPagesCount,
+  searchSavedPages,
+} from "@/lib/saved-pages";
 
 export interface FeedSummary {
   feedId: number;
@@ -140,6 +146,12 @@ export async function listFolders(userId: number): Promise<string[]> {
 }
 
 export interface ReaderItem {
+  /**
+   * Discriminates a feed article ("item") from a saved web page ("page") in the
+   * unified Read later view. Ids are only unique within a kind, so anything that
+   * keys off an entry must combine kind + id.
+   */
+  kind: "item" | "page";
   id: number;
   title: string | null;
   url: string | null;
@@ -154,6 +166,10 @@ export interface ReaderItem {
   read: boolean;
   starred: boolean;
   readLater: boolean;
+  /** Saved-page extraction state (kind === "page" only). */
+  pageStatus?: "pending" | "ready" | "error";
+  /** Saved-page extraction error, when pageStatus === "error". */
+  pageError?: string | null;
 }
 
 /** Which articles to show — a feed, a folder, starred, read-later, or everything. */
@@ -210,6 +226,7 @@ export async function listItems(
 
   const rows = await db
     .select({
+      kind: sql<"item">`'item'`,
       id: itemsTable.id,
       title: itemsTable.title,
       url: itemsTable.url,
@@ -264,6 +281,7 @@ export async function searchItems(
 
   return db
     .select({
+      kind: sql<"item">`'item'`,
       id: itemsTable.id,
       title: itemsTable.title,
       url: itemsTable.url,
@@ -304,6 +322,68 @@ export async function searchItems(
       sql`${sortKey} desc`,
     )
     .limit(SEARCH_LIMIT);
+}
+
+/** Map a saved web page into the shared ReaderItem shape for the unified views. */
+function savedPageToItem(p: SavedPage): ReaderItem {
+  let host = p.siteName;
+  if (!host) {
+    try {
+      host = new URL(p.url).hostname.replace(/^www\./, "");
+    } catch {
+      host = p.url;
+    }
+  }
+  return {
+    kind: "page",
+    id: p.id,
+    title: p.title ?? p.url,
+    url: p.url,
+    author: p.byline,
+    contentHtml: p.contentHtml,
+    fullContentHtml: null,
+    publishedAt: null,
+    sortTs: p.savedAt,
+    feedId: 0,
+    feedTitle: host,
+    read: p.read,
+    starred: false,
+    readLater: true,
+    pageStatus: p.status,
+    pageError: p.error,
+  };
+}
+
+const READ_LATER_LIMIT = 500;
+
+/**
+ * The unified Read later view: flagged feed articles and saved web pages merged
+ * and sorted newest-saved-first. Capped rather than keyset-paginated — a
+ * personal read-later queue stays small, so the client shows it all at once.
+ */
+export async function listReadLater(userId: number): Promise<ItemsPage> {
+  const [feedItems, pages] = await Promise.all([
+    listItems(userId, { readLater: true, limit: READ_LATER_LIMIT }),
+    listSavedPages(userId),
+  ]);
+  const merged = [...feedItems.items, ...pages.map(savedPageToItem)].sort(
+    (a, b) => b.sortTs.getTime() - a.sortTs.getTime(),
+  );
+  return { items: merged.slice(0, READ_LATER_LIMIT), hasMore: false };
+}
+
+/** Search across feed articles and saved pages, newest first, capped. */
+export async function searchEverything(
+  userId: number,
+  query: string,
+): Promise<ReaderItem[]> {
+  const [items, pages] = await Promise.all([
+    searchItems(userId, query),
+    searchSavedPages(userId, query),
+  ]);
+  return [...items, ...pages.map(savedPageToItem)]
+    .sort((a, b) => b.sortTs.getTime() - a.sortTs.getTime())
+    .slice(0, SEARCH_LIMIT);
 }
 
 /** Ids of the user's unread items in a view, optionally only older than a cutoff. */
@@ -420,28 +500,36 @@ export async function setItemStarred(
 /**
  * Totals for the Starred and Read later sidebar entries — scoped to the user's
  * current subscriptions and excluding muted items, so they match those views.
+ * Read later folds in saved web pages, which the unified view also shows.
  */
 export async function savedCounts(
   userId: number,
 ): Promise<{ starred: number; readLater: number }> {
-  const [row] = await db
-    .select({
-      starred: sql<number>`cast(count(*) filter (where ${itemStates.starred}) as int)`,
-      readLater: sql<number>`cast(count(*) filter (where ${itemStates.readLater}) as int)`,
-    })
-    .from(itemStates)
-    .innerJoin(itemsTable, eq(itemsTable.id, itemStates.itemId))
-    .innerJoin(
-      subscriptions,
-      and(
-        eq(subscriptions.feedId, itemsTable.feedId),
-        eq(subscriptions.userId, userId),
+  const [counts, pages] = await Promise.all([
+    db
+      .select({
+        starred: sql<number>`cast(count(*) filter (where ${itemStates.starred}) as int)`,
+        readLater: sql<number>`cast(count(*) filter (where ${itemStates.readLater}) as int)`,
+      })
+      .from(itemStates)
+      .innerJoin(itemsTable, eq(itemsTable.id, itemStates.itemId))
+      .innerJoin(
+        subscriptions,
+        and(
+          eq(subscriptions.feedId, itemsTable.feedId),
+          eq(subscriptions.userId, userId),
+        ),
+      )
+      .where(
+        and(
+          eq(itemStates.userId, userId),
+          sql`${itemStates.muted} is not true`,
+        ),
       ),
-    )
-    .where(
-      and(eq(itemStates.userId, userId), sql`${itemStates.muted} is not true`),
-    );
-  return row ?? { starred: 0, readLater: 0 };
+    savedPagesCount(userId),
+  ]);
+  const row = counts[0] ?? { starred: 0, readLater: 0 };
+  return { starred: row.starred, readLater: row.readLater + pages };
 }
 
 /** Set read-later ("save for later") state for one item for one user. */

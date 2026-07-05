@@ -49,13 +49,50 @@ Phased plan. Each phase should ship as a usable app — MVP alone should be good
 - **YouTube channels as feeds** — paste a channel URL and we resolve its native RSS feed; nearly free to build, disproportionately appreciated
 - **First-run onboarding** — OPML import front and center, plus a small curated starter list so the empty state is never blank
 
+## v0.2 — planned (next up)
+
+*Planned, not yet built. This list will grow as we scope more features before building anything. Roughly ordered by value-for-effort; the platform/sync items are bigger and may span more than one release.*
+
+### Reading & triage
+- **Save any link to read later** *(shipped July 2026)* — save an arbitrary web page by URL (not just items from subscribed feeds), the way Inoreader's read-later / save-web-page works: paste a blog-post link and it's kept for later. Captured from an in-app paste field at the top of Read later and a one-click bookmarklet (drag from Settings; `GET /save?url=…`). Saved pages get a Readability-extracted, sanitized copy (fetched immediately from the paste field, with the scheduler as a backstop for the bookmarklet) and fold into the **Read later** view alongside flagged feed items (unified, newest-saved-first), plus full-text search. Stored in a per-user `saved_pages` table — arbitrary URLs have no feed, so they don't fit the global `items` table.
+- **Keyboard shortcuts** — the Google Reader canon (`j/k`, `space`, `m`, `s`, `v`, `c`, `Shift+A`, `o`, `g` then `a/s/u`, `/`, `?` help overlay; keymap in design-ux.md). The underlying actions already exist — this mostly wires them to keys.
+- **Mark-read older than the current article** (`o`) — NetNewsWire's catch-up primitive. The `olderThan` cutoff already exists in `markAllRead`; this adds the per-article entry point.
+- **Per-feed sort & view defaults** — oldest-first (and a per-feed unread-only default) via the existing `subscriptions.settings` column; the list is currently always newest-first.
+- **Duplicate filtering** — collapse the same story arriving from multiple feeds (we already dedup within a feed by GUID). Inoreader paywalls this, so it's a "free at ours" differentiator.
+- **Mobile swipe gestures** — swipe a row to mark read or save (star / read-later); design-ux.md parks this as mobile polish, but it's core to one-handed mobile reading.
+
+### Reading pane polish
+- **Reader typography controls** — text size, column width, and serif/sans toggle, remembered (design-ux.md parks these as "later"). Direct quality-of-reading lever.
+- **Estimated reading time** — "~5 min" on rows and in the expanded header, from word count. Tiny, proven scanning aid.
+- **In-article rendering polish** — lazy-load images, click-to-zoom (lightbox), code-block syntax highlighting, and click-to-load embeds (YouTube/tweets as light placeholders); all within the already-sanitized content.
+- **Distraction-free reading mode** — collapse the sidebar/chrome for a full-focus single column.
+- **Reading progress + resume** — a thin progress bar and remembered scroll position so long articles resume where you left off.
+- **Snooze / resurface** — dismiss an article now and have it come back later (tomorrow/weekend); pairs with Read later.
+- **Highlights & notes** (stretch) — highlight passages and jot notes on articles and saved pages; a natural companion to save-any-link.
+- **Density + "river" mode** (stretch) — compact/comfortable density and an optional single-column continuous reading mode (both "later" in design-ux.md).
+
+### Navigation & power-user speed
+- **Command palette / quick switcher** — fuzzy-jump to any feed, folder, or view from the keyboard; multiplies the keyboard-shortcuts investment.
+- **Collapsible + drag-to-organize sidebar** — collapse folders and reorder feeds/folders by drag; the sidebar is static today.
+- **Infinite scroll + list virtualization** — auto-load on scroll instead of the "Load older" button, and virtualize the list so large unread counts stay smooth (currently paginated, not virtualized).
+
+### Organization, rules & feed health
+- **Tags / labels** — arbitrary labels on items and saved pages, beyond one-level folders; a `tag` rule action is the natural tie-in.
+- **Rules v2** — preview/test a rule before saving, a "notify" action, and richer apply-to-existing (builds on `src/lib/rules/engine.ts`).
+- **Feed health: silent & paused feeds** — surface feeds with no new items in N months, and let a feed be paused instead of retried forever (builds on `fetch_log` + `consecutive_failures`).
+
+### Accounts & recovery
+- **Password reset path** — there's currently no self-serve reset; a forgotten password means editing the database directly. Ship an admin `npm run` reset command now, and email-based reset once outbound SMTP exists.
+
+### Platform & sync (bigger bets)
+- **PWA + offline reading** — installable, pull-to-refresh, offline reading of already-fetched articles and saved pages. Pairs naturally with save-any-link.
+- **Podcast / audio enclosures** — parse `<enclosure>` audio and play it inline; expands beyond text feeds.
+- **Google Reader–compatible API** — sync backend so native clients (NetNewsWire, Reeder) can sync against it; the business-leverage feature from business-option.md. Large — likely its own milestone, tracked here so it isn't lost.
+
 ## Later / ideas (not committed)
 
-- Keyboard shortcuts — the Google Reader canon (j/k, space, m, s, Shift+A, `?` overlay; table in design-ux.md). Demoted from v1 (July 2026): nice-to-have for a single-user app, non-negotiable only if this ever courts migrating power users
-- Fever or Google Reader–compatible API so native clients (NetNewsWire, Reeder) can sync against it
-- PWA with offline reading
+- Text-to-speech ("Listen to this article") — deferred deliberately: the browser's built-in `SpeechSynthesis` voices are too robotic to be pleasant. Do it with a high-quality AI TTS provider instead (likely BYO-key, matching the AI stance in business-option.md), so revisit when we take on AI features
 - Multi-user support (the schema is designed to allow this — see tech-stack.md)
-- Podcast enclosures (list + play audio attachments)
 - Email newsletter → feed bridge (unique inbound address per "feed")
 - AI daily digest / article summaries
 

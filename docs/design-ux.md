@@ -30,6 +30,14 @@ Sorting: newest-first (the shipped default). Oldest-first as a per-feed option (
 - **Open original** is always one tap away (a link in the expanded article)
 - The keyboard equivalents — `space` smart-advance, `v` open original, `c` full-content — are part of the deferred keyboard canon (see below), not yet bound
 
+## Read later & saved links
+
+**Read later** is the "keep this, I'll clear the feed" queue — deliberately unified so there's one place for things to read, not two. It merges flagged feed articles with **saved web pages** (any URL, not just subscribed items), newest-saved-first. Rationale: Inoreader-style save-a-link is the most-requested read-later capability, and splitting it from feed read-laters would just be two lists doing the same job.
+
+- **Two capture paths, one destination:** a paste field at the top of the Read later view (immediate readable-copy extraction) and a drag-to-bookmark **bookmarklet** from Settings (`/save?url=…`, extraction deferred to the background poller). Both mirror how Instapaper/Inoreader let you save from anywhere.
+- **Saved pages read like articles:** a Readability-extracted, sanitized copy renders inline exactly like feed content; "Open original" is always there. A saved page shows a link marker and a `saved <time>` meta line; while its copy is still being fetched it reads "Fetching a readable copy…", and a failed fetch offers **Retry**.
+- **Same triage verbs:** mark read/unread and open-marks-read behave as elsewhere; the read-later-only action is **Remove** (delete the saved page) rather than un-flag. Saved pages are excluded from mark-read-on-scroll (they aren't feed unread).
+
 ## Unread & overload management
 
 Philosophy: we're building for "inbox people" (counts, j/k, mark-all-read) but the research on unread anxiety is real — so ship the count, and ship every escape hatch:

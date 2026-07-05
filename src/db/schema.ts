@@ -190,6 +190,47 @@ export const rules = pgTable(
   (t) => [index("rules_user_idx").on(t.userId)],
 );
 
+// Per-user "save any link to read later" (docs/features.md v0.2): arbitrary web
+// pages saved by URL. They have no feed, so they live here instead of `items`.
+// A Readability copy is fetched in the background (status pending -> ready/error)
+// and folds into the unified Read later view alongside flagged feed items.
+export const savedPages = pgTable(
+  "saved_pages",
+  {
+    id: id(),
+    userId: bigint("user_id", { mode: "number" })
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    // Canonicalized at save time (src/lib/saved-pages.ts); unique per user.
+    url: text("url").notNull(),
+    title: text("title"),
+    byline: text("byline"),
+    siteName: text("site_name"),
+    excerpt: text("excerpt"),
+    // Readability-extracted, sanitized article body — safe to render directly.
+    contentHtml: text("content_html"),
+    // Extraction lifecycle: 'pending' until fetched, then 'ready' or 'error'.
+    status: text("status").notNull().default("pending"),
+    error: text("error"),
+    read: boolean("read").notNull().default(false),
+    readAt: timestamp("read_at", { withTimezone: true }),
+    savedAt: timestamp("saved_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    // Same weighted, bilingual FTS document as items (schema.ts above), so
+    // saved pages fold into search results next to feed articles.
+    searchVector: tsvector("search_vector").generatedAlwaysAs(
+      sql`setweight(to_tsvector('english', coalesce(title, '')), 'A') || setweight(to_tsvector('norwegian', coalesce(title, '')), 'A') || setweight(to_tsvector('english', coalesce(site_name, '')), 'B') || setweight(to_tsvector('english', coalesce(excerpt, '')), 'C') || setweight(to_tsvector('english', regexp_replace(coalesce(content_html, ''), '<[^>]*>', ' ', 'g')), 'C') || setweight(to_tsvector('norwegian', regexp_replace(coalesce(content_html, ''), '<[^>]*>', ' ', 'g')), 'C')`,
+    ),
+  },
+  (t) => [
+    uniqueIndex("saved_pages_user_url_idx").on(t.userId, t.url),
+    index("saved_pages_user_saved_idx").on(t.userId, t.savedAt),
+    index("saved_pages_status_idx").on(t.status),
+    index("saved_pages_search_idx").using("gin", t.searchVector),
+  ],
+);
+
 // One row per fetch attempt; powers the feed health view (docs/features.md v1).
 export const fetchLog = pgTable(
   "fetch_log",

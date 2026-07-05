@@ -64,6 +64,7 @@ A hand-rolled password check would do, but Auth.js credentials provider is barel
 - `folders` — per user
 - `items` — feed_id, guid (unique per feed), url, title, author, content_html (sanitized), full_content_html (Readability, cached), published_at, and a generated `search_vector` (weighted, GIN-indexed)
 - `item_states` — user ↔ item: read, starred, read_later, muted, and their timestamps (rows written only when state diverges from default)
+- `saved_pages` — per-user "save any link to read later": arbitrary URL (unique per user), a Readability copy (content_html) with a `pending → ready | error` status, read state, and a generated `search_vector`. No feed, so it lives outside `items`; folds into the unified Read later view and search
 - `rules` — per-user automation: match by keyword/regex on title/content/author, scoped to one feed or all, action mute/mark_read/star
 - `fetch_log` — per-fetch outcome for the feed health view
 

@@ -12,8 +12,9 @@ import {
   type FeedSummary,
   listFeeds,
   listItems,
+  listReadLater,
   savedCounts,
-  searchItems,
+  searchEverything,
 } from "@/lib/reader";
 import { STARTER_FEEDS } from "@/lib/starter-feeds";
 import { signOutAction } from "./actions";
@@ -60,17 +61,28 @@ export default async function Home({
   const isSearch = query.length > 0;
 
   const view = { feedId, folderId, starred, readLater, unreadOnly };
-  const viewKey = `${feedId ?? ""}:${folderId ?? ""}:${starred}:${readLater}:${showingAll}:${query}`;
 
   const userId = await getCurrentUserId();
   const [feeds, page, saved] = await Promise.all([
     listFeeds(userId),
     isSearch
-      ? searchItems(userId, query).then((items) => ({ items, hasMore: false }))
-      : listItems(userId, { ...view, limit: 50 }),
+      ? searchEverything(userId, query).then((items) => ({
+          items,
+          hasMore: false,
+        }))
+      : readLater
+        ? listReadLater(userId)
+        : listItems(userId, { ...view, limit: 50 }),
     savedCounts(userId),
   ]);
   const totalUnread = feeds.reduce((sum, f) => sum + f.unread, 0);
+
+  // Read later is a client-owned list that also grows via the save form; folding
+  // the saved count into its key remounts it after a save so the new page shows,
+  // without remounting other views on every router.refresh().
+  const viewKey = `${feedId ?? ""}:${folderId ?? ""}:${starred}:${readLater}:${showingAll}:${query}${
+    readLater && !isSearch ? `:${saved.readLater}` : ""
+  }`;
 
   // Group feeds by folder for the sidebar; feeds without a folder go last.
   const byFolder = new Map<number, { name: string; feeds: FeedSummary[] }>();
@@ -228,7 +240,7 @@ export default async function Home({
       {/* Content pane */}
       <main className="min-w-0 flex-1 md:overflow-y-auto">
         <div className="mx-auto w-full max-w-3xl px-4 pb-16 md:px-8">
-          {feeds.length === 0 ? (
+          {feeds.length === 0 && !readLater && !isSearch ? (
             <div className="pt-10">
               <StarterFeeds feeds={STARTER_FEEDS} />
             </div>

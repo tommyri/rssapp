@@ -1,5 +1,6 @@
 import { refreshDueFeeds } from "@/lib/feeds";
 import { sweepAutoRead } from "@/lib/reader";
+import { sweepPendingSavedPages } from "@/lib/saved-pages";
 
 // In-process poller (docs/tech-stack.md): every tick, refresh feeds whose
 // next_fetch_at has passed. No Redis/queue — the queue is a column. If this ever
@@ -42,6 +43,10 @@ async function tick(): Promise<void> {
     const swept = await sweepAutoRead();
     if (swept > 0) {
       console.log(`[scheduler] auto-read swept ${swept} item(s)`);
+    }
+    const extracted = await sweepPendingSavedPages();
+    if (extracted > 0) {
+      console.log(`[scheduler] extracted ${extracted} saved page(s)`);
     }
   } catch (err) {
     console.error("[scheduler] tick failed:", err);
