@@ -35,6 +35,7 @@ import { alsoInLabel } from "@/lib/duplicates";
 import { relativeTime } from "@/lib/format";
 import { shouldIgnoreKeyboard } from "@/lib/keyboard";
 import type { ReaderItem } from "@/lib/reader";
+import { readingTimeMinutes } from "@/lib/reading-time";
 
 const SCROLL_MARK_KEY = "rssapp:markReadOnScroll";
 const SCROLL_FLUSH_MS = 800;
@@ -547,6 +548,8 @@ export function ArticleList({
             const contentHtml = item.fullContentHtml ?? item.contentHtml;
             const error = fullContentErrors.get(item.id);
             const snippet = snippetOf(item);
+            // Best-available estimate: improves when full content is loaded.
+            const minutes = readingTimeMinutes(contentHtml);
             const pageSubtitle =
               isPage && item.pageStatus === "pending"
                 ? "Fetching a readable copy…"
@@ -629,6 +632,7 @@ export function ArticleList({
                             }`
                           : ""}
                       {item.author ? ` · ${item.author}` : ""}
+                      {minutes !== null ? ` · ~${minutes} min` : ""}
                       {isOpen && !isPage && item.fullContentHtml ? (
                         <span className="italic"> · full content</span>
                       ) : null}
