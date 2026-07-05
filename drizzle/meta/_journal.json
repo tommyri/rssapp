@@ -57,6 +57,13 @@
       "when": 1783249861697,
       "tag": "0007_greedy_wendell_rand",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1783269667889,
+      "tag": "0008_item_canonical_url",
+      "breakpoints": true
     }
   ]
 }

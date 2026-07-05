@@ -58,18 +58,24 @@ export async function updateReadingPrefsAction(
   if (days !== null && !(Number.isInteger(days) && days >= 1 && days <= 365)) {
     return { ok: false, message: "Days must be a whole number from 1 to 365." };
   }
+  // Unchecked checkboxes are omitted from FormData entirely.
+  const collapseDuplicates = formData.get("collapseDuplicates") === "on";
 
   const userId = await getCurrentUserId();
-  await db
-    .update(users)
-    .set({ settings: days ? { autoReadDays: days } : {} })
-    .where(eq(users.id, userId));
-  return {
-    ok: true,
-    message: days
-      ? `Articles auto-mark read after ${days} day${days === 1 ? "" : "s"}.`
-      : `Using the default — articles auto-mark read after ${DEFAULT_AUTO_READ_DAYS} days.`,
-  };
+  // Merge onto the existing settings so we never clobber another preference.
+  const user = await db.query.users.findFirst({ where: eq(users.id, userId) });
+  const settings = { ...(user?.settings ?? {}), collapseDuplicates };
+  if (days) settings.autoReadDays = days;
+  else delete settings.autoReadDays;
+  await db.update(users).set({ settings }).where(eq(users.id, userId));
+
+  const daysMsg = days
+    ? `Auto-mark read after ${days} day${days === 1 ? "" : "s"}.`
+    : `Auto-mark read after the ${DEFAULT_AUTO_READ_DAYS}-day default.`;
+  const dupMsg = collapseDuplicates
+    ? "Duplicate stories collapse into one."
+    : "Duplicate stories show separately.";
+  return { ok: true, message: `Saved. ${daysMsg} ${dupMsg}` };
 }
 
 export async function changePasswordAction(

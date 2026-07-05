@@ -31,6 +31,7 @@ import {
 } from "@/app/actions";
 import { SaveLinkForm } from "@/components/save-link-form";
 import { Button } from "@/components/ui/button";
+import { alsoInLabel } from "@/lib/duplicates";
 import { relativeTime } from "@/lib/format";
 import { shouldIgnoreKeyboard } from "@/lib/keyboard";
 import type { ReaderItem } from "@/lib/reader";
@@ -50,6 +51,11 @@ interface Props {
   /** Search-results mode: no read filters, no mark-all, no scroll-marking. */
   isSearch?: boolean;
   unreadCount?: number;
+  /**
+   * Duplicate collapsing is on: the list may already be collapsed server-side,
+   * and marking a story read should clear its copies in other feeds too.
+   */
+  collapse?: boolean;
 }
 
 /** Composite key: ids are only unique within a kind (feed item vs saved page). */
@@ -77,6 +83,7 @@ export function ArticleList({
   showingAll,
   isSearch = false,
   unreadCount = 0,
+  collapse = false,
 }: Props) {
   const router = useRouter();
   // Starred / Read later are archive views: no unread filter or mark-all.
@@ -132,8 +139,8 @@ export function ArticleList({
       ids.map((id) => `item:${id}`),
       { read: true },
     );
-    void setItemsReadAction(ids).then(() => router.refresh());
-  }, [router, setEntryState]);
+    void setItemsReadAction(ids, collapse).then(() => router.refresh());
+  }, [router, setEntryState, collapse]);
 
   // Scroll-marking: when an unread row leaves the top of the viewport, queue it.
   // Never in search — scanning results must not consume unread state.
@@ -179,7 +186,7 @@ export function ArticleList({
     const call =
       item.kind === "page"
         ? setSavedPageReadAction(item.id, read)
-        : setItemReadAction(item.id, read);
+        : setItemReadAction(item.id, read, collapse);
     void call.then(() => router.refresh());
   }
   const persistReadRef = useRef(persistRead);
@@ -259,10 +266,11 @@ export function ArticleList({
     if (!last || loadingMore) return;
     setLoadingMore(true);
     try {
-      const page = await fetchItemsAction(view, {
-        ts: new Date(last.sortTs).toISOString(),
-        id: last.id,
-      });
+      const page = await fetchItemsAction(
+        view,
+        { ts: new Date(last.sortTs).toISOString(), id: last.id },
+        collapse,
+      );
       const known = new Set(items.map((i) => keyOf(i)));
       setItems((prev) => [
         ...prev,
@@ -606,6 +614,11 @@ export function ArticleList({
                       }`}
                     >
                       {item.feedTitle}
+                      {item.dupFeedTitles && item.dupFeedTitles.length > 0 ? (
+                        <span className="text-muted-foreground/70">
+                          {` · also in ${alsoInLabel(item.dupFeedTitles)}`}
+                        </span>
+                      ) : null}
                       {isPage
                         ? ` · saved ${relativeTime(new Date(item.sortTs))}`
                         : item.publishedAt

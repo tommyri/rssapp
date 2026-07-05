@@ -69,20 +69,23 @@ export function ChangeEmailForm({ currentEmail }: { currentEmail: string }) {
 
 export function ReadingPrefsForm({
   autoReadDays,
+  collapseDuplicates,
 }: {
   autoReadDays: number | null;
+  collapseDuplicates: boolean;
 }) {
   const [state, formAction] = useActionState(updateReadingPrefsAction, initial);
   // Controlled so React 19's post-action form reset doesn't revert what the
-  // user just typed (the value is saved, but an uncontrolled field would snap
-  // back to its stale defaultValue).
+  // user just changed (the value is saved, but an uncontrolled field would snap
+  // back to its stale default).
   const [days, setDays] = useState(
     autoReadDays == null
       ? String(DEFAULT_AUTO_READ_DAYS)
       : String(autoReadDays),
   );
+  const [collapse, setCollapse] = useState(collapseDuplicates);
   return (
-    <form action={formAction} className="space-y-3 rounded-lg border p-4">
+    <form action={formAction} className="space-y-4 rounded-lg border p-4">
       <h2 className="font-medium">Reading</h2>
       <div className="space-y-2">
         <Label htmlFor="autoReadDays">
@@ -104,6 +107,25 @@ export function ReadingPrefsForm({
           feeds page. Leave empty to use the {DEFAULT_AUTO_READ_DAYS}-day
           default.
         </p>
+      </div>
+      <div className="space-y-2">
+        <label className="flex cursor-pointer items-start gap-2">
+          <input
+            type="checkbox"
+            name="collapseDuplicates"
+            checked={collapse}
+            onChange={(e) => setCollapse(e.target.checked)}
+            className="mt-0.5 accent-primary"
+          />
+          <span>
+            <span className="block text-sm">Collapse duplicate articles</span>
+            <span className="mt-0.5 block text-xs text-muted-foreground">
+              When the same story arrives from several feeds, show it once in
+              All and folder views — tagged with the other feeds. Reading it
+              marks every copy read.
+            </span>
+          </span>
+        </label>
       </div>
       <SubmitButton label="Save" />
       <Message state={state} />

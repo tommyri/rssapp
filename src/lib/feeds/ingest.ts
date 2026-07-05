@@ -1,4 +1,15 @@
-import { and, asc, count, eq, exists, lte, sql } from "drizzle-orm";
+import {
+  and,
+  asc,
+  count,
+  eq,
+  exists,
+  gt,
+  isNotNull,
+  isNull,
+  lte,
+  sql,
+} from "drizzle-orm";
 import { db } from "@/db";
 import {
   feeds,
@@ -6,6 +17,7 @@ import {
   items as itemsTable,
   subscriptions,
 } from "@/db/schema";
+import { canonicalizeUrl } from "@/lib/canonical-url";
 import { applyRulesToNewItems } from "@/lib/rules";
 import {
   COMMON_FEED_PATHS,
@@ -86,6 +98,7 @@ async function upsertItems(
     feedId,
     guid: item.guid,
     url: item.url,
+    canonicalUrl: item.url ? canonicalizeUrl(item.url) : null,
     title: item.title,
     author: item.author,
     contentHtml: item.contentHtml,
@@ -108,6 +121,49 @@ async function upsertItems(
   await autoExtractForFeed(feedId, inserted);
 
   return inserted.length;
+}
+
+/**
+ * One-time backfill: populate items.canonical_url for rows ingested before the
+ * column existed, reusing the same canonicalizeUrl used at ingest so old and new
+ * items dedup by an identical key. Walks by id cursor so rows that canonicalize
+ * to null (non-http/malformed urls) are stepped over rather than re-selected
+ * forever. Idempotent and cheap once complete — after the first pass almost
+ * every row has a value — so instrumentation runs it at boot after migrations.
+ */
+export async function backfillCanonicalUrls(): Promise<number> {
+  const BATCH = 1000;
+  let lastId = 0;
+  let filled = 0;
+  for (;;) {
+    const rows = await db
+      .select({ id: itemsTable.id, url: itemsTable.url })
+      .from(itemsTable)
+      .where(
+        and(
+          isNotNull(itemsTable.url),
+          isNull(itemsTable.canonicalUrl),
+          gt(itemsTable.id, lastId),
+        ),
+      )
+      .orderBy(asc(itemsTable.id))
+      .limit(BATCH);
+    if (rows.length === 0) break;
+
+    for (const row of rows) {
+      const canonical = row.url ? canonicalizeUrl(row.url) : null;
+      if (canonical) {
+        await db
+          .update(itemsTable)
+          .set({ canonicalUrl: canonical })
+          .where(eq(itemsTable.id, row.id));
+        filled += 1;
+      }
+    }
+    lastId = rows[rows.length - 1].id;
+    if (rows.length < BATCH) break;
+  }
+  return filled;
 }
 
 /** Fetch a candidate feed URL and return it if it responds with feed content. */

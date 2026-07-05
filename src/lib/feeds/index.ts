@@ -8,6 +8,7 @@ export {
 export {
   type AddFeedResult,
   addFeedForUser,
+  backfillCanonicalUrls,
   ensureFeed,
   type RefreshDueOptions,
   type RefreshDueSummary,

@@ -44,7 +44,10 @@ export default async function SettingsPage() {
         <BackLink />
       </div>
 
-      <ReadingPrefsForm autoReadDays={user?.settings.autoReadDays ?? null} />
+      <ReadingPrefsForm
+        autoReadDays={user?.settings.autoReadDays ?? null}
+        collapseDuplicates={user?.settings.collapseDuplicates ?? true}
+      />
 
       <section className="space-y-3 rounded-lg border p-4">
         <div className="space-y-1">

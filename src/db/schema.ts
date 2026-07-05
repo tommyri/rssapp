@@ -33,7 +33,7 @@ export const users = pgTable("users", {
   settings: jsonb("settings")
     .notNull()
     .default({})
-    .$type<{ autoReadDays?: number }>(),
+    .$type<{ autoReadDays?: number; collapseDuplicates?: boolean }>(),
   createdAt: createdAt(),
 });
 
@@ -114,6 +114,10 @@ export const items = pgTable(
       .references(() => feeds.id, { onDelete: "cascade" }),
     guid: text("guid").notNull(),
     url: text("url"),
+    // url normalized for cross-feed dedup (canonicalizeUrl): same story arriving
+    // from multiple feeds shares this key so the reader can collapse duplicates.
+    // Null when the item has no url or it isn't a usable http(s) URL.
+    canonicalUrl: text("canonical_url"),
     title: text("title"),
     author: text("author"),
     // Sanitized at ingest; never store or render raw feed HTML.
@@ -135,6 +139,10 @@ export const items = pgTable(
     uniqueIndex("items_feed_guid_idx").on(t.feedId, t.guid),
     index("items_feed_published_idx").on(t.feedId, t.publishedAt),
     index("items_search_idx").using("gin", t.searchVector),
+    // Partial: only the rows the dedup grouping actually touches.
+    index("items_canonical_url_idx")
+      .on(t.canonicalUrl)
+      .where(sql`${t.canonicalUrl} is not null`),
   ],
 );
 

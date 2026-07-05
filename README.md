@@ -93,6 +93,23 @@ don't fit `items`). Each gets a Readability-extracted, sanitized copy (`extractR
 in `src/lib/feeds/extract.ts`) with a `pending → ready | error` lifecycle, and is indexed
 into full-text search alongside feed articles. Domain logic is in `src/lib/saved-pages.ts`.
 
+### Duplicate filtering
+
+When the same story arrives from several feeds (an aggregator plus the original blog,
+overlapping tech feeds), the **All** and **folder** views collapse the copies into one
+row, tagged "· also in *the other feeds*". The row carries the group's combined
+read/star/save state, so reading any copy clears the story everywhere — reading the
+shown row also marks its duplicates read.
+
+Matching is by a normalized **canonical URL** (`canonicalizeUrl` — lowercased host,
+tracking params and fragment dropped; the same normalization used for saved links),
+stored on `items.canonical_url` at ingest and backfilled for older items at boot
+(`backfillCanonicalUrls`, run from `instrumentation-node.ts` after migrations). The
+reader groups by it in a single window pass (`listItemsCollapsed` in `src/lib/reader.ts`),
+keeps the earliest copy as the representative, and keyset-paginates on it. Single-feed,
+Starred, Read later and Search are never collapsed. On by default; toggle in
+**Settings → Reading**.
+
 ### Quality
 
 - `npm run lint` — Biome check

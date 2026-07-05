@@ -11,6 +11,7 @@ import { StarterFeeds } from "@/components/starter-feeds";
 import { getCurrentUserId } from "@/lib/current-user";
 import {
   type FeedSummary,
+  getCollapseDuplicates,
   listFeeds,
   listItems,
   listReadLater,
@@ -51,7 +52,10 @@ export default async function Home({
   const isSearch = query.length > 0;
 
   const userId = await getCurrentUserId();
-  const feeds = await listFeeds(userId);
+  const [feeds, collapse] = await Promise.all([
+    listFeeds(userId),
+    getCollapseDuplicates(userId),
+  ]);
   const activeFeed = feedId
     ? feeds.find((f) => f.feedId === feedId)
     : undefined;
@@ -77,7 +81,7 @@ export default async function Home({
         }))
       : readLater
         ? listReadLater(userId)
-        : listItems(userId, { ...view, limit: 50 }),
+        : listItems(userId, { ...view, limit: 50, collapse }),
     savedCounts(userId),
   ]);
   const totalUnread = feeds.reduce((sum, f) => sum + f.unread, 0);
@@ -256,13 +260,11 @@ export default async function Home({
               initialHasMore={page.hasMore}
               view={view}
               title={title}
-              toggleHref={toggleShowHref(
-                params,
-                activeFeed?.defaultUnreadOnly,
-              )}
+              toggleHref={toggleShowHref(params, activeFeed?.defaultUnreadOnly)}
               showingAll={showingAll}
               isSearch={isSearch}
               unreadCount={unreadCount}
+              collapse={collapse}
             />
           )}
         </div>

@@ -26,6 +26,18 @@ export async function registerNode() {
     throw err;
   }
 
+  // Backfill canonical_url for items stored before the column existed, so the
+  // duplicate-collapsing reader groups old and new items alike. Idempotent and
+  // near-free after the first boot completes it (see backfillCanonicalUrls).
+  try {
+    const { backfillCanonicalUrls } = await import("@/lib/feeds");
+    const filled = await backfillCanonicalUrls();
+    if (filled > 0) console.log(`[boot] backfilled ${filled} canonical url(s)`);
+  } catch (err) {
+    // Non-fatal: dedup just won't apply to old items until a later boot succeeds.
+    console.error("[boot] canonical_url backfill failed:", err);
+  }
+
   const { startScheduler } = await import("@/lib/scheduler");
   startScheduler();
 }

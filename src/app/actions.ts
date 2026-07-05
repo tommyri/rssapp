@@ -197,17 +197,24 @@ export async function loadFullContentAction(
 export async function setItemReadAction(
   itemId: number,
   read: boolean,
+  collapse = false,
 ): Promise<void> {
   if (!Number.isInteger(itemId)) return;
   const userId = await getCurrentUserId();
-  await setItemRead(userId, itemId, read === true);
+  // When duplicates are collapsed, reading the shown copy clears its siblings too.
+  await setItemRead(userId, itemId, read === true, {
+    fanOut: collapse === true,
+  });
 }
 
-export async function setItemsReadAction(itemIds: number[]): Promise<void> {
+export async function setItemsReadAction(
+  itemIds: number[],
+  collapse = false,
+): Promise<void> {
   const ids = z.array(z.number().int().positive()).max(1000).parse(itemIds);
   if (ids.length === 0) return;
   const userId = await getCurrentUserId();
-  await setItemsRead(userId, ids);
+  await setItemsRead(userId, ids, { fanOut: collapse === true });
 }
 
 export async function setItemStarredAction(
@@ -251,11 +258,16 @@ export async function markAllReadAction(
 export async function fetchItemsAction(
   view: ClientView,
   cursor: { ts: string; id: number },
+  collapse = false,
 ): Promise<ItemsPage> {
   const parsedView = viewSchema.parse(view);
   const parsedCursor = z
     .object({ ts: z.coerce.date(), id: z.number().int().positive() })
     .parse(cursor);
   const userId = await getCurrentUserId();
-  return listItems(userId, { ...parsedView, cursor: parsedCursor });
+  return listItems(userId, {
+    ...parsedView,
+    cursor: parsedCursor,
+    collapse: collapse === true,
+  });
 }

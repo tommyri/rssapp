@@ -1,4 +1,5 @@
-import { and, asc, desc, eq, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNotNull, sql } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 import { db } from "@/db";
 import {
   feeds,
@@ -8,15 +9,16 @@ import {
   subscriptions,
   users,
 } from "@/db/schema";
+import { otherFeedTitles } from "@/lib/duplicates";
 import type { ExportEntry } from "@/lib/opml";
 import { DEFAULT_AUTO_READ_DAYS } from "@/lib/reading-prefs";
-import type { SortOrder } from "@/lib/subscription-settings";
 import {
   listSavedPages,
   type SavedPage,
   savedPagesCount,
   searchSavedPages,
 } from "@/lib/saved-pages";
+import type { SortOrder } from "@/lib/subscription-settings";
 
 export interface FeedSummary {
   feedId: number;
@@ -175,6 +177,14 @@ export interface ReaderItem {
   read: boolean;
   starred: boolean;
   readLater: boolean;
+  /**
+   * Set only in collapsed multi-feed views (duplicate filtering): how many
+   * copies of this story the user's feeds carry, and the titles of the *other*
+   * feeds it also arrived in. read/starred/readLater above are the group's
+   * combined state, so reading any copy clears the story.
+   */
+  dupCount?: number;
+  dupFeedTitles?: string[];
   /** Saved-page extraction state (kind === "page" only). */
   pageStatus?: "pending" | "ready" | "error";
   /** Saved-page extraction error, when pageStatus === "error". */
@@ -190,6 +200,12 @@ export interface ReaderView {
   unreadOnly?: boolean;
   /** Oldest-first when viewing a single feed; ignored for folder/all views. */
   sortOrder?: SortOrder;
+  /**
+   * Collapse the same story arriving from multiple feeds into one row (the
+   * user's setting). Applies only to multi-feed list views (All, folder) —
+   * single-feed, Starred and Read later are never collapsed.
+   */
+  collapse?: boolean;
 }
 
 export interface ItemCursor {
@@ -227,6 +243,17 @@ export async function listItems(
   userId: number,
   opts: ListItemsOptions = {},
 ): Promise<ItemsPage> {
+  // Collapse duplicates only in multi-feed list views; single-feed, Starred and
+  // Read later stay one-row-per-item (see listItemsCollapsed).
+  if (
+    opts.collapse &&
+    opts.feedId === undefined &&
+    !opts.starred &&
+    !opts.readLater
+  ) {
+    return listItemsCollapsed(userId, opts);
+  }
+
   const { cursor, limit = 50, ...view } = opts;
   const oldestFirst = view.feedId !== undefined && view.sortOrder === "oldest";
   const conditions = viewConditions(userId, view);
@@ -278,6 +305,130 @@ export async function listItems(
     .limit(limit + 1); // one extra row to detect whether more exist
 
   return { items: rows.slice(0, limit), hasMore: rows.length > limit };
+}
+
+// The grouping key for duplicate collapsing: items that share a canonical_url
+// are the same story; anything without one is its own singleton group.
+const collapseKey = sql`coalesce(${itemsTable.canonicalUrl}, 'i' || ${itemsTable.id})`;
+
+/**
+ * Like listItems, but collapses items sharing a canonical_url into a single
+ * representative row (the earliest published — the original), so the same story
+ * arriving from several feeds shows once. The window pass computes, per group:
+ * the combined read/star/read-later state (so reading any copy clears the
+ * story), the copy count, and the feeds it appeared in; the outer query keeps
+ * the representative and keyset-paginates on its sort position. Runs over the
+ * view's full candidate set each page, which is fine at a personal reader's
+ * scale (the list isn't virtualized either).
+ */
+async function listItemsCollapsed(
+  userId: number,
+  opts: ListItemsOptions,
+): Promise<ItemsPage> {
+  const { cursor, limit = 50, ...view } = opts;
+  const conditions = [
+    eq(subscriptions.userId, userId),
+    sql`${itemStates.muted} is not true`,
+  ];
+  if (view.folderId) conditions.push(eq(subscriptions.folderId, view.folderId));
+
+  const feedTitle = sql<
+    string | null
+  >`coalesce(${subscriptions.customTitle}, ${feeds.title})`;
+
+  const grouped = db
+    .select({
+      id: itemsTable.id,
+      title: itemsTable.title,
+      url: itemsTable.url,
+      author: itemsTable.author,
+      contentHtml: itemsTable.contentHtml,
+      fullContentHtml: itemsTable.fullContentHtml,
+      publishedAt: itemsTable.publishedAt,
+      sortTs: sql`${sortKey}`.as("sort_ts"),
+      // Source from items.feed_id (same value as feeds.id via the join) so this
+      // subquery column is "feed_id" — selecting feeds.id would surface a second
+      // bare "id" column, colliding with items.id and breaking the outer query.
+      feedId: itemsTable.feedId,
+      feedTitle: feedTitle.as("feed_title"),
+      groupRead:
+        sql<boolean>`bool_or(coalesce(${itemStates.read}, false)) over (partition by ${collapseKey})`.as(
+          "group_read",
+        ),
+      groupStarred:
+        sql<boolean>`bool_or(coalesce(${itemStates.starred}, false)) over (partition by ${collapseKey})`.as(
+          "group_starred",
+        ),
+      groupReadLater:
+        sql<boolean>`bool_or(coalesce(${itemStates.readLater}, false)) over (partition by ${collapseKey})`.as(
+          "group_read_later",
+        ),
+      dupCount:
+        sql<number>`cast(count(*) over (partition by ${collapseKey}) as int)`.as(
+          "dup_count",
+        ),
+      dupFeedTitles: sql<
+        (string | null)[]
+      >`array_agg(${feedTitle}) over (partition by ${collapseKey})`.as(
+        "dup_feed_titles",
+      ),
+      rn: sql<number>`row_number() over (partition by ${collapseKey} order by ${sortKey} asc, ${itemsTable.id} asc)`.as(
+        "rn",
+      ),
+    })
+    .from(itemsTable)
+    .innerJoin(
+      subscriptions,
+      and(
+        eq(subscriptions.feedId, itemsTable.feedId),
+        eq(subscriptions.userId, userId),
+      ),
+    )
+    .innerJoin(feeds, eq(feeds.id, itemsTable.feedId))
+    .leftJoin(
+      itemStates,
+      and(eq(itemStates.itemId, itemsTable.id), eq(itemStates.userId, userId)),
+    )
+    .where(and(...conditions))
+    .as("grouped");
+
+  const outer = [eq(grouped.rn, 1)];
+  if (view.unreadOnly) outer.push(sql`${grouped.groupRead} is not true`);
+  if (cursor) {
+    outer.push(
+      sql`(${grouped.sortTs}, ${grouped.id}) < (${cursor.ts}, ${cursor.id})`,
+    );
+  }
+
+  const rows = await db
+    .select({
+      id: grouped.id,
+      title: grouped.title,
+      url: grouped.url,
+      author: grouped.author,
+      contentHtml: grouped.contentHtml,
+      fullContentHtml: grouped.fullContentHtml,
+      publishedAt: grouped.publishedAt,
+      sortTs: sql<Date>`${grouped.sortTs}`.mapWith((v) => new Date(v)),
+      feedId: grouped.feedId,
+      feedTitle: grouped.feedTitle,
+      read: grouped.groupRead,
+      starred: grouped.groupStarred,
+      readLater: grouped.groupReadLater,
+      dupCount: grouped.dupCount,
+      dupFeedTitles: grouped.dupFeedTitles,
+    })
+    .from(grouped)
+    .where(and(...outer))
+    .orderBy(sql`${grouped.sortTs} desc`, sql`${grouped.id} desc`)
+    .limit(limit + 1);
+
+  const items: ReaderItem[] = rows.slice(0, limit).map((r) => ({
+    ...r,
+    kind: "item" as const,
+    dupFeedTitles: otherFeedTitles(r.dupFeedTitles, r.feedTitle),
+  }));
+  return { items, hasMore: rows.length > limit };
 }
 
 const SEARCH_LIMIT = 50;
@@ -432,14 +583,57 @@ async function unreadItemIds(
 
 const READ_CHUNK = 500;
 
+/**
+ * Expand item ids to include every other copy of the same story — items sharing
+ * a canonical_url within the user's own non-muted subscriptions. Lets a single
+ * "mark read" on a collapsed row clear all its duplicates ("read once, gone").
+ * Items with no canonical_url (or no siblings) just return themselves.
+ */
+async function expandToSiblings(
+  userId: number,
+  itemIds: number[],
+): Promise<number[]> {
+  if (itemIds.length === 0) return itemIds;
+  const seed = alias(itemsTable, "seed");
+  const rows = await db
+    .selectDistinct({ id: itemsTable.id })
+    .from(seed)
+    .innerJoin(
+      itemsTable,
+      and(
+        isNotNull(seed.canonicalUrl),
+        eq(itemsTable.canonicalUrl, seed.canonicalUrl),
+      ),
+    )
+    .innerJoin(
+      subscriptions,
+      and(
+        eq(subscriptions.feedId, itemsTable.feedId),
+        eq(subscriptions.userId, userId),
+      ),
+    )
+    .leftJoin(
+      itemStates,
+      and(eq(itemStates.itemId, itemsTable.id), eq(itemStates.userId, userId)),
+    )
+    .where(
+      and(inArray(seed.id, itemIds), sql`${itemStates.muted} is not true`),
+    );
+  const ids = new Set(itemIds);
+  for (const r of rows) ids.add(r.id);
+  return [...ids];
+}
+
 /** Mark a batch of items read for one user (scroll-marking, mark-all-read). */
 export async function setItemsRead(
   userId: number,
   itemIds: number[],
+  opts: { fanOut?: boolean } = {},
 ): Promise<void> {
+  const ids = opts.fanOut ? await expandToSiblings(userId, itemIds) : itemIds;
   const readAt = new Date();
-  for (let i = 0; i < itemIds.length; i += READ_CHUNK) {
-    const chunk = itemIds.slice(i, i + READ_CHUNK);
+  for (let i = 0; i < ids.length; i += READ_CHUNK) {
+    const chunk = ids.slice(i, i + READ_CHUNK);
     await db
       .insert(itemStates)
       .values(chunk.map((itemId) => ({ userId, itemId, read: true, readAt })))
@@ -590,7 +784,13 @@ export async function setItemRead(
   userId: number,
   itemId: number,
   read: boolean,
+  opts: { fanOut?: boolean } = {},
 ): Promise<void> {
+  // Reading a collapsed story clears every copy; un-reading touches only this one.
+  if (read && opts.fanOut) {
+    await setItemsRead(userId, [itemId], { fanOut: true });
+    return;
+  }
   const readAt = read ? new Date() : null;
   await db
     .insert(itemStates)
@@ -599,4 +799,13 @@ export async function setItemRead(
       target: [itemStates.userId, itemStates.itemId],
       set: { read, readAt },
     });
+}
+
+/** The user's duplicate-collapsing preference (on unless explicitly disabled). */
+export async function getCollapseDuplicates(userId: number): Promise<boolean> {
+  const rows = await db
+    .select({ settings: users.settings })
+    .from(users)
+    .where(eq(users.id, userId));
+  return rows[0]?.settings?.collapseDuplicates !== false;
 }
