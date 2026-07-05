@@ -65,6 +65,7 @@ The Google Reader inheritance is non-negotiable muscle memory for anyone migrati
 | `g` then `a`/`s`/`u` | go to all / starred / unread |
 | `a` | add subscription |
 | `/` | search (never rebind to AI — Feedly did, users hated it) |
+| `⌘K` / `Ctrl+K` | command palette — fuzzy-jump to any feed, folder, or view *(shipped July 2026)* |
 | `?` | shortcut help overlay |
 
 ## Onboarding & empty states

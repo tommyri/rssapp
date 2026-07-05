@@ -29,5 +29,6 @@ export const READER_SHORTCUTS: ShortcutRow[] = [
   { keys: "g then u", action: "Go to unread only" },
   { keys: "a", action: "Focus add-feed field" },
   { keys: "/", action: "Focus search" },
+  { keys: "⌘K / Ctrl+K", action: "Jump to feed, folder, or view" },
   { keys: "?", action: "Show this help" },
 ];
