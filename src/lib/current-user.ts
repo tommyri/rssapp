@@ -13,3 +13,14 @@ export async function getCurrentUserId(): Promise<number> {
   if (!id) redirect("/login");
   return Number(id);
 }
+
+/**
+ * Like getCurrentUserId, but null instead of a redirect when signed out. Only
+ * for surfaces that render on both sides of the login wall (the root layout's
+ * command palette) — user-scoped queries keep going through getCurrentUserId.
+ */
+export async function getOptionalUserId(): Promise<number | null> {
+  const session = await auth();
+  const id = (session?.user as { id?: string } | undefined)?.id;
+  return id ? Number(id) : null;
+}

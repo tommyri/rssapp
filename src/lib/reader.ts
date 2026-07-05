@@ -1,5 +1,6 @@
 import { and, asc, desc, eq, inArray, isNotNull, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
+import { cache } from "react";
 import { db } from "@/db";
 import {
   feeds,
@@ -38,50 +39,59 @@ export interface FeedSummary {
   defaultUnreadOnly: boolean;
 }
 
-/** The user's subscribed feeds with per-feed unread counts, for the sidebar. */
-export async function listFeeds(userId: number): Promise<FeedSummary[]> {
-  return db
-    .select({
-      feedId: feeds.id,
-      title: sql<
-        string | null
-      >`coalesce(${subscriptions.customTitle}, ${feeds.title})`,
-      url: feeds.url,
-      siteUrl: feeds.siteUrl,
-      lastError: feeds.lastError,
-      folderId: folders.id,
-      folderName: folders.name,
-      customTitle: subscriptions.customTitle,
-      feedTitle: feeds.title,
-      fullContent: sql<boolean>`coalesce(${subscriptions.settings}->>'fullContent', 'false') = 'true'`,
-      autoReadDays: sql<
-        number | null
-      >`(${subscriptions.settings}->>'autoReadDays')::int`,
-      sortOrder: sql<SortOrder>`case when ${subscriptions.settings}->>'sortOrder' = 'oldest' then 'oldest' else 'newest' end`,
-      defaultUnreadOnly: sql<boolean>`coalesce((${subscriptions.settings}->>'defaultUnreadOnly')::boolean, true)`,
-      unread: sql<number>`cast(count(${itemsTable.id}) filter (where ${itemStates.read} is not true and ${itemStates.muted} is not true) as int)`,
-    })
-    .from(subscriptions)
-    .innerJoin(feeds, eq(feeds.id, subscriptions.feedId))
-    .leftJoin(folders, eq(folders.id, subscriptions.folderId))
-    .leftJoin(itemsTable, eq(itemsTable.feedId, feeds.id))
-    .leftJoin(
-      itemStates,
-      and(eq(itemStates.itemId, itemsTable.id), eq(itemStates.userId, userId)),
-    )
-    .where(eq(subscriptions.userId, userId))
-    .groupBy(
-      feeds.id,
-      subscriptions.customTitle,
-      subscriptions.settings,
-      feeds.title,
-      feeds.url,
-      feeds.lastError,
-      folders.id,
-      folders.name,
-    )
-    .orderBy(sql`coalesce(${subscriptions.customTitle}, ${feeds.title})`);
-}
+/**
+ * The user's subscribed feeds with per-feed unread counts, for the sidebar.
+ * React.cache: the reader page (sidebar) and the root layout (command palette)
+ * both call this in the same request — memoized so it queries once.
+ */
+export const listFeeds = cache(
+  async (userId: number): Promise<FeedSummary[]> => {
+    return db
+      .select({
+        feedId: feeds.id,
+        title: sql<
+          string | null
+        >`coalesce(${subscriptions.customTitle}, ${feeds.title})`,
+        url: feeds.url,
+        siteUrl: feeds.siteUrl,
+        lastError: feeds.lastError,
+        folderId: folders.id,
+        folderName: folders.name,
+        customTitle: subscriptions.customTitle,
+        feedTitle: feeds.title,
+        fullContent: sql<boolean>`coalesce(${subscriptions.settings}->>'fullContent', 'false') = 'true'`,
+        autoReadDays: sql<
+          number | null
+        >`(${subscriptions.settings}->>'autoReadDays')::int`,
+        sortOrder: sql<SortOrder>`case when ${subscriptions.settings}->>'sortOrder' = 'oldest' then 'oldest' else 'newest' end`,
+        defaultUnreadOnly: sql<boolean>`coalesce((${subscriptions.settings}->>'defaultUnreadOnly')::boolean, true)`,
+        unread: sql<number>`cast(count(${itemsTable.id}) filter (where ${itemStates.read} is not true and ${itemStates.muted} is not true) as int)`,
+      })
+      .from(subscriptions)
+      .innerJoin(feeds, eq(feeds.id, subscriptions.feedId))
+      .leftJoin(folders, eq(folders.id, subscriptions.folderId))
+      .leftJoin(itemsTable, eq(itemsTable.feedId, feeds.id))
+      .leftJoin(
+        itemStates,
+        and(
+          eq(itemStates.itemId, itemsTable.id),
+          eq(itemStates.userId, userId),
+        ),
+      )
+      .where(eq(subscriptions.userId, userId))
+      .groupBy(
+        feeds.id,
+        subscriptions.customTitle,
+        subscriptions.settings,
+        feeds.title,
+        feeds.url,
+        feeds.lastError,
+        folders.id,
+        folders.name,
+      )
+      .orderBy(sql`coalesce(${subscriptions.customTitle}, ${feeds.title})`);
+  },
+);
 
 export interface ManagedFeed {
   feedId: number;

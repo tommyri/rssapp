@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono, Newsreader } from "next/font/google";
+import { GlobalCommandPalette } from "@/components/global-command-palette";
 import { ThemeProvider } from "@/components/theme-provider";
 import "./globals.css";
 
@@ -50,7 +51,10 @@ export default function RootLayout({
         <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
       </head>
       <body className="flex min-h-full flex-col">
-        <ThemeProvider>{children}</ThemeProvider>
+        <ThemeProvider>
+          {children}
+          <GlobalCommandPalette />
+        </ThemeProvider>
       </body>
     </html>
   );

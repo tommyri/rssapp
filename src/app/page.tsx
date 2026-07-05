@@ -2,10 +2,6 @@ import { BookmarkIcon, StarIcon, TriangleAlertIcon } from "lucide-react";
 import Link from "next/link";
 import { AddFeedForm } from "@/components/add-feed-form";
 import { ArticleList } from "@/components/article-list";
-import {
-  CommandPalette,
-  type PaletteTarget,
-} from "@/components/command-palette";
 import { FeedIcon } from "@/components/feed-icon";
 import { FeedMenu } from "@/components/feed-menu";
 import { ReaderGlobalKeyboard } from "@/components/reader-global-keyboard";
@@ -134,27 +130,6 @@ export default async function Home({
     : folderId
       ? (byFolder.get(folderId)?.feeds.reduce((s, f) => s + f.unread, 0) ?? 0)
       : totalUnread;
-
-  // Everything the ⌘K palette can jump to, in its tie-break display order.
-  const paletteTargets: PaletteTarget[] = [
-    { kind: "view", label: "All articles", href: "/" },
-    { kind: "view", label: "Starred", href: "/?view=starred" },
-    { kind: "view", label: "Read later", href: "/?view=later" },
-    { kind: "page", label: "Manage feeds", href: "/feeds" },
-    { kind: "page", label: "Rules", href: "/rules" },
-    { kind: "page", label: "Settings", href: "/settings" },
-    ...folderGroups.map(([id, group]): PaletteTarget => {
-      return { kind: "folder", label: group.name, href: `/?folder=${id}` };
-    }),
-    ...feeds.map(
-      (f): PaletteTarget => ({
-        kind: "feed",
-        label: f.title ?? f.url,
-        href: `/?feed=${f.feedId}`,
-        hint: f.folderName ?? undefined,
-      }),
-    ),
-  ];
 
   return (
     // md:flex-none matters: flex-1 sets flex-basis:0%, which overrides h-dvh
@@ -295,7 +270,6 @@ export default async function Home({
         </div>
       </main>
       <ReaderGlobalKeyboard />
-      <CommandPalette targets={paletteTargets} />
     </div>
   );
 }
