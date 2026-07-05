@@ -15,14 +15,13 @@ export interface SubscriptionSettings {
 
 export const DEFAULT_SORT_ORDER: SortOrder = "newest";
 
-export function parseSubscriptionSettings(
-  raw: unknown,
-): Required<
-  Pick<
-    SubscriptionSettings,
-    "fullContent" | "autoReadDays" | "sortOrder" | "defaultUnreadOnly"
-  >
-> {
+export function parseSubscriptionSettings(raw: unknown): {
+  fullContent: boolean;
+  // null = no per-feed override; the global default applies.
+  autoReadDays: number | null;
+  sortOrder: SortOrder;
+  defaultUnreadOnly: boolean;
+} {
   const s = (raw ?? {}) as SubscriptionSettings;
   return {
     fullContent: s.fullContent === true,
@@ -45,7 +44,10 @@ export function buildSubscriptionSettings(
     defaultUnreadOnly: boolean;
   },
 ): SubscriptionSettings {
-  const next: SubscriptionSettings = { ...current, fullContent: patch.fullContent };
+  const next: SubscriptionSettings = {
+    ...current,
+    fullContent: patch.fullContent,
+  };
 
   if (patch.autoReadDays) next.autoReadDays = patch.autoReadDays;
   else delete next.autoReadDays;
