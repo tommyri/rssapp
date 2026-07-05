@@ -32,6 +32,7 @@ import {
 import { SaveLinkForm } from "@/components/save-link-form";
 import { Button } from "@/components/ui/button";
 import { relativeTime } from "@/lib/format";
+import { shouldIgnoreKeyboard } from "@/lib/keyboard";
 import type { ReaderItem } from "@/lib/reader";
 
 const SCROLL_MARK_KEY = "rssapp:markReadOnScroll";
@@ -98,6 +99,13 @@ export function ArticleList({
   const pendingScrollIds = useRef<Set<number>>(new Set());
   const flushTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const rowRefs = useRef<Map<Element, number>>(new Map());
+  const itemRowRefs = useRef<Map<string, HTMLLIElement>>(new Map());
+  const itemsRef = useRef(items);
+  itemsRef.current = items;
+  const expandedIdRef = useRef(expandedId);
+  expandedIdRef.current = expandedId;
+  const loadingContentRef = useRef(loadingContent);
+  loadingContentRef.current = loadingContent;
 
   useEffect(() => {
     setScrollMark(localStorage.getItem(SCROLL_MARK_KEY) !== "off");
@@ -174,6 +182,8 @@ export function ArticleList({
         : setItemReadAction(item.id, read);
     void call.then(() => router.refresh());
   }
+  const persistReadRef = useRef(persistRead);
+  persistReadRef.current = persistRead;
 
   function toggleExpanded(item: ReaderItem) {
     const isOpen = expandedId === keyOf(item);
@@ -284,6 +294,172 @@ export function ArticleList({
     localStorage.setItem(SCROLL_MARK_KEY, next ? "on" : "off");
   }
 
+  const openItem = useCallback(
+    (item: ReaderItem) => {
+      setExpandedId(keyOf(item));
+      itemRowRefs.current
+        .get(keyOf(item))
+        ?.scrollIntoView({ block: "nearest" });
+      if (!item.read) {
+        if (item.kind === "item") manuallyUnread.current.delete(item.id);
+        setEntryState([keyOf(item)], { read: true });
+        persistReadRef.current(item, true);
+      }
+    },
+    [setEntryState],
+  );
+
+  const moveBy = useCallback(
+    (delta: number) => {
+      const list = itemsRef.current;
+      if (list.length === 0) return;
+      let idx = list.findIndex((it) => keyOf(it) === expandedIdRef.current);
+      if (idx < 0) idx = delta > 0 ? -1 : list.length;
+      const next = Math.max(0, Math.min(list.length - 1, idx + delta));
+      openItem(list[next]);
+    },
+    [openItem],
+  );
+
+  const smartAdvance = useCallback(() => {
+    if (expandedIdRef.current) {
+      const remaining =
+        document.documentElement.scrollHeight -
+        window.scrollY -
+        window.innerHeight;
+      if (remaining > 48) {
+        window.scrollBy({ top: window.innerHeight * 0.85, behavior: "smooth" });
+        return;
+      }
+    }
+    const list = itemsRef.current;
+    const idx = list.findIndex((it) => keyOf(it) === expandedIdRef.current);
+    for (let i = idx + 1; i < list.length; i++) {
+      if (!list[i].read) {
+        openItem(list[i]);
+        return;
+      }
+    }
+    if (idx < list.length - 1) openItem(list[idx + 1]);
+  }, [openItem]);
+
+  async function markOlderThanCurrent() {
+    const item = itemsRef.current.find(
+      (it) => keyOf(it) === expandedIdRef.current,
+    );
+    if (!item || isSearch || isArchiveView || item.kind !== "item") return;
+    const { marked } = await markAllReadAction(
+      view,
+      null,
+      item.sortTs.toISOString(),
+    );
+    const cutoff = item.sortTs.getTime();
+    setItems((prev) =>
+      prev.map((it) =>
+        it.kind === "item" && new Date(it.sortTs).getTime() < cutoff && !it.read
+          ? { ...it, read: true }
+          : it,
+      ),
+    );
+    setStatusMsg(`Marked ${marked} read.`);
+    router.refresh();
+  }
+
+  const keyboardHandlers = useRef({
+    toggleRead,
+    toggleStarred,
+    loadFullContent,
+    markAll,
+    markOlderThanCurrent,
+  });
+  keyboardHandlers.current = {
+    toggleRead,
+    toggleStarred,
+    loadFullContent,
+    markAll,
+    markOlderThanCurrent,
+  };
+
+  // Google Reader keyboard canon (design-ux.md) — article-scoped bindings.
+  useEffect(() => {
+    function currentItem(): ReaderItem | null {
+      return (
+        itemsRef.current.find((it) => keyOf(it) === expandedIdRef.current) ??
+        null
+      );
+    }
+
+    function onKeyDown(e: KeyboardEvent) {
+      if (shouldIgnoreKeyboard(e.target)) return;
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      if (itemsRef.current.length === 0) return;
+
+      const h = keyboardHandlers.current;
+      const key = e.key;
+      const item = currentItem();
+
+      if (e.shiftKey && key.toLowerCase() === "a") {
+        if (isSearch || isArchiveView) return;
+        e.preventDefault();
+        void h.markAll(null);
+        return;
+      }
+
+      switch (key) {
+        case "j":
+          e.preventDefault();
+          moveBy(1);
+          return;
+        case "k":
+          e.preventDefault();
+          moveBy(-1);
+          return;
+        case " ":
+          e.preventDefault();
+          smartAdvance();
+          return;
+        case "m":
+          if (!item) return;
+          e.preventDefault();
+          h.toggleRead(item);
+          return;
+        case "s":
+          if (!item || item.kind !== "item") return;
+          e.preventDefault();
+          h.toggleStarred(item);
+          return;
+        case "v":
+          if (!item?.url) return;
+          e.preventDefault();
+          window.open(item.url, "_blank", "noopener,noreferrer");
+          return;
+        case "c":
+          if (
+            !item ||
+            item.kind !== "item" ||
+            item.fullContentHtml ||
+            !item.url ||
+            loadingContentRef.current.has(item.id)
+          ) {
+            return;
+          }
+          e.preventDefault();
+          void h.loadFullContent(item);
+          return;
+        case "o":
+          if (isSearch || isArchiveView) return;
+          e.preventDefault();
+          void h.markOlderThanCurrent();
+          return;
+        default:
+          return;
+      }
+    }
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [isArchiveView, isSearch, moveBy, smartAdvance]);
+
   return (
     <div>
       {/* View header */}
@@ -373,6 +549,8 @@ export function ArticleList({
               <li
                 key={key}
                 ref={(el) => {
+                  if (el) itemRowRefs.current.set(key, el);
+                  else itemRowRefs.current.delete(key);
                   if (item.kind === "item") registerRow(el, item.id);
                 }}
                 className={`row-enter border-b border-border/60 ${isOpen ? "border-border" : ""}`}

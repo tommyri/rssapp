@@ -28,7 +28,7 @@ Sorting: newest-first (the shipped default). Oldest-first as a per-feed option (
 - **System font stack by default** — Feedbin deliberately moved off font-CDNs for privacy; we get the same result for free. Text-size and font choice can come later
 - Sanitized article HTML; images constrained to column width; **full-content extraction** via a "Load full content" button in the expanded article, plus a per-feed "always load full content" default that extracts at ingest (the UX consensus across Miniflux `d`, Feedbin `c`, NNW Reader View)
 - **Open original** is always one tap away (a link in the expanded article)
-- The keyboard equivalents — `space` smart-advance, `v` open original, `c` full-content — are part of the deferred keyboard canon (see below), not yet bound
+- **Keyboard shortcuts** (shipped July 2026): the Google Reader canon — `j`/`k`, `space`, `m`, `s`, `v`, `c`, bulk-read keys, `g`-chords, `/`, `?` (full keymap below)
 
 ## Read later & saved links
 
@@ -43,14 +43,14 @@ Sorting: newest-first (the shipped default). Oldest-first as a per-feed option (
 Philosophy: we're building for "inbox people" (counts, j/k, mark-all-read) but the research on unread anxiety is real — so ship the count, and ship every escape hatch:
 
 - **Cap displayed counts at "1k+"** (shipped) — Feedly's vague number is documented as less stressful than an exact one
-- **Mark-all-read** (shipped) with "older than a day/week" variants (Feedly). `o` = mark-older-than-current-article (NNW's catch-up primitive) waits on the keyboard canon
+- **Mark-all-read** (shipped) with "older than a day/week" variants (Feedly). **`o`** = mark-older-than-current-article (NNW's catch-up primitive; shipped with keyboard shortcuts)
 - **Mark-read-on-scroll: on by default, toggle to disable** (shipped). It's praised Inoreader behavior and Tommy's habit — but it has articulate haters (birchtree.me), so it must never be unchangeable
 - **Auto-mark-read after N days** (shipped): global default of **30 days** (matching Feedly's silent behavior), overridable per feed. High-volume feeds shouldn't accumulate guilt
 - Rules/filters (v1) are the real overload answer — and per the Miniflux complaint ("regex-only"), the rules UI must be **keyword-first with regex as the advanced option**
 
-## Keyboard shortcuts (deferred to "later", July 2026): adopt the canon when built
+## Keyboard shortcuts *(shipped July 2026)*
 
-The Google Reader inheritance is non-negotiable muscle memory for anyone migrating from Feedbin/Inoreader/Feedly/NewsBlur:
+The Google Reader inheritance is non-negotiable muscle memory for anyone migrating from Feedbin/Inoreader/Feedly/NewsBlur. Press **`?`** in the reader for the overlay; bindings are ignored while focus is in a text field.
 
 | Key | Action |
 |---|---|

@@ -4,6 +4,7 @@ import { AddFeedForm } from "@/components/add-feed-form";
 import { ArticleList } from "@/components/article-list";
 import { FeedIcon } from "@/components/feed-icon";
 import { FeedMenu } from "@/components/feed-menu";
+import { ReaderGlobalKeyboard } from "@/components/reader-global-keyboard";
 import { RefreshButton } from "@/components/refresh-button";
 import { SearchForm } from "@/components/search-form";
 import { StarterFeeds } from "@/components/starter-feeds";
@@ -259,6 +260,7 @@ export default async function Home({
           )}
         </div>
       </main>
+      <ReaderGlobalKeyboard />
     </div>
   );
 }

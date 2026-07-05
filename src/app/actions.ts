@@ -230,13 +230,18 @@ export async function setItemReadLaterAction(
 export async function markAllReadAction(
   view: ClientView,
   olderThanDays: number | null,
+  olderThanIso?: string | null,
 ): Promise<{ marked: number }> {
   const parsedView = viewSchema.parse(view);
-  const days =
-    olderThanDays === null
-      ? null
-      : z.number().int().min(1).max(365).parse(olderThanDays);
-  const cutoff = days ? new Date(Date.now() - days * 86_400_000) : undefined;
+  let cutoff: Date | undefined;
+  if (olderThanIso) {
+    cutoff = z.coerce.date().parse(olderThanIso);
+  } else if (olderThanDays !== null) {
+    cutoff = new Date(
+      Date.now() -
+        z.number().int().min(1).max(365).parse(olderThanDays) * 86_400_000,
+    );
+  }
   const userId = await getCurrentUserId();
   const marked = await markAllRead(userId, parsedView, cutoff);
   return { marked };
