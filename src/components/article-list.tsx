@@ -212,6 +212,18 @@ export function ArticleList({
     persistRead(item, read);
   }
 
+  /**
+   * The expanded row's "Mark unread" button: marking unread means "come back
+   * to this later", so the article also collapses back to its unread-dot row.
+   * Only the button — the `m` key keeps Google Reader semantics (toggle
+   * without collapsing), which also preserves the j/k position.
+   */
+  function toggleReadFromActions(item: ReaderItem) {
+    const markingUnread = item.read;
+    toggleRead(item);
+    if (markingUnread && expandedId === keyOf(item)) setExpandedId(null);
+  }
+
   function toggleStarred(item: ReaderItem) {
     setEntryState([keyOf(item)], { starred: !item.starred });
     void setItemStarredAction(item.id, !item.starred).then(() =>
@@ -678,7 +690,9 @@ export function ArticleList({
                               Retry
                             </ActionButton>
                           ) : null}
-                          <ActionButton onClick={() => toggleRead(item)}>
+                          <ActionButton
+                            onClick={() => toggleReadFromActions(item)}
+                          >
                             {item.read ? (
                               <CircleIcon className="size-3.5" />
                             ) : (
@@ -718,7 +732,9 @@ export function ArticleList({
                             )}
                             {item.readLater ? "Saved" : "Read later"}
                           </ActionButton>
-                          <ActionButton onClick={() => toggleRead(item)}>
+                          <ActionButton
+                            onClick={() => toggleReadFromActions(item)}
+                          >
                             {item.read ? (
                               <CircleIcon className="size-3.5" />
                             ) : (
