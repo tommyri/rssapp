@@ -74,6 +74,20 @@ The Google Reader inheritance is non-negotiable muscle memory for anyone migrati
 - Add-feed accepts any site URL: autodiscovery via `<link rel="alternate">`, then probe common paths (`/feed`, `/rss.xml`, `/atom.xml`, `/index.xml`), JSON Feed included
 - Nobody praises a blank "no feeds yet" screen. Shipped: the empty state pairs OPML import with a small curated starter list of feeds to add in one click
 
+## Settings page *(categorized July 2026)*
+
+One scrollable page, four anchored categories — **Reading** (behavior), **Appearance**
+(presentation), **Subscriptions & data** (portability), **Account** (identity) — with a
+sticky jump rail on desktop and pills on mobile (plain anchors; scrollspy deliberately
+skipped until the page is long enough to lose your place). Considered and rejected:
+sub-pages per category (1–3 cards each — empty rooms at this size; the categories are
+named so sections can lift into `/settings/<id>` routes if the page doubles again) and
+tabs (hide content, break Cmd+F). Each category carries a scope tag — **Account** vs
+**This device** — since some settings live in Postgres and others in localStorage, and
+"will this follow me to my phone?" deserves a structural answer. The ⌘K palette jumps
+to each section (`Settings · Appearance` → `/settings#appearance`); the list lives once
+in `src/lib/settings-sections.ts`.
+
 ## Theming
 
 - Dark mode follows system, manual override (shipped; the Auto/Light/Dark picker lives in Settings); dark surfaces at `#121212–#1E1E1E`, not pure black (halation)

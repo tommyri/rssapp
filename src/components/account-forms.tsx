@@ -39,7 +39,7 @@ export function ChangeEmailForm({ currentEmail }: { currentEmail: string }) {
   const [state, formAction] = useActionState(changeEmailAction, initial);
   return (
     <form action={formAction} className="space-y-3 rounded-lg border p-4">
-      <h2 className="font-medium">Email</h2>
+      <h3 className="font-medium">Email</h3>
       <div className="space-y-2">
         <Label htmlFor="email">New email</Label>
         <Input
@@ -86,7 +86,7 @@ export function ReadingPrefsForm({
   const [collapse, setCollapse] = useState(collapseDuplicates);
   return (
     <form action={formAction} className="space-y-4 rounded-lg border p-4">
-      <h2 className="font-medium">Reading</h2>
+      <h3 className="font-medium">Unread management</h3>
       <div className="space-y-2">
         <Label htmlFor="autoReadDays">
           Auto-mark articles read after (days)
@@ -137,7 +137,7 @@ export function ChangePasswordForm() {
   const [state, formAction] = useActionState(changePasswordAction, initial);
   return (
     <form action={formAction} className="space-y-3 rounded-lg border p-4">
-      <h2 className="font-medium">Password</h2>
+      <h3 className="font-medium">Password</h3>
       <div className="space-y-2">
         <Label htmlFor="pw-current">Current password</Label>
         <Input

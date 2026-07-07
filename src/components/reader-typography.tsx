@@ -67,9 +67,9 @@ export function ReaderTypographyForm() {
   return (
     <section className="space-y-4 rounded-lg border p-4">
       <div className="space-y-1">
-        <h2 className="font-medium">Reading text</h2>
+        <h3 className="font-medium">Reading text</h3>
         <p className="text-xs text-muted-foreground">
-          How the article body reads when expanded. Saved on this device.
+          How the article body reads when expanded.
         </p>
       </div>
 

@@ -4,6 +4,7 @@ import {
 } from "@/components/command-palette";
 import { getOptionalUserId } from "@/lib/current-user";
 import { listFeeds } from "@/lib/reader";
+import { SETTINGS_SECTIONS } from "@/lib/settings-sections";
 
 /**
  * App-wide ⌘K palette, mounted from the root layout so it works on every page
@@ -36,6 +37,13 @@ export async function GlobalCommandPalette() {
     { kind: "page", label: "Manage feeds", href: "/feeds" },
     { kind: "page", label: "Rules", href: "/rules" },
     { kind: "page", label: "Settings", href: "/settings" },
+    ...SETTINGS_SECTIONS.map(
+      (s): PaletteTarget => ({
+        kind: "page",
+        label: `Settings · ${s.label}`,
+        href: `/settings#${s.id}`,
+      }),
+    ),
     ...folderEntries.map(
       ([id, name]): PaletteTarget => ({
         kind: "folder",
