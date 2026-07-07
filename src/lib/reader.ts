@@ -21,6 +21,10 @@ import {
 } from "@/lib/saved-pages";
 import type { SortOrder } from "@/lib/subscription-settings";
 
+// A healthy feed whose newest article is older than this is "silent" — the
+// site likely stopped publishing (or the feed moved). Surfaced on Manage feeds.
+export const SILENT_AFTER_DAYS = 90;
+
 export interface FeedSummary {
   feedId: number;
   title: string | null;
@@ -28,6 +32,8 @@ export interface FeedSummary {
   siteUrl: string | null;
   unread: number;
   lastError: string | null;
+  /** Fetching paused by the user (feed health); shown in the sidebar. */
+  paused: boolean;
   folderId: number | null;
   folderName: string | null;
   /* Raw values for the per-feed edit menu: */
@@ -55,6 +61,7 @@ export const listFeeds = cache(
         url: feeds.url,
         siteUrl: feeds.siteUrl,
         lastError: feeds.lastError,
+        paused: sql<boolean>`coalesce((${subscriptions.settings}->>'paused')::boolean, false)`,
         folderId: folders.id,
         folderName: folders.name,
         customTitle: subscriptions.customTitle,
@@ -104,8 +111,11 @@ export interface ManagedFeed {
   autoReadDays: number | null;
   sortOrder: SortOrder;
   defaultUnreadOnly: boolean;
+  paused: boolean;
   unread: number;
   itemCount: number;
+  /** Newest stored article's timestamp — the "has this feed gone silent?" signal. */
+  latestItemAt: Date | null;
   lastFetchedAt: Date | null;
   lastError: string | null;
   consecutiveFailures: number;
@@ -129,8 +139,13 @@ export async function listManagedFeeds(userId: number): Promise<ManagedFeed[]> {
       >`(${subscriptions.settings}->>'autoReadDays')::int`,
       sortOrder: sql<SortOrder>`case when ${subscriptions.settings}->>'sortOrder' = 'oldest' then 'oldest' else 'newest' end`,
       defaultUnreadOnly: sql<boolean>`coalesce((${subscriptions.settings}->>'defaultUnreadOnly')::boolean, true)`,
+      paused: sql<boolean>`coalesce((${subscriptions.settings}->>'paused')::boolean, false)`,
       unread: sql<number>`cast(count(${itemsTable.id}) filter (where ${itemStates.read} is not true and ${itemStates.muted} is not true) as int)`,
       itemCount: sql<number>`cast(count(${itemsTable.id}) as int)`,
+      latestItemAt:
+        sql<Date | null>`max(coalesce(${itemsTable.publishedAt}, ${itemsTable.createdAt}))`.mapWith(
+          (v) => (v ? new Date(v) : null),
+        ),
       lastFetchedAt: feeds.lastFetchedAt,
       lastError: feeds.lastError,
       consecutiveFailures: feeds.consecutiveFailures,

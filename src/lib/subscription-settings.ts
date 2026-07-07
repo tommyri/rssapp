@@ -11,6 +11,15 @@ export interface SubscriptionSettings {
    * Default / absent: unread-only, matching the global reader default.
    */
   defaultUnreadOnly?: boolean;
+  /**
+   * When `true`, stop fetching this feed for this user (feed health,
+   * docs/features.md v0.2). Per-subscription so it's multi-tenant correct: the
+   * scheduler polls a feed while at least one non-paused subscription wants it.
+   * Written by setSubscriptionPaused, not the Manage-feeds Save form —
+   * buildSubscriptionSettings passes unknown keys through, so a Save never
+   * clears a pause.
+   */
+  paused?: boolean;
 }
 
 export const DEFAULT_SORT_ORDER: SortOrder = "newest";
@@ -21,6 +30,7 @@ export function parseSubscriptionSettings(raw: unknown): {
   autoReadDays: number | null;
   sortOrder: SortOrder;
   defaultUnreadOnly: boolean;
+  paused: boolean;
 } {
   const s = (raw ?? {}) as SubscriptionSettings;
   return {
@@ -31,6 +41,7 @@ export function parseSubscriptionSettings(raw: unknown): {
         : null,
     sortOrder: s.sortOrder === "oldest" ? "oldest" : DEFAULT_SORT_ORDER,
     defaultUnreadOnly: s.defaultUnreadOnly !== false,
+    paused: s.paused === true,
   };
 }
 

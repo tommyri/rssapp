@@ -56,6 +56,10 @@ it. The poll "queue" is just the `feeds.next_fetch_at` column — no Redis/queue
 tick with `SCHEDULER_TICK_MS` (milliseconds); it runs only in the Node server, not during
 builds. It needs the long-running `npm run dev`/`npm start` server — not serverless.
 
+Feeds can be **paused** from the Manage feeds page (feed health): a paused feed keeps
+its articles but is skipped by the scheduler and refresh-all until resumed. The same
+page flags **quiet** feeds — fetching fine, but nothing new in 90+ days.
+
 ### Search
 
 Full-text search (Postgres FTS) across titles, authors, and article bodies — including

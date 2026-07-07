@@ -2,7 +2,11 @@
 
 import { revalidatePath } from "next/cache";
 import { getCurrentUserId } from "@/lib/current-user";
-import { unsubscribe, updateSubscription } from "@/lib/subscriptions";
+import {
+  setSubscriptionPaused,
+  unsubscribe,
+  updateSubscription,
+} from "@/lib/subscriptions";
 
 function feedIdFrom(formData: FormData): number | null {
   const id = Number(formData.get("feedId"));
@@ -34,6 +38,16 @@ export async function updateFeedAction(formData: FormData): Promise<void> {
     sortOrder,
     defaultUnreadOnly,
   });
+  revalidatePath("/feeds");
+  revalidatePath("/");
+}
+
+export async function setFeedPausedAction(formData: FormData): Promise<void> {
+  const feedId = feedIdFrom(formData);
+  if (feedId === null) return;
+
+  const userId = await getCurrentUserId();
+  await setSubscriptionPaused(userId, feedId, formData.get("paused") === "1");
   revalidatePath("/feeds");
   revalidatePath("/");
 }

@@ -1,12 +1,22 @@
-import { FolderIcon, TriangleAlertIcon } from "lucide-react";
+import {
+  FolderIcon,
+  MoonIcon,
+  PauseIcon,
+  PlayIcon,
+  TriangleAlertIcon,
+} from "lucide-react";
 import { BackLink } from "@/components/back-link";
 import { ConfirmButton } from "@/components/confirm-button";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { getCurrentUserId } from "@/lib/current-user";
 import { relativeTime } from "@/lib/format";
-import { listFolders, listManagedFeeds } from "@/lib/reader";
-import { unsubscribeAction, updateFeedAction } from "./actions";
+import { listFolders, listManagedFeeds, SILENT_AFTER_DAYS } from "@/lib/reader";
+import {
+  setFeedPausedAction,
+  unsubscribeAction,
+  updateFeedAction,
+} from "./actions";
 
 function fetchedLabel(date: Date | null): string {
   if (!date) return "never";
@@ -20,6 +30,15 @@ export default async function ManageFeedsPage() {
     listManagedFeeds(userId),
     listFolders(userId),
   ]);
+
+  // Silent = fetching fine, just nothing new in a long time (feed health):
+  // the site stopped publishing, or the feed moved and this URL is a husk.
+  const silentCutoff = Date.now() - SILENT_AFTER_DAYS * 86_400_000;
+  const isSilent = (feed: (typeof feeds)[number]) =>
+    !feed.paused &&
+    !feed.lastError &&
+    feed.latestItemAt !== null &&
+    feed.latestItemAt.getTime() < silentCutoff;
 
   return (
     <div className="mx-auto w-full max-w-3xl flex-1 px-4 py-6">
@@ -64,6 +83,19 @@ export default async function ManageFeedsPage() {
                   <span className="inline-flex items-center gap-1">
                     <FolderIcon className="size-3.5" />
                     {feed.folderName}
+                  </span>
+                ) : null}
+                {feed.paused ? (
+                  <span className="inline-flex items-center gap-1">
+                    <PauseIcon className="size-3.5" />
+                    paused — not fetching
+                  </span>
+                ) : null}
+                {isSilent(feed) && feed.latestItemAt ? (
+                  <span className="inline-flex items-center gap-1">
+                    <MoonIcon className="size-3.5" />
+                    quiet — last new article {relativeTime(feed.latestItemAt)}{" "}
+                    ago
                   </span>
                 ) : null}
                 {feed.lastError ? (
@@ -158,7 +190,26 @@ export default async function ManageFeedsPage() {
                   </Button>
                 </form>
 
-                <form action={unsubscribeAction} className="ml-auto">
+                {/* Pause keeps the feed and its articles but stops fetching —
+                    the gentler alternative to unsubscribing a broken feed. */}
+                <form action={setFeedPausedAction} className="ml-auto">
+                  <input type="hidden" name="feedId" value={feed.feedId} />
+                  <input
+                    type="hidden"
+                    name="paused"
+                    value={feed.paused ? "0" : "1"}
+                  />
+                  <Button type="submit" variant="outline" size="sm">
+                    {feed.paused ? (
+                      <PlayIcon className="size-3.5" />
+                    ) : (
+                      <PauseIcon className="size-3.5" />
+                    )}
+                    {feed.paused ? "Resume" : "Pause"}
+                  </Button>
+                </form>
+
+                <form action={unsubscribeAction}>
                   <input type="hidden" name="feedId" value={feed.feedId} />
                   <ConfirmButton
                     message={`Unsubscribe from “${feed.title ?? feed.url}”? Its stored articles will be removed.`}

@@ -80,6 +80,44 @@ export async function updateSubscription(
 }
 
 /**
+ * Pause or resume fetching a feed for this user (feed health). Targeted write:
+ * merges onto the existing settings so it never races the Save form's fields,
+ * and stores the key only while paused. Resuming marks the feed due so the
+ * scheduler picks it up on the next tick instead of waiting out its interval.
+ */
+export async function setSubscriptionPaused(
+  userId: number,
+  feedId: number,
+  paused: boolean,
+): Promise<void> {
+  const [row] = await db
+    .select({ settings: subscriptions.settings })
+    .from(subscriptions)
+    .where(
+      and(eq(subscriptions.userId, userId), eq(subscriptions.feedId, feedId)),
+    );
+  if (!row) return;
+
+  const settings: SubscriptionSettings = { ...row.settings };
+  if (paused) settings.paused = true;
+  else delete settings.paused;
+
+  await db
+    .update(subscriptions)
+    .set({ settings })
+    .where(
+      and(eq(subscriptions.userId, userId), eq(subscriptions.feedId, feedId)),
+    );
+
+  if (!paused) {
+    await db
+      .update(feeds)
+      .set({ nextFetchAt: new Date() })
+      .where(eq(feeds.id, feedId));
+  }
+}
+
+/**
  * Unsubscribe the user from a feed. If no one is subscribed anymore, delete the
  * global feed too (cascading its items/state/logs) so we stop polling it.
  */

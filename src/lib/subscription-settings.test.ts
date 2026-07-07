@@ -13,6 +13,7 @@ describe("parseSubscriptionSettings", () => {
       autoReadDays: null,
       sortOrder: "newest",
       defaultUnreadOnly: true,
+      paused: false,
     });
   });
 
@@ -23,12 +24,14 @@ describe("parseSubscriptionSettings", () => {
         autoReadDays: 14,
         sortOrder: "oldest",
         defaultUnreadOnly: false,
+        paused: true,
       }),
     ).toEqual({
       fullContent: true,
       autoReadDays: 14,
       sortOrder: "oldest",
       defaultUnreadOnly: false,
+      paused: true,
     });
   });
 });
@@ -45,6 +48,19 @@ describe("buildSubscriptionSettings", () => {
       },
     );
     expect(next).toEqual({ fullContent: true });
+  });
+
+  it("preserves a pause through a Save (only setSubscriptionPaused writes it)", () => {
+    const next = buildSubscriptionSettings(
+      { paused: true, autoReadDays: 7 },
+      {
+        fullContent: true,
+        autoReadDays: null,
+        sortOrder: "newest",
+        defaultUnreadOnly: true,
+      },
+    );
+    expect(next).toEqual({ paused: true, fullContent: true });
   });
 
   it("stores non-default sort and show-all preference", () => {

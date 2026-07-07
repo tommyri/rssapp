@@ -1,4 +1,9 @@
-import { BookmarkIcon, StarIcon, TriangleAlertIcon } from "lucide-react";
+import {
+  BookmarkIcon,
+  PauseIcon,
+  StarIcon,
+  TriangleAlertIcon,
+} from "lucide-react";
 import Link from "next/link";
 import { AddFeedForm } from "@/components/add-feed-form";
 import { ArticleList } from "@/components/article-list";
@@ -193,6 +198,7 @@ export default async function Home({
                   label={f.title ?? f.url}
                   count={f.unread}
                   error={f.lastError}
+                  paused={f.paused}
                   icon={<FeedIcon siteUrl={f.siteUrl} feedUrl={f.url} />}
                   menu={<FeedMenu feed={f} folderNames={folderNames} />}
                 />
@@ -215,6 +221,7 @@ export default async function Home({
                   label={f.title ?? f.url}
                   count={f.unread}
                   error={f.lastError}
+                  paused={f.paused}
                   icon={<FeedIcon siteUrl={f.siteUrl} feedUrl={f.url} />}
                   menu={<FeedMenu feed={f} folderNames={folderNames} />}
                 />
@@ -291,6 +298,7 @@ function FeedLink({
   label,
   count,
   error,
+  paused,
   icon,
   marker,
   menu,
@@ -300,6 +308,8 @@ function FeedLink({
   label: string;
   count: number;
   error?: string | null;
+  /** Fetching paused (feed health) — shown so a non-updating feed explains itself. */
+  paused?: boolean;
   icon?: React.ReactNode;
   marker?: React.ReactNode;
   menu?: React.ReactNode;
@@ -329,6 +339,14 @@ function FeedLink({
         {error ? (
           <span title={error} className="shrink-0 text-destructive">
             <TriangleAlertIcon className="size-3.5" />
+          </span>
+        ) : null}
+        {paused ? (
+          <span
+            title="Fetching paused — resume on the Manage feeds page"
+            className="shrink-0 text-muted-foreground"
+          >
+            <PauseIcon className="size-3.5" />
           </span>
         ) : null}
         <span className="min-w-0 flex-1 truncate">{label}</span>

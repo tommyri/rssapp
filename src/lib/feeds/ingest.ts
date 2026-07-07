@@ -410,6 +410,11 @@ export async function refreshFeed(feedId: number): Promise<RefreshResult> {
   }
 }
 
+// Feed-health pause (subscriptions.settings.paused): a paused subscription
+// doesn't want its feed fetched. Shared by the scheduler's due-query and the
+// manual refresh-all so the two can't disagree.
+const subscriptionNotPaused = sql`coalesce((${subscriptions.settings}->>'paused')::boolean, false) = false`;
+
 /** Refresh every feed the user subscribes to. Sequential for now (few feeds). */
 export async function refreshAllForSubscriber(
   userId: number,
@@ -417,7 +422,7 @@ export async function refreshAllForSubscriber(
   const subs = await db
     .select({ feedId: subscriptions.feedId })
     .from(subscriptions)
-    .where(eq(subscriptions.userId, userId));
+    .where(and(eq(subscriptions.userId, userId), subscriptionNotPaused));
 
   let itemsAdded = 0;
   for (const { feedId } of subs) {
@@ -470,7 +475,9 @@ export async function refreshDueFeeds(
   opts: RefreshDueOptions = {},
 ): Promise<RefreshDueSummary> {
   const { limit = 50, concurrency = 4 } = opts;
-  // Only poll feeds someone is subscribed to — never waste fetches on orphans.
+  // Only poll feeds someone actively wants: subscribed and not paused. A feed
+  // every subscriber has paused just sits with its next_fetch_at in the past
+  // until someone resumes it (resuming also marks it due — subscriptions.ts).
   const due = await db
     .select({ id: feeds.id })
     .from(feeds)
@@ -481,7 +488,9 @@ export async function refreshDueFeeds(
           db
             .select({ one: sql`1` })
             .from(subscriptions)
-            .where(eq(subscriptions.feedId, feeds.id)),
+            .where(
+              and(eq(subscriptions.feedId, feeds.id), subscriptionNotPaused),
+            ),
         ),
       ),
     )
