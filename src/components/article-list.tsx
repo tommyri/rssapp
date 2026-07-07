@@ -656,7 +656,7 @@ export function ArticleList({
                       </p>
                     ) : contentHtml ? (
                       <div
-                        className="article-content max-w-prose"
+                        className="article-content"
                         // Sanitized at ingest/extraction (src/lib/feeds/sanitize.ts).
                         // biome-ignore lint/security/noDangerouslySetInnerHtml: content is sanitized before storage
                         dangerouslySetInnerHTML={{ __html: contentHtml }}

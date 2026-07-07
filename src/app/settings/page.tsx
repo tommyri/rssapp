@@ -8,6 +8,7 @@ import {
 } from "@/components/account-forms";
 import { BackLink } from "@/components/back-link";
 import { OpmlControls } from "@/components/opml-controls";
+import { ReaderTypographyForm } from "@/components/reader-typography";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { db } from "@/db";
 import { users } from "@/db/schema";
@@ -58,6 +59,8 @@ export default async function SettingsPage() {
         </div>
         <ThemeToggle />
       </section>
+
+      <ReaderTypographyForm />
 
       <section className="space-y-3 rounded-lg border p-4">
         <div className="space-y-1">

@@ -155,11 +155,15 @@
   }
 }
 
-/* The reading canvas: sanitized feed/extracted HTML, set like print. */
+/* The reading canvas: sanitized feed/extracted HTML, set like print. The
+ * --reader-* custom properties are set by the typography controls (Settings →
+ * Reading text; src/components/reader-typography.tsx); the fallbacks here are
+ * the defaults, so the canvas is fully styled before that script runs. */
 .article-content {
-  font-family: var(--font-serif), Georgia, serif;
-  font-size: 1.0625rem;
+  font-family: var(--reader-font-family, var(--font-serif), Georgia, serif);
+  font-size: var(--reader-font-size, 1.0625rem);
   line-height: 1.75;
+  max-width: var(--reader-measure, 65ch);
   word-break: break-word;
   color: var(--foreground);
 }

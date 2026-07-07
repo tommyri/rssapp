@@ -62,19 +62,17 @@ Phased plan. Each phase should ship as a usable app — MVP alone should be good
 - **Mobile swipe gestures** — swipe a row to mark read or save (star / read-later); design-ux.md parks this as mobile polish, but it's core to one-handed mobile reading.
 
 ### Reading pane polish
-- **Reader typography controls** — text size, column width, and serif/sans toggle, remembered (design-ux.md parks these as "later"). Direct quality-of-reading lever.
+- **Reader typography controls** *(shipped July 2026)* — text size (small/medium/large), body font (serif/sans), and column width (narrow/normal/wide) for the expanded article, in Settings → Reading text with a live preview. Applied as `--reader-*` CSS custom properties that `.article-content` consumes (defaults = the previous fixed styling), persisted to localStorage per device (`src/lib/reader-typography.ts`, unit-tested). No pre-hydration script needed — the article body only renders after a click, so there's nothing to flash. Direct quality-of-reading lever.
 - **Estimated reading time** *(shipped July 2026)* — "5 min read" (the Medium convention: no "~", which doubled up punctuation after the separator dot, and "read" keeps it from scanning as a second timestamp) in the meta line on rows and in the expanded header, from the stored content's word count at ~225 wpm (`src/lib/reading-time.ts`), computed client-side from HTML the list already ships. Rounds up; suppressed for stub entries (<30 words) so truncated one-liners don't show a noisy "1 min read"; recomputes from full content once extracted. Tiny, proven scanning aid.
 - **In-article rendering polish** — lazy-load images, click-to-zoom (lightbox), code-block syntax highlighting, and click-to-load embeds (YouTube/tweets as light placeholders); all within the already-sanitized content.
 - **Distraction-free reading mode** — collapse the sidebar/chrome for a full-focus single column.
 - **Reading progress + resume** — a thin progress bar and remembered scroll position so long articles resume where you left off.
-- **Snooze / resurface** — dismiss an article now and have it come back later (tomorrow/weekend); pairs with Read later.
 - **Highlights & notes** (stretch) — highlight passages and jot notes on articles and saved pages; a natural companion to save-any-link.
 - **Density + "river" mode** (stretch) — compact/comfortable density and an optional single-column continuous reading mode (both "later" in design-ux.md).
 
 ### Navigation & power-user speed
 - **Command palette / quick switcher** *(shipped July 2026)* — `⌘K`/`Ctrl+K` opens a fuzzy-filtered jump list of every feed, folder, view, and app page; arrows + Enter to jump. Available on every page (mounted session-gated from the root layout — `GlobalCommandPalette`), not just the reader. Dependency-free: a pure subsequence matcher with word-start/run bonuses (`src/lib/fuzzy.ts`, unit-tested) over the existing dialog primitives, with matched characters highlighted. The chord works even while typing in a field (unlike the single-key canon, it can't collide). Multiplies the keyboard-shortcuts investment.
 - **Collapsible + drag-to-organize sidebar** — collapse folders and reorder feeds/folders by drag; the sidebar is static today.
-- **Infinite scroll + list virtualization** — auto-load on scroll instead of the "Load older" button, and virtualize the list so large unread counts stay smooth (currently paginated, not virtualized).
 
 ### Organization, rules & feed health
 - **Tags / labels** — arbitrary labels on items and saved pages, beyond one-level folders; a `tag` rule action is the natural tie-in.
@@ -95,6 +93,8 @@ Phased plan. Each phase should ship as a usable app — MVP alone should be good
 - Multi-user support (the schema is designed to allow this — see tech-stack.md)
 - Email newsletter → feed bridge (unique inbound address per "feed")
 - AI daily digest / article summaries
+- Snooze / resurface — dismiss an article now and have it resurface to the top of the unread list later (tomorrow/weekend). Deferred: it overlaps our own reading process, where a post is either put in Read later (keep) or read (done, shouldn't come back), so the snooze middle-ground earns little here. Design was scoped (nullable `item_states.snoozed_until`, passive query-time hiding, resurface by sorting on the snooze time) — revisit if the triage/overload pressure ever makes a "not now, ask me later" state worth it.
+- Infinite scroll + list virtualization — auto-load older articles on scroll instead of the "Load older" button, and virtualize the list for large unread counts. Deferred: we don't hit long unread lists in practice, and the explicit button is predictable and keyboard-friendly; virtualization also fights the inline-accordion expansion (variable row heights) and the scroll-mark IntersectionObserver. The one worthwhile slice, if it ever bites: auto-load the next page when *keyboard* nav (`j`/space) reaches the end of the loaded set, which currently stops dead at item 50.
 
 ## Explicitly out of scope
 
