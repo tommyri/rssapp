@@ -4,7 +4,10 @@ import {
 } from "@/components/command-palette";
 import { getOptionalUserId } from "@/lib/current-user";
 import { listFeeds } from "@/lib/reader";
-import { SETTINGS_SECTIONS } from "@/lib/settings-sections";
+import {
+  SETTINGS_SECTIONS,
+  settingsSectionHref,
+} from "@/lib/settings-sections";
 
 /**
  * App-wide ⌘K palette, mounted from the root layout so it works on every page
@@ -41,7 +44,7 @@ export async function GlobalCommandPalette() {
       (s): PaletteTarget => ({
         kind: "page",
         label: `Settings · ${s.label}`,
-        href: `/settings#${s.id}`,
+        href: settingsSectionHref(s.id),
       }),
     ),
     ...folderEntries.map(

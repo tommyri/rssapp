@@ -13,10 +13,16 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { db } from "@/db";
 import { users } from "@/db/schema";
 import { getCurrentUserId } from "@/lib/current-user";
-// Categorized settings (docs/design-ux.md): four anchored sections — behavior,
-// presentation, data, identity — with a jump rail on desktop and pills on
-// mobile. The ⌘K palette jumps to each anchor via the same shared list.
-import { SETTINGS_SECTIONS } from "@/lib/settings-sections";
+// Categorized settings (docs/design-ux.md): the rail/pills are a selector, not
+// a scroll shortcut — one category renders at a time, driven by ?section=, so
+// switching never moves the page. URL-addressable: refresh, back, and the ⌘K
+// palette all land on the right category.
+import {
+  parseSettingsSection,
+  SETTINGS_SECTIONS,
+  type SettingsSectionId,
+  settingsSectionHref,
+} from "@/lib/settings-sections";
 
 const escapeAttr = (s: string) =>
   s
@@ -25,7 +31,24 @@ const escapeAttr = (s: string) =>
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;");
 
-export default async function SettingsPage() {
+/** Does the setting follow the account (Postgres) or stay on this device? */
+const SECTION_SCOPE: Record<SettingsSectionId, "Account" | "This device"> = {
+  reading: "Account",
+  appearance: "This device",
+  data: "Account",
+  account: "Account",
+};
+
+export default async function SettingsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ section?: string }>;
+}) {
+  const params = await searchParams;
+  const active = parseSettingsSection(params.section);
+  const activeLabel =
+    SETTINGS_SECTIONS.find((s) => s.id === active)?.label ?? "Settings";
+
   const userId = await getCurrentUserId();
   const user = await db.query.users.findFirst({
     where: eq(users.id, userId),
@@ -40,6 +63,67 @@ export default async function SettingsPage() {
   const bookmarklet = `javascript:window.open('${origin}/save?url='+encodeURIComponent(location.href),'_blank');void 0`;
   const bookmarkletHtml = `<a href="${escapeAttr(bookmarklet)}" class="inline-flex cursor-grab items-center gap-1.5 rounded-md border border-border bg-accent/60 px-3 py-1.5 text-sm font-medium no-underline">Save to rssapp</a>`;
 
+  const sectionContent: Record<SettingsSectionId, React.ReactNode> = {
+    reading: (
+      <>
+        <ReadingPrefsForm
+          autoReadDays={user?.settings.autoReadDays ?? null}
+          collapseDuplicates={user?.settings.collapseDuplicates ?? true}
+        />
+
+        <section className="space-y-3 rounded-lg border p-4">
+          <div className="space-y-1">
+            <h3 className="font-medium">Save from anywhere</h3>
+            <p className="text-xs text-muted-foreground">
+              Drag this button to your bookmarks bar, then click it on any web
+              page to save it to your{" "}
+              <Link href="/?view=later" className="underline">
+                Read later
+              </Link>
+              . You can also paste a link into the field at the top of Read
+              later.
+            </p>
+          </div>
+          {/* Rendered as raw HTML so React doesn't scrub the javascript: URL;
+              the bookmarklet is app-built and static. */}
+          {/* biome-ignore lint/security/noDangerouslySetInnerHtml: static, app-built bookmarklet */}
+          <div dangerouslySetInnerHTML={{ __html: bookmarkletHtml }} />
+        </section>
+      </>
+    ),
+    appearance: (
+      <>
+        <section className="space-y-3 rounded-lg border p-4">
+          <div className="space-y-1">
+            <h3 className="font-medium">Theme</h3>
+            <p className="text-xs text-muted-foreground">
+              Choose light, dark, or follow your system.
+            </p>
+          </div>
+          <ThemeToggle />
+        </section>
+
+        <ReaderTypographyForm />
+      </>
+    ),
+    data: (
+      <section className="space-y-3 rounded-lg border p-4">
+        <h3 className="font-medium">OPML import & export</h3>
+        <p className="text-xs text-muted-foreground">
+          Move your subscriptions in or out as an OPML file — the format every
+          reader speaks.
+        </p>
+        <OpmlControls />
+      </section>
+    ),
+    account: (
+      <>
+        <ChangeEmailForm currentEmail={user?.email ?? ""} />
+        <ChangePasswordForm />
+      </>
+    ),
+  };
+
   return (
     <div className="mx-auto w-full max-w-3xl flex-1 px-4 py-6">
       <div className="flex items-center justify-between">
@@ -49,137 +133,66 @@ export default async function SettingsPage() {
         <BackLink />
       </div>
 
-      {/* Mobile: jump pills where the rail doesn't fit. */}
+      {/* Mobile: the selector as pills. */}
       <nav
         aria-label="Settings sections"
         className="mt-4 flex flex-wrap gap-1.5 md:hidden"
       >
         {SETTINGS_SECTIONS.map((s) => (
-          <a
+          <Link
             key={s.id}
-            href={`#${s.id}`}
-            className="rounded-full border border-border/70 px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:border-border hover:bg-accent/60 hover:text-foreground"
+            href={settingsSectionHref(s.id)}
+            scroll={false}
+            aria-current={s.id === active ? "page" : undefined}
+            className={`rounded-full border px-2.5 py-1 text-xs transition-colors ${
+              s.id === active
+                ? "border-primary bg-accent/60 text-foreground"
+                : "border-border/70 text-muted-foreground hover:border-border hover:bg-accent/60 hover:text-foreground"
+            }`}
           >
             {s.label}
-          </a>
+          </Link>
         ))}
       </nav>
 
       <div className="mt-6 flex gap-8">
-        {/* Desktop: sticky category rail. Plain anchors on purpose — no
-            scrollspy until the page is long enough to lose your place. */}
+        {/* Desktop: the selector as a rail. scroll={false} everywhere — picking
+            a category swaps the pane and must never move the page. */}
         <nav
           aria-label="Settings sections"
           className="hidden w-40 shrink-0 md:block"
         >
           <div className="sticky top-6 space-y-0.5 text-sm">
             {SETTINGS_SECTIONS.map((s) => (
-              <a
+              <Link
                 key={s.id}
-                href={`#${s.id}`}
-                className="block rounded-md px-2 py-1 text-muted-foreground transition-colors hover:bg-accent/60 hover:text-foreground"
+                href={settingsSectionHref(s.id)}
+                scroll={false}
+                aria-current={s.id === active ? "page" : undefined}
+                className={`block rounded-md px-2 py-1 transition-colors ${
+                  s.id === active
+                    ? "bg-accent font-medium text-foreground"
+                    : "text-muted-foreground hover:bg-accent/60 hover:text-foreground"
+                }`}
               >
                 {s.label}
-              </a>
+              </Link>
             ))}
           </div>
         </nav>
 
-        <div className="min-w-0 flex-1 space-y-10">
-          <SettingsSection id="reading" title="Reading" scope="Account">
-            <ReadingPrefsForm
-              autoReadDays={user?.settings.autoReadDays ?? null}
-              collapseDuplicates={user?.settings.collapseDuplicates ?? true}
-            />
-
-            <section className="space-y-3 rounded-lg border p-4">
-              <div className="space-y-1">
-                <h3 className="font-medium">Save from anywhere</h3>
-                <p className="text-xs text-muted-foreground">
-                  Drag this button to your bookmarks bar, then click it on any
-                  web page to save it to your{" "}
-                  <Link href="/?view=later" className="underline">
-                    Read later
-                  </Link>
-                  . You can also paste a link into the field at the top of Read
-                  later.
-                </p>
-              </div>
-              {/* Rendered as raw HTML so React doesn't scrub the javascript: URL;
-                  the bookmarklet is app-built and static. */}
-              {/* biome-ignore lint/security/noDangerouslySetInnerHtml: static, app-built bookmarklet */}
-              <div dangerouslySetInnerHTML={{ __html: bookmarkletHtml }} />
-            </section>
-          </SettingsSection>
-
-          <SettingsSection
-            id="appearance"
-            title="Appearance"
-            scope="This device"
-          >
-            <section className="space-y-3 rounded-lg border p-4">
-              <div className="space-y-1">
-                <h3 className="font-medium">Theme</h3>
-                <p className="text-xs text-muted-foreground">
-                  Choose light, dark, or follow your system.
-                </p>
-              </div>
-              <ThemeToggle />
-            </section>
-
-            <ReaderTypographyForm />
-          </SettingsSection>
-
-          <SettingsSection
-            id="data"
-            title="Subscriptions & data"
-            scope="Account"
-          >
-            <section className="space-y-3 rounded-lg border p-4">
-              <h3 className="font-medium">OPML import & export</h3>
-              <p className="text-xs text-muted-foreground">
-                Move your subscriptions in or out as an OPML file — the format
-                every reader speaks.
-              </p>
-              <OpmlControls />
-            </section>
-          </SettingsSection>
-
-          <SettingsSection id="account" title="Account" scope="Account">
-            <ChangeEmailForm currentEmail={user?.email ?? ""} />
-            <ChangePasswordForm />
-          </SettingsSection>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-baseline gap-2.5 pb-3">
+            <h2 className="font-serif text-lg font-bold tracking-tight">
+              {activeLabel}
+            </h2>
+            <span className="rounded-full border border-border/70 px-2 py-0.5 text-[10px] tracking-[0.08em] text-muted-foreground uppercase">
+              {SECTION_SCOPE[active]}
+            </span>
+          </div>
+          <div className="space-y-4">{sectionContent[active]}</div>
         </div>
       </div>
     </div>
-  );
-}
-
-/**
- * One settings category: a serif heading (matching the reader's view titles), a
- * scope tag answering "does this follow me to another device?", and its cards.
- * scroll-mt keeps the anchor target clear of the viewport edge when jumped to.
- */
-function SettingsSection({
-  id,
-  title,
-  scope,
-  children,
-}: {
-  id: string;
-  title: string;
-  scope: "Account" | "This device";
-  children: React.ReactNode;
-}) {
-  return (
-    <section id={id} className="scroll-mt-6">
-      <div className="flex items-baseline gap-2.5 pb-3">
-        <h2 className="font-serif text-lg font-bold tracking-tight">{title}</h2>
-        <span className="rounded-full border border-border/70 px-2 py-0.5 text-[10px] tracking-[0.08em] text-muted-foreground uppercase">
-          {scope}
-        </span>
-      </div>
-      <div className="space-y-4">{children}</div>
-    </section>
   );
 }

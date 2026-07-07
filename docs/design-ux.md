@@ -76,17 +76,20 @@ The Google Reader inheritance is non-negotiable muscle memory for anyone migrati
 
 ## Settings page *(categorized July 2026)*
 
-One scrollable page, four anchored categories — **Reading** (behavior), **Appearance**
-(presentation), **Subscriptions & data** (portability), **Account** (identity) — with a
-sticky jump rail on desktop and pills on mobile (plain anchors; scrollspy deliberately
-skipped until the page is long enough to lose your place). Considered and rejected:
-sub-pages per category (1–3 cards each — empty rooms at this size; the categories are
-named so sections can lift into `/settings/<id>` routes if the page doubles again) and
-tabs (hide content, break Cmd+F). Each category carries a scope tag — **Account** vs
-**This device** — since some settings live in Postgres and others in localStorage, and
-"will this follow me to my phone?" deserves a structural answer. The ⌘K palette jumps
-to each section (`Settings · Appearance` → `/settings#appearance`); the list lives once
-in `src/lib/settings-sections.ts`.
+Master-detail: a category rail (desktop) / pills (mobile) on the left, and **one
+category's settings** rendered at a time — **Reading** (behavior), **Appearance**
+(presentation), **Subscriptions & data** (portability), **Account** (identity). The
+selector is URL-driven (`/settings?section=appearance`, unknown values fall back to the
+first) so refresh, back-button, and the ⌘K palette (`Settings · Appearance`) all land
+on the right category; links pass `scroll={false}` so picking a category swaps the pane
+without ever moving the page. First shipped as anchor links that scrolled one long page —
+revised the same day: jumping the page under the click felt wrong; a rail reads as a
+selector, so it should select. Rejected: full sub-pages (1–3 cards each — routing
+ceremony for no gain; `?section=` gives the same addressability) and client-side tabs
+(state lost on refresh, invisible to the palette). Each category carries a scope tag —
+**Account** vs **This device** — since some settings live in Postgres and others in
+localStorage, and "will this follow me to my phone?" deserves a structural answer. The
+section list lives once in `src/lib/settings-sections.ts`.
 
 ## Theming
 
