@@ -29,6 +29,7 @@ import {
   setItemsReadAction,
   setSavedPageReadAction,
 } from "@/app/actions";
+import { ArticleContent } from "@/components/article-content";
 import { SaveLinkForm } from "@/components/save-link-form";
 import { Button } from "@/components/ui/button";
 import { alsoInLabel } from "@/lib/duplicates";
@@ -655,12 +656,7 @@ export function ArticleList({
                           "Couldn't fetch a readable copy of this page."}
                       </p>
                     ) : contentHtml ? (
-                      <div
-                        className="article-content"
-                        // Sanitized at ingest/extraction (src/lib/feeds/sanitize.ts).
-                        // biome-ignore lint/security/noDangerouslySetInnerHtml: content is sanitized before storage
-                        dangerouslySetInnerHTML={{ __html: contentHtml }}
-                      />
+                      <ArticleContent html={contentHtml} />
                     ) : (
                       <p className="text-sm text-muted-foreground italic">
                         No content in this feed entry.
