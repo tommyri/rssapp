@@ -82,7 +82,7 @@ Phased plan. Each phase should ship as a usable app — MVP alone should be good
 - **Feed health: silent & paused feeds** — surface feeds with no new items in N months, and let a feed be paused instead of retried forever (builds on `fetch_log` + `consecutive_failures`).
 
 ### Accounts & recovery
-- **Password reset path** — there's currently no self-serve reset; a forgotten password means editing the database directly. Ship an admin `npm run` reset command now, and email-based reset once outbound SMTP exists.
+- **Password reset path** — *admin command shipped July 2026*: `npm run reset-password [-- email]` (or `docker compose exec app node scripts/reset-password.mjs` against the production container) generates and prints a fresh password; with one account the email is optional. Plain Node on purpose so the same file runs in the standalone image; hash compatibility with the app is pinned by a unit test. Email-based reset still waits on outbound SMTP.
 
 ### Platform & sync (bigger bets)
 - **PWA + offline reading** — installable, pull-to-refresh, offline reading of already-fetched articles and saved pages. Pairs naturally with save-any-link.

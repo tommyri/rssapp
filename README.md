@@ -32,6 +32,15 @@ Set **`AUTH_SECRET`** in production (used to sign session JWTs). In dev it falls
 insecure constant so the app runs without config — generate a real one with
 `npx auth secret` before deploying.
 
+**Forgot the password?** There's no email-based reset (no outbound SMTP), so use the
+admin command — it generates a fresh password, prints it once, and you change it in
+Settings after logging in. With a single account the email argument is optional:
+
+```bash
+npm run reset-password                    # dev checkout
+docker compose exec app node scripts/reset-password.mjs   # production container
+```
+
 ### Database
 
 - Schema lives in `src/db/schema.ts`; the client in `src/db/index.ts`

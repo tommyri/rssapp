@@ -25,6 +25,8 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 # SQL migrations, applied at boot by src/instrumentation.ts.
 COPY --from=builder /app/drizzle ./drizzle
+# Admin scripts (password reset) — plain Node, run with `docker compose exec`.
+COPY --from=builder /app/scripts ./scripts
 
 USER nextjs
 EXPOSE 3000
