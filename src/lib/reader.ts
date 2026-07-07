@@ -103,6 +103,7 @@ export const listFeeds = cache(
 export interface ManagedFeed {
   feedId: number;
   url: string;
+  siteUrl: string | null;
   title: string | null;
   customTitle: string | null;
   feedTitle: string | null;
@@ -127,6 +128,7 @@ export async function listManagedFeeds(userId: number): Promise<ManagedFeed[]> {
     .select({
       feedId: feeds.id,
       url: feeds.url,
+      siteUrl: feeds.siteUrl,
       title: sql<
         string | null
       >`coalesce(${subscriptions.customTitle}, ${feeds.title})`,

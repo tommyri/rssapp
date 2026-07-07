@@ -74,6 +74,18 @@ The Google Reader inheritance is non-negotiable muscle memory for anyone migrati
 - Add-feed accepts any site URL: autodiscovery via `<link rel="alternate">`, then probe common paths (`/feed`, `/rss.xml`, `/atom.xml`, `/index.xml`), JSON Feed included
 - Nobody praises a blank "no feeds yet" screen. Shipped: the empty state pairs OPML import with a small curated starter list of feeds to add in one click
 
+## Manage feeds page *(decluttered July 2026)*
+
+Read by default, edit on demand: each feed is a compact two-line row — favicon + title
++ status badges (quiet / failing ×N / paused), then vitals (`4 unread of 212 · fetched
+12m ago`) with **non-default settings as chips** (`full content`, `oldest first`,
+`auto-read 14d`; a default-configured feed shows none) — grouped under the sidebar's
+folder headers. The edit form (and the feed URL, and Unsubscribe) disclose per row
+behind **Edit**; the always-open six-control form was the clutter. Unsubscribe lives
+inside the edit panel on purpose: rarest action, destructive, shouldn't sit on every
+row. Badges stay in-palette — quiet is a neutral outlined pill (informational), failing
+gets the destructive tint (action needed) — no amber; one accent is the system.
+
 ## Settings page *(categorized July 2026)*
 
 Master-detail: a category rail (desktop) / pills (mobile) on the left, and **one
