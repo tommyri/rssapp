@@ -8,14 +8,10 @@ import {
   ExternalLinkIcon,
   FileTextIcon,
   LinkIcon,
-  Maximize2Icon,
-  Minimize2Icon,
   RotateCwIcon,
   StarIcon,
   Trash2Icon,
-  XIcon,
 } from "lucide-react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
@@ -34,14 +30,18 @@ import {
   setSavedPageReadingProgressAction,
 } from "@/app/actions";
 import { ArticleContent } from "@/components/article-content";
+import { ArticleListHeader } from "@/components/article-list-header";
 import { SaveLinkForm } from "@/components/save-link-form";
 import { SwipeableRow } from "@/components/swipeable-row";
 import { Button } from "@/components/ui/button";
+import {
+  type ReaderKeyboardHandlers,
+  useReaderKeyboard,
+} from "@/components/use-reader-keyboard";
 import { useReadingProgress } from "@/components/use-reading-progress";
 import { alsoInLabel } from "@/lib/duplicates";
 import type { EmbedLoadingPreferences } from "@/lib/embed-loading";
 import { relativeTime } from "@/lib/format";
-import { shouldIgnoreKeyboard } from "@/lib/keyboard";
 import type { ReaderItem } from "@/lib/reader";
 import { readerFocusActive } from "@/lib/reader-focus";
 import {
@@ -427,7 +427,7 @@ export function ArticleList({
     router.refresh();
   }
 
-  const keyboardHandlers = useRef({
+  const keyboardHandlers = useRef<ReaderKeyboardHandlers>({
     toggleRead,
     toggleStarred,
     loadFullContent,
@@ -442,174 +442,38 @@ export function ArticleList({
     markOlderThanCurrent,
   };
 
-  // Google Reader keyboard canon (design-ux.md) — article-scoped bindings.
-  useEffect(() => {
-    function currentItem(): ReaderItem | null {
-      return (
-        itemsRef.current.find((it) => keyOf(it) === expandedIdRef.current) ??
-        null
-      );
-    }
-
-    function onKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape" && focusRequestedRef.current) {
-        e.preventDefault();
-        setFocusRequested(false);
-        return;
-      }
-      if (shouldIgnoreKeyboard(e.target)) return;
-      if (e.metaKey || e.ctrlKey || e.altKey) return;
-      if (itemsRef.current.length === 0) return;
-
-      const h = keyboardHandlers.current;
-      const key = e.key;
-      const item = currentItem();
-
-      if (e.shiftKey && key.toLowerCase() === "a") {
-        if (isSearch || isArchiveView) return;
-        e.preventDefault();
-        void h.markAll(null);
-        return;
-      }
-
-      switch (key) {
-        case "j":
-          e.preventDefault();
-          moveBy(1);
-          return;
-        case "k":
-          e.preventDefault();
-          moveBy(-1);
-          return;
-        case " ":
-          e.preventDefault();
-          smartAdvance();
-          return;
-        case "m":
-          if (!item) return;
-          e.preventDefault();
-          h.toggleRead(item);
-          return;
-        case "s":
-          if (!item || item.kind !== "item") return;
-          e.preventDefault();
-          h.toggleStarred(item);
-          return;
-        case "v":
-          if (!item?.url) return;
-          e.preventDefault();
-          window.open(item.url, "_blank", "noopener,noreferrer");
-          return;
-        case "c":
-          if (
-            !item ||
-            item.kind !== "item" ||
-            item.fullContentHtml ||
-            !item.url ||
-            loadingContentRef.current.has(item.id)
-          ) {
-            return;
-          }
-          e.preventDefault();
-          void h.loadFullContent(item);
-          return;
-        case "o":
-          if (isSearch || isArchiveView) return;
-          e.preventDefault();
-          void h.markOlderThanCurrent();
-          return;
-        default:
-          return;
-      }
-    }
-
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [isArchiveView, isSearch, moveBy, smartAdvance]);
+  useReaderKeyboard({
+    isArchiveView,
+    isSearch,
+    itemsRef,
+    expandedIdRef,
+    focusRequestedRef,
+    loadingContentRef,
+    handlersRef: keyboardHandlers,
+    setFocusRequested,
+    moveBy,
+    smartAdvance,
+    keyOf,
+  });
 
   return (
     <div>
-      {/* View header */}
-      <header className="sticky top-0 z-10 -mx-4 border-b border-border/60 bg-background/85 px-4 pt-6 pb-3 backdrop-blur-sm md:-mx-8 md:px-8">
-        <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-          <h2 className="font-serif text-2xl font-bold tracking-tight">
-            {title}
-          </h2>
-          {!isSearch && unreadCount > 0 ? (
-            <span className="text-sm text-muted-foreground tabular-nums">
-              {unreadCount > 1000 ? "1k+" : unreadCount} unread
-            </span>
-          ) : null}
-          {isSearch ? (
-            <Link
-              href="/"
-              className="inline-flex items-center gap-1.5 rounded-md border border-border/70 px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:border-border hover:bg-accent/60 hover:text-foreground"
-            >
-              <XIcon className="size-3.5" />
-              Clear search
-            </Link>
-          ) : null}
-        </div>
-        {!isSearch ? (
-          <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-muted-foreground">
-            {!isArchiveView ? (
-              <Link
-                href={toggleHref}
-                className="rounded-md border border-border/70 px-2.5 py-1 transition-colors hover:border-border hover:bg-accent/60 hover:text-foreground"
-              >
-                {showingAll ? "Unread only" : "Show read"}
-              </Link>
-            ) : null}
-            <label className="flex cursor-pointer items-center gap-1.5">
-              <input
-                type="checkbox"
-                checked={scrollMark}
-                onChange={toggleScrollMark}
-                className="accent-primary"
-              />
-              Mark read on scroll
-            </label>
-            {!isArchiveView ? (
-              <MarkAllControl onMark={markAll} statusMsg={statusMsg} />
-            ) : null}
-          </div>
-        ) : null}
-        {expandedItem ? (
-          <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
-            <div className="flex min-w-48 flex-1 items-center gap-2">
-              <span className="shrink-0 tabular-nums">
-                Reading {Math.round(readingProgress * 100)}%
-              </span>
-              <div
-                role="progressbar"
-                aria-label="Reading progress"
-                aria-valuemin={0}
-                aria-valuemax={100}
-                aria-valuenow={Math.round(readingProgress * 100)}
-                className="h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-muted"
-              >
-                <div
-                  className="h-full bg-primary transition-[width] duration-150"
-                  style={{ width: `${readingProgress * 100}%` }}
-                />
-              </div>
-            </div>
-            <button
-              type="button"
-              onClick={() => setFocusRequested((value) => !value)}
-              aria-pressed={focusMode}
-              className="inline-flex items-center gap-1.5 rounded-md border border-border/70 px-2 py-1 text-xs text-muted-foreground transition-colors hover:border-border hover:bg-accent/60 hover:text-foreground"
-            >
-              {focusMode ? (
-                <Minimize2Icon className="size-3.5" />
-              ) : (
-                <Maximize2Icon className="size-3.5" />
-              )}
-              {focusMode ? "Exit focus" : "Focus"}
-            </button>
-          </div>
-        ) : null}
-      </header>
+      <ArticleListHeader
+        title={title}
+        unreadCount={unreadCount}
+        isSearch={isSearch}
+        isArchiveView={isArchiveView}
+        toggleHref={toggleHref}
+        showingAll={showingAll}
+        scrollMark={scrollMark}
+        onToggleScrollMark={toggleScrollMark}
+        expanded={expandedItem !== null}
+        readingProgress={readingProgress}
+        focusMode={focusMode}
+        onToggleFocus={() => setFocusRequested((value) => !value)}
+        onMarkAll={markAll}
+        statusMessage={statusMsg}
+      />
 
       {view.readLater && !isSearch ? <SaveLinkForm /> : null}
 
@@ -919,44 +783,5 @@ function ActionButton({
     >
       {children}
     </button>
-  );
-}
-
-function MarkAllControl({
-  onMark,
-  statusMsg,
-}: {
-  onMark: (olderThanDays: number | null) => Promise<void>;
-  statusMsg: string;
-}) {
-  const [scope, setScope] = useState("all");
-  const [busy, setBusy] = useState(false);
-
-  async function run() {
-    setBusy(true);
-    try {
-      await onMark(scope === "all" ? null : Number(scope));
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  return (
-    <span className="ml-auto flex items-center gap-2">
-      {statusMsg ? <span>{statusMsg}</span> : null}
-      <select
-        value={scope}
-        onChange={(e) => setScope(e.target.value)}
-        aria-label="Mark all read scope"
-        className="h-7 rounded-md border border-input bg-transparent px-1.5 text-xs"
-      >
-        <option value="all">everything</option>
-        <option value="1">older than a day</option>
-        <option value="7">older than a week</option>
-      </select>
-      <Button variant="outline" size="sm" disabled={busy} onClick={run}>
-        {busy ? "Marking…" : "Mark all read"}
-      </Button>
-    </span>
   );
 }
