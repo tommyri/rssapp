@@ -2,6 +2,7 @@ export {
   applyRulesToNewItems,
   applyRuleToExistingItems,
   type IngestedItem,
+  previewRuleAgainstRecentItems,
   type RuleRow,
 } from "./apply";
 export {
@@ -16,6 +17,11 @@ export {
   ruleMatches,
   validatePattern,
 } from "./engine";
+export {
+  type RulePreviewCandidate,
+  type RulePreviewMatch,
+  rulePreviewMatches,
+} from "./preview";
 export {
   createRule,
   deleteRule,

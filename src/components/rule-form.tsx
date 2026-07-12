@@ -1,20 +1,30 @@
 "use client";
 
 import { useActionState } from "react";
-import { useFormStatus } from "react-dom";
-import { createRuleAction, type RuleActionState } from "@/app/rules/actions";
+import {
+  createRuleAction,
+  previewRuleAction,
+  type RuleActionState,
+  type RulePreviewState,
+} from "@/app/rules/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
 const initial: RuleActionState = { ok: true, message: "" };
+const initialPreview: RulePreviewState = { ok: true, message: "" };
 
 const selectClass =
   "border-input h-8 rounded-md border bg-transparent px-2 text-sm shadow-xs outline-none focus-visible:ring-2 focus-visible:ring-ring/50";
 
-function SubmitButton() {
-  const { pending } = useFormStatus();
+function SubmitButton({
+  pending,
+  disabled,
+}: {
+  pending: boolean;
+  disabled: boolean;
+}) {
   return (
-    <Button type="submit" size="sm" disabled={pending}>
+    <Button type="submit" size="sm" disabled={disabled}>
       {pending ? "Adding…" : "Add rule"}
     </Button>
   );
@@ -25,7 +35,14 @@ export function RuleForm({
 }: {
   feeds: { feedId: number; title: string }[];
 }) {
-  const [state, formAction] = useActionState(createRuleAction, initial);
+  const [state, formAction, createPending] = useActionState(
+    createRuleAction,
+    initial,
+  );
+  const [preview, previewAction, previewPending] = useActionState(
+    previewRuleAction,
+    initialPreview,
+  );
 
   return (
     <form action={formAction} className="space-y-3 rounded-lg border p-4">
@@ -77,7 +94,19 @@ export function RuleForm({
           <input type="checkbox" name="applyExisting" defaultChecked />
           Apply to existing articles
         </label>
-        <SubmitButton />
+        <Button
+          type="submit"
+          formAction={previewAction}
+          variant="outline"
+          size="sm"
+          disabled={createPending || previewPending}
+        >
+          {previewPending ? "Testing…" : "Test rule"}
+        </Button>
+        <SubmitButton
+          pending={createPending}
+          disabled={createPending || previewPending}
+        />
         {state.message ? (
           <span
             className={`text-sm ${state.ok ? "text-muted-foreground" : "text-destructive"}`}
@@ -86,6 +115,47 @@ export function RuleForm({
           </span>
         ) : null}
       </div>
+
+      {preview.message ? (
+        <section
+          aria-live="polite"
+          className={`space-y-2 rounded-md border p-3 text-sm ${preview.ok ? "border-border bg-muted/40" : "border-destructive/40 text-destructive"}`}
+        >
+          <p>
+            {preview.message}
+            {preview.ok && preview.action
+              ? ` The rule would ${
+                  preview.action === "mute"
+                    ? "mute matching articles"
+                    : preview.action === "mark_read"
+                      ? "mark matching articles read"
+                      : "star matching articles"
+                }.`
+              : ""}
+          </p>
+          {preview.ok && preview.matches && preview.matches.length > 0 ? (
+            <ul className="space-y-1.5 border-t border-border/60 pt-2 text-muted-foreground">
+              {preview.matches.slice(0, 8).map((match) => (
+                <li key={match.id} className="min-w-0">
+                  <span className="block truncate text-foreground">
+                    {match.title ?? "Untitled article"}
+                  </span>
+                  <span className="block truncate text-xs">
+                    {[match.feedTitle, match.author]
+                      .filter(Boolean)
+                      .join(" · ")}
+                  </span>
+                </li>
+              ))}
+              {preview.matches.length > 8 ? (
+                <li className="text-xs">
+                  And {preview.matches.length - 8} more.
+                </li>
+              ) : null}
+            </ul>
+          ) : null}
+        </section>
+      ) : null}
     </form>
   );
 }

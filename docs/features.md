@@ -76,7 +76,7 @@ Phased plan. Each phase should ship as a usable app — MVP alone should be good
 
 ### Organization, rules & feed health
 - **Tags / labels** — arbitrary labels on items and saved pages, beyond one-level folders; a `tag` rule action is the natural tie-in.
-- **Rules v2** — preview/test a rule before saving, a "notify" action, and richer apply-to-existing (builds on `src/lib/rules/engine.ts`).
+- **Rules v2** *(preview shipped July 2026)* — test an unsaved rule against a bounded recent sample, inspect matching articles and its resulting action before saving. Still open: a "notify" action and richer apply-to-existing (builds on `src/lib/rules/engine.ts`).
 - **Feed health: silent & paused feeds** *(shipped July 2026)* — Manage feeds flags **quiet** feeds ("last new article 5 months ago": fetches succeed but the newest stored article is older than 90 days — the site stopped publishing, or the feed moved and the URL is a husk) and adds **Pause/Resume**: pausing keeps the feed and its articles but stops fetching (the gentler alternative to unsubscribing a broken feed); paused feeds show a pause icon in the sidebar. Pause lives on `subscriptions.settings.paused` — per-subscription, so it's multi-tenant correct: the scheduler polls a feed while at least one non-paused subscription wants it, and manual refresh-all skips the user's paused feeds. Resuming marks the feed due so it fetches on the next tick. No migration needed; the Save form can't clobber a pause (pinned by a unit test).
 
 ### Accounts & recovery

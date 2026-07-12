@@ -1,6 +1,6 @@
-import { and, eq, isNull, or, sql } from "drizzle-orm";
+import { and, desc, eq, isNull, or, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { itemStates, items, rules, subscriptions } from "@/db/schema";
+import { feeds, itemStates, items, rules, subscriptions } from "@/db/schema";
 import {
   type ActionFlags,
   combineActions,
@@ -10,6 +10,13 @@ import {
   type RuleMatchType,
   ruleMatches,
 } from "./engine";
+import {
+  type RulePreviewCandidate,
+  type RulePreviewMatch,
+  rulePreviewMatches,
+} from "./preview";
+
+const RULE_PREVIEW_SAMPLE_SIZE = 50;
 
 export interface RuleRow {
   userId: number;
@@ -148,4 +155,37 @@ export async function applyRuleToExistingItems(
   const entries = evaluate([{ ...rule, userId }], candidates);
   await upsertFlags(entries);
   return entries.length;
+}
+
+/** Test a draft against a bounded, user-scoped recent sample without mutation. */
+export async function previewRuleAgainstRecentItems(
+  userId: number,
+  rule: Omit<RuleRow, "userId"> & { feedId: number | null },
+): Promise<{ sampleSize: number; matches: RulePreviewMatch[] }> {
+  const candidates = (await db
+    .select({
+      id: items.id,
+      title: items.title,
+      author: items.author,
+      contentHtml: items.contentHtml,
+      feedTitle: feeds.title,
+      publishedAt: items.publishedAt,
+    })
+    .from(items)
+    .innerJoin(
+      subscriptions,
+      and(
+        eq(subscriptions.feedId, items.feedId),
+        eq(subscriptions.userId, userId),
+      ),
+    )
+    .innerJoin(feeds, eq(feeds.id, items.feedId))
+    .where(rule.feedId ? eq(items.feedId, rule.feedId) : undefined)
+    .orderBy(desc(items.publishedAt), desc(items.id))
+    .limit(RULE_PREVIEW_SAMPLE_SIZE)) as RulePreviewCandidate[];
+
+  return {
+    sampleSize: candidates.length,
+    matches: rulePreviewMatches(rule, candidates),
+  };
 }
