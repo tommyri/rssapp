@@ -1,5 +1,9 @@
-const SHELL_CACHE = "rssapp-offline-shell-v2";
+const SHELL_CACHE = "rssapp-offline-shell-v3";
 const OFFLINE_PAGE = "/offline";
+const OFFLINE_DATABASE = "rssapp-offline-library";
+const OFFLINE_DATABASE_VERSION = 2;
+const MUTATION_STORE = "mutations";
+const BACKGROUND_SYNC_TAG = "rssapp-offline-mutations";
 
 async function cacheOfflineShell() {
   const cache = await caches.open(SHELL_CACHE);
@@ -47,6 +51,95 @@ self.addEventListener("activate", (event) => {
       )
       .then(() => self.clients.claim()),
   );
+});
+
+function requestResult(request) {
+  return new Promise((resolve, reject) => {
+    request.addEventListener("success", () => resolve(request.result));
+    request.addEventListener("error", () => reject(request.error));
+  });
+}
+
+function transactionDone(transaction) {
+  return new Promise((resolve, reject) => {
+    transaction.addEventListener("complete", resolve);
+    transaction.addEventListener("abort", () => reject(transaction.error));
+    transaction.addEventListener("error", () => reject(transaction.error));
+  });
+}
+
+function openOfflineDatabase() {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(OFFLINE_DATABASE, OFFLINE_DATABASE_VERSION);
+    request.addEventListener("upgradeneeded", () => {
+      if (!request.result.objectStoreNames.contains("articles")) {
+        request.result.createObjectStore("articles", { keyPath: "key" });
+      }
+      if (!request.result.objectStoreNames.contains(MUTATION_STORE)) {
+        request.result.createObjectStore(MUTATION_STORE, { keyPath: "key" });
+      }
+    });
+    request.addEventListener("success", () => resolve(request.result));
+    request.addEventListener("error", () => reject(request.error));
+  });
+}
+
+async function readQueuedMutations() {
+  const database = await openOfflineDatabase();
+  try {
+    const transaction = database.transaction(MUTATION_STORE, "readonly");
+    const records = await requestResult(
+      transaction.objectStore(MUTATION_STORE).getAll(),
+    );
+    await transactionDone(transaction);
+    return records.sort((a, b) => a.queuedAt.localeCompare(b.queuedAt));
+  } finally {
+    database.close();
+  }
+}
+
+async function deleteAppliedMutations(applied) {
+  if (!applied.length) return;
+  const acknowledged = new Map(applied.map(({ key, token }) => [key, token]));
+  const database = await openOfflineDatabase();
+  try {
+    const transaction = database.transaction(MUTATION_STORE, "readwrite");
+    const store = transaction.objectStore(MUTATION_STORE);
+    const current = await requestResult(store.getAll());
+    for (const mutation of current) {
+      if (acknowledged.get(mutation.key) === mutation.token) {
+        store.delete(mutation.key);
+      }
+    }
+    await transactionDone(transaction);
+  } finally {
+    database.close();
+  }
+}
+
+async function syncQueuedMutations() {
+  while (true) {
+    const mutations = (await readQueuedMutations()).slice(0, 100);
+    if (!mutations.length) return;
+
+    const response = await fetch("/api/offline/mutations", {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ mutations }),
+    });
+    if (!response.ok) throw new Error("Offline mutation sync failed.");
+    const result = await response.json();
+    if (!Array.isArray(result.applied) || result.applied.length === 0) return;
+    await deleteAppliedMutations(result.applied);
+    if (mutations.length < 100) return;
+  }
+}
+
+self.addEventListener("sync", (event) => {
+  if (event.tag === BACKGROUND_SYNC_TAG) {
+    event.waitUntil(syncQueuedMutations());
+  }
 });
 
 self.addEventListener("fetch", (event) => {
