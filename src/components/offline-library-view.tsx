@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
+import { downloadReadLaterForOfflineAction } from "@/app/actions";
 import { ArticleContent } from "@/components/article-content";
 import { Button } from "@/components/ui/button";
 import { normalizeEmbedLoadingPreferences } from "@/lib/embed-loading";
@@ -10,9 +11,19 @@ import {
   listOfflineArticles,
   type OfflineArticle,
   removeOfflineArticle,
+  saveOfflineArticles,
 } from "@/lib/offline-library";
+import {
+  type OfflineStatusTone,
+  offlineStatusClassName,
+} from "@/lib/offline-status";
 
 const offlineEmbedLoading = normalizeEmbedLoadingPreferences(undefined);
+
+interface OfflineStatus {
+  message: string;
+  tone: OfflineStatusTone;
+}
 
 export function OfflineLibraryView() {
   const [articles, setArticles] = useState<OfflineArticle[]>([]);
@@ -20,8 +31,9 @@ export function OfflineLibraryView() {
   const [expandedKey, setExpandedKey] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [online, setOnline] = useState(true);
-  const [message, setMessage] = useState("");
+  const [status, setStatus] = useState<OfflineStatus | null>(null);
   const [query, setQuery] = useState("");
+  const [downloading, startDownload] = useTransition();
 
   useEffect(() => {
     setOnline(navigator.onLine);
@@ -50,7 +62,10 @@ export function OfflineLibraryView() {
       })
       .catch(() => {
         if (!cancelled)
-          setMessage("Offline storage is unavailable in this browser.");
+          setStatus({
+            message: "Offline storage is unavailable in this browser.",
+            tone: "error",
+          });
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -80,8 +95,43 @@ export function OfflineLibraryView() {
       );
       if (expandedKey === article.key) setExpandedKey(null);
     } catch {
-      setMessage("Could not remove that offline copy.");
+      setStatus({
+        message: "Could not remove that offline copy.",
+        tone: "error",
+      });
     }
+  }
+
+  function downloadReadLater() {
+    if (ownerId === null) {
+      setStatus({
+        message: "Open the reader while online before downloading articles.",
+        tone: "error",
+      });
+      return;
+    }
+
+    setStatus(null);
+    startDownload(async () => {
+      try {
+        const downloaded = await downloadReadLaterForOfflineAction();
+        await saveOfflineArticles(downloaded);
+        setArticles(await listOfflineArticles(ownerId));
+        setStatus({
+          message:
+            downloaded.length === 0
+              ? "None of your Read later articles has readable content to save yet."
+              : `Saved ${downloaded.length} Read later article${downloaded.length === 1 ? "" : "s"} for offline reading.`,
+          tone: "success",
+        });
+      } catch {
+        setStatus({
+          message:
+            "Could not download your Read later articles for offline reading.",
+          tone: "error",
+        });
+      }
+    });
   }
 
   return (
@@ -107,10 +157,32 @@ export function OfflineLibraryView() {
         ) : null}
       </div>
 
-      {message ? (
-        <output className="mt-4 block text-sm text-destructive">
-          {message}
+      {status ? (
+        <output
+          className={`mt-4 block text-sm ${offlineStatusClassName(status.tone)}`}
+        >
+          {status.message}
         </output>
+      ) : null}
+
+      {ownerId !== null && online ? (
+        <section className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-muted/30 px-4 py-3">
+          <div>
+            <h2 className="text-sm font-medium">Download Read later</h2>
+            <p className="text-xs text-muted-foreground">
+              Save up to 50 readable articles from your current queue on this
+              device.
+            </p>
+          </div>
+          <Button
+            type="button"
+            size="sm"
+            onClick={downloadReadLater}
+            disabled={loading || downloading}
+          >
+            {downloading ? "Downloading…" : "Download Read later"}
+          </Button>
+        </section>
       ) : null}
 
       {loading ? (

@@ -1,5 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
-import { offlineArticleFromReaderItem } from "./offline-library";
+import {
+  offlineArticleFromReaderItem,
+  offlineArticlesFromReaderItems,
+} from "./offline-library";
 
 describe("offlineArticleFromReaderItem", () => {
   it("keeps only the safe reading payload under a user-scoped key", () => {
@@ -43,5 +46,52 @@ describe("offlineArticleFromReaderItem", () => {
     });
 
     vi.useRealTimers();
+  });
+});
+
+describe("offlineArticlesFromReaderItems", () => {
+  it("prefers extracted content and skips entries without a readable body", () => {
+    const items = [
+      {
+        kind: "item" as const,
+        id: 1,
+        title: "Extracted",
+        url: null,
+        author: null,
+        contentHtml: "<p>feed copy</p>",
+        fullContentHtml: "<p>full copy</p>",
+        publishedAt: null,
+        sortTs: new Date("2026-07-12T12:00:00.000Z"),
+        feedId: 1,
+        feedTitle: null,
+        read: false,
+        starred: false,
+        readLater: true,
+        readingProgress: null,
+      },
+      {
+        kind: "page" as const,
+        id: 2,
+        title: "Still extracting",
+        url: null,
+        author: null,
+        contentHtml: null,
+        fullContentHtml: null,
+        publishedAt: null,
+        sortTs: new Date("2026-07-12T11:00:00.000Z"),
+        feedId: 0,
+        feedTitle: null,
+        read: false,
+        starred: false,
+        readLater: true,
+        readingProgress: null,
+      },
+    ];
+
+    expect(offlineArticlesFromReaderItems(7, items)).toHaveLength(1);
+    expect(offlineArticlesFromReaderItems(7, items)[0]).toMatchObject({
+      key: "7:item:1",
+      contentHtml: "<p>full copy</p>",
+    });
   });
 });

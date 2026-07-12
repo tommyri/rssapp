@@ -19,6 +19,8 @@ export interface OfflineArticle {
   contentHtml: string;
 }
 
+export const OFFLINE_READ_LATER_DOWNLOAD_LIMIT = 50;
+
 export function offlineArticleFromReaderItem(
   userId: number,
   item: ReaderItem,
@@ -37,6 +39,24 @@ export function offlineArticleFromReaderItem(
     savedAt: new Date().toISOString(),
     contentHtml,
   };
+}
+
+/**
+ * Creates a deliberately bounded, text-only local copy of Read later. The
+ * full article takes precedence when it is already available; items without a
+ * readable body are omitted rather than pretending they can be read offline.
+ */
+export function offlineArticlesFromReaderItems(
+  userId: number,
+  items: ReaderItem[],
+  limit = OFFLINE_READ_LATER_DOWNLOAD_LIMIT,
+): OfflineArticle[] {
+  return items.slice(0, limit).flatMap((item) => {
+    const contentHtml = item.fullContentHtml ?? item.contentHtml;
+    return contentHtml
+      ? [offlineArticleFromReaderItem(userId, item, contentHtml)]
+      : [];
+  });
 }
 
 function requestResult<T>(request: IDBRequest<T>): Promise<T> {
@@ -74,10 +94,18 @@ function openOfflineLibrary(): Promise<IDBDatabase> {
 export async function saveOfflineArticle(
   article: OfflineArticle,
 ): Promise<void> {
+  await saveOfflineArticles([article]);
+}
+
+export async function saveOfflineArticles(
+  articles: OfflineArticle[],
+): Promise<void> {
+  if (articles.length === 0) return;
   const database = await openOfflineLibrary();
   try {
     const transaction = database.transaction(STORE_NAME, "readwrite");
-    transaction.objectStore(STORE_NAME).put(article);
+    const store = transaction.objectStore(STORE_NAME);
+    for (const article of articles) store.put(article);
     await transactionDone(transaction);
   } finally {
     database.close();

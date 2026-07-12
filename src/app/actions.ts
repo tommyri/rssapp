@@ -9,10 +9,16 @@ import {
   getOrExtractFullContent,
   refreshAllForSubscriber,
 } from "@/lib/feeds";
+import {
+  OFFLINE_READ_LATER_DOWNLOAD_LIMIT,
+  type OfflineArticle,
+  offlineArticlesFromReaderItems,
+} from "@/lib/offline-library";
 import { importOpmlForUser } from "@/lib/opml";
 import {
   type ItemsPage,
   listItems,
+  listReadLater,
   markAllRead,
   setItemRead,
   setItemReadingProgress,
@@ -306,4 +312,21 @@ export async function fetchItemsAction(
     cursor: parsedCursor,
     collapse: collapse === true,
   });
+}
+
+/**
+ * Returns a compact, user-scoped copy of the newest Read later entries for
+ * browser storage. This intentionally excludes images, embeds, and mutable
+ * reader state so an offline download remains bounded and safe to persist.
+ */
+export async function downloadReadLaterForOfflineAction(): Promise<
+  OfflineArticle[]
+> {
+  const userId = await getCurrentUserId();
+  const { items } = await listReadLater(userId);
+  return offlineArticlesFromReaderItems(
+    userId,
+    items,
+    OFFLINE_READ_LATER_DOWNLOAD_LIMIT,
+  );
 }
