@@ -10,6 +10,7 @@ import { ArticleList } from "@/components/article-list";
 import { FeedIcon } from "@/components/feed-icon";
 import { FeedMenu } from "@/components/feed-menu";
 import { MobileShell } from "@/components/mobile-shell";
+import { PullToRefresh } from "@/components/pull-to-refresh";
 import { PwaRegister } from "@/components/pwa-register";
 import { ReaderGlobalKeyboard } from "@/components/reader-global-keyboard";
 import { RefreshButton } from "@/components/refresh-button";
@@ -271,20 +272,25 @@ export default async function Home({
               <StarterFeeds feeds={STARTER_FEEDS} />
             </div>
           ) : (
-            <ArticleList
-              key={viewKey}
-              initialItems={page.items}
-              initialHasMore={page.hasMore}
-              view={view}
-              title={title}
-              toggleHref={toggleShowHref(params, activeFeed?.defaultUnreadOnly)}
-              showingAll={showingAll}
-              isSearch={isSearch}
-              unreadCount={unreadCount}
-              collapse={collapse}
-              embedLoading={embedLoading}
-              offlineUserId={userId}
-            />
+            <PullToRefresh>
+              <ArticleList
+                key={viewKey}
+                initialItems={page.items}
+                initialHasMore={page.hasMore}
+                view={view}
+                title={title}
+                toggleHref={toggleShowHref(
+                  params,
+                  activeFeed?.defaultUnreadOnly,
+                )}
+                showingAll={showingAll}
+                isSearch={isSearch}
+                unreadCount={unreadCount}
+                collapse={collapse}
+                embedLoading={embedLoading}
+                offlineUserId={userId}
+              />
+            </PullToRefresh>
           )}
         </div>
       </main>

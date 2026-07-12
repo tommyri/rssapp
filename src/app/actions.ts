@@ -87,6 +87,11 @@ export async function refreshAction(
   _prev: ActionState,
   _formData: FormData,
 ): Promise<ActionState> {
+  return refreshFeedsAction();
+}
+
+/** Shared by the toolbar and touch pull-to-refresh gesture. */
+export async function refreshFeedsAction(): Promise<ActionState> {
   try {
     const userId = await getCurrentUserId();
     const { feeds, itemsAdded } = await refreshAllForSubscriber(userId);
