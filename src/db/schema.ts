@@ -13,6 +13,7 @@ import {
   timestamp,
   uniqueIndex,
 } from "drizzle-orm/pg-core";
+import type { EmbedLoadingPreferences } from "@/lib/embed-loading";
 
 const tsvector = customType<{ data: string }>({
   dataType: () => "tsvector",
@@ -31,10 +32,11 @@ export const users = pgTable("users", {
   email: text("email").notNull().unique(),
   passwordHash: text("password_hash").notNull(),
   // Reader preferences; per-feed overrides live in subscriptions.settings.
-  settings: jsonb("settings")
-    .notNull()
-    .default({})
-    .$type<{ autoReadDays?: number; collapseDuplicates?: boolean }>(),
+  settings: jsonb("settings").notNull().default({}).$type<{
+    autoReadDays?: number;
+    collapseDuplicates?: boolean;
+    embedLoading?: EmbedLoadingPreferences;
+  }>(),
   createdAt: createdAt(),
 });
 

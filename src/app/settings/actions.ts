@@ -5,8 +5,12 @@ import { z } from "zod";
 import { db } from "@/db";
 import { users } from "@/db/schema";
 import { getCurrentUserId } from "@/lib/current-user";
+import {
+  EMBED_PROVIDERS,
+  type EmbedLoadingPreferences,
+  isEmbedLoadMode,
+} from "@/lib/embed-loading";
 import { hashPassword, verifyPassword } from "@/lib/password";
-import { DEFAULT_AUTO_READ_DAYS } from "@/lib/reading-prefs";
 
 export interface AccountActionState {
   ok: boolean;
@@ -60,22 +64,33 @@ export async function updateReadingPrefsAction(
   }
   // Unchecked checkboxes are omitted from FormData entirely.
   const collapseDuplicates = formData.get("collapseDuplicates") === "on";
+  const embedDefault = String(formData.get("embedDefault") ?? "");
+  if (!isEmbedLoadMode(embedDefault)) {
+    return { ok: false, message: "Choose how embeds should load." };
+  }
+  const embedProviders: EmbedLoadingPreferences["providers"] = {};
+  for (const provider of EMBED_PROVIDERS) {
+    const value = String(formData.get(`embedProvider-${provider}`) ?? "");
+    if (value === "inherit") continue;
+    if (!isEmbedLoadMode(value)) {
+      return { ok: false, message: "Choose a valid platform override." };
+    }
+    embedProviders[provider] = value;
+  }
 
   const userId = await getCurrentUserId();
   // Merge onto the existing settings so we never clobber another preference.
   const user = await db.query.users.findFirst({ where: eq(users.id, userId) });
-  const settings = { ...(user?.settings ?? {}), collapseDuplicates };
+  const settings = {
+    ...(user?.settings ?? {}),
+    collapseDuplicates,
+    embedLoading: { default: embedDefault, providers: embedProviders },
+  };
   if (days) settings.autoReadDays = days;
   else delete settings.autoReadDays;
   await db.update(users).set({ settings }).where(eq(users.id, userId));
 
-  const daysMsg = days
-    ? `Auto-mark read after ${days} day${days === 1 ? "" : "s"}.`
-    : `Auto-mark read after the ${DEFAULT_AUTO_READ_DAYS}-day default.`;
-  const dupMsg = collapseDuplicates
-    ? "Duplicate stories collapse into one."
-    : "Duplicate stories show separately.";
-  return { ok: true, message: `Saved. ${daysMsg} ${dupMsg}` };
+  return { ok: true, message: "Saved." };
 }
 
 export async function changePasswordAction(

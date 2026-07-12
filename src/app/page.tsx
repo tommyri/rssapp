@@ -18,6 +18,7 @@ import { getCurrentUserId } from "@/lib/current-user";
 import {
   type FeedSummary,
   getCollapseDuplicates,
+  getEmbedLoadingPreferences,
   listFeeds,
   listItems,
   listReadLater,
@@ -58,9 +59,10 @@ export default async function Home({
   const isSearch = query.length > 0;
 
   const userId = await getCurrentUserId();
-  const [feeds, collapse] = await Promise.all([
+  const [feeds, collapse, embedLoading] = await Promise.all([
     listFeeds(userId),
     getCollapseDuplicates(userId),
+    getEmbedLoadingPreferences(userId),
   ]);
   const activeFeed = feedId
     ? feeds.find((f) => f.feedId === feedId)
@@ -277,6 +279,7 @@ export default async function Home({
               isSearch={isSearch}
               unreadCount={unreadCount}
               collapse={collapse}
+              embedLoading={embedLoading}
             />
           )}
         </div>

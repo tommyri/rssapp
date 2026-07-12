@@ -212,6 +212,47 @@
   border-radius: calc(var(--radius) * 0.8);
   margin: 1em 0;
 }
+/* Third-party embeds are inert links until explicitly loaded in ArticleContent. */
+.article-content a[data-deferred-embed] {
+  display: flex;
+  min-height: 10rem;
+  align-items: center;
+  justify-content: center;
+  margin: 1em 0;
+  padding: 1rem;
+  border: 1px solid var(--border);
+  border-radius: calc(var(--radius) * 0.8);
+  background: var(--muted);
+  color: var(--foreground);
+  font-family: var(--font-sans), sans-serif;
+  font-size: 0.8em;
+  font-weight: 600;
+  text-decoration: none;
+}
+.article-content a[data-deferred-embed]:hover {
+  background: var(--accent);
+}
+.article-content .deferred-embed-frame {
+  position: relative;
+  aspect-ratio: var(--embed-aspect-ratio, 16 / 9);
+  width: 100%;
+  margin: 1em 0;
+  overflow: hidden;
+  border-radius: calc(var(--radius) * 0.8);
+  background: var(--muted);
+}
+.article-content .deferred-embed-frame[data-deferred-embed="tweet"] {
+  min-height: 34rem;
+}
+.article-content .deferred-embed-frame iframe {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+}
 .article-content ul,
 .article-content ol {
   padding-left: 1.4em;

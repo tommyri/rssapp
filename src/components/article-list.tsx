@@ -39,6 +39,7 @@ import { SwipeableRow } from "@/components/swipeable-row";
 import { Button } from "@/components/ui/button";
 import { useReadingProgress } from "@/components/use-reading-progress";
 import { alsoInLabel } from "@/lib/duplicates";
+import type { EmbedLoadingPreferences } from "@/lib/embed-loading";
 import { relativeTime } from "@/lib/format";
 import { shouldIgnoreKeyboard } from "@/lib/keyboard";
 import type { ReaderItem } from "@/lib/reader";
@@ -69,6 +70,7 @@ interface Props {
    * and marking a story read should clear its copies in other feeds too.
    */
   collapse?: boolean;
+  embedLoading: EmbedLoadingPreferences;
 }
 
 /** Composite key: ids are only unique within a kind (feed item vs saved page). */
@@ -97,6 +99,7 @@ export function ArticleList({
   isSearch = false,
   unreadCount = 0,
   collapse = false,
+  embedLoading,
 }: Props) {
   const router = useRouter();
   // Starred / Read later are archive views: no unread filter or mark-all.
@@ -772,7 +775,10 @@ export function ArticleList({
                       </p>
                     ) : contentHtml ? (
                       <div ref={articleRef}>
-                        <ArticleContent html={contentHtml} />
+                        <ArticleContent
+                          html={contentHtml}
+                          embedLoading={embedLoading}
+                        />
                       </div>
                     ) : (
                       <p className="text-sm text-muted-foreground italic">

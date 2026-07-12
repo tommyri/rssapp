@@ -11,6 +11,10 @@ import {
   users,
 } from "@/db/schema";
 import { otherFeedTitles } from "@/lib/duplicates";
+import {
+  type EmbedLoadingPreferences,
+  normalizeEmbedLoadingPreferences,
+} from "@/lib/embed-loading";
 import type { ExportEntry } from "@/lib/opml";
 import { DEFAULT_AUTO_READ_DAYS } from "@/lib/reading-prefs";
 import {
@@ -862,4 +866,14 @@ export async function getCollapseDuplicates(userId: number): Promise<boolean> {
     .from(users)
     .where(eq(users.id, userId));
   return rows[0]?.settings?.collapseDuplicates !== false;
+}
+
+export async function getEmbedLoadingPreferences(
+  userId: number,
+): Promise<EmbedLoadingPreferences> {
+  const rows = await db
+    .select({ settings: users.settings })
+    .from(users)
+    .where(eq(users.id, userId));
+  return normalizeEmbedLoadingPreferences(rows[0]?.settings?.embedLoading);
 }

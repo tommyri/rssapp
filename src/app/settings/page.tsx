@@ -13,6 +13,7 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { db } from "@/db";
 import { users } from "@/db/schema";
 import { getCurrentUserId } from "@/lib/current-user";
+import { normalizeEmbedLoadingPreferences } from "@/lib/embed-loading";
 // Categorized settings (docs/design-ux.md): the rail/pills are a selector, not
 // a scroll shortcut — one category renders at a time, driven by ?section=, so
 // switching never moves the page. URL-addressable: refresh, back, and the ⌘K
@@ -69,6 +70,9 @@ export default async function SettingsPage({
         <ReadingPrefsForm
           autoReadDays={user?.settings.autoReadDays ?? null}
           collapseDuplicates={user?.settings.collapseDuplicates ?? true}
+          embedLoading={normalizeEmbedLoadingPreferences(
+            user?.settings.embedLoading,
+          )}
         />
 
         <section className="space-y-3 rounded-lg border p-4">
