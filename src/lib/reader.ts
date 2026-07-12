@@ -204,6 +204,8 @@ export interface ReaderItem {
   read: boolean;
   starred: boolean;
   readLater: boolean;
+  /** Fraction through the readable article body; null when not resumable. */
+  readingProgress: number | null;
   /**
    * Set only in collapsed multi-feed views (duplicate filtering): how many
    * copies of this story the user's feeds carry, and the titles of the *other*
@@ -310,6 +312,7 @@ export async function listItems(
       read: sql<boolean>`coalesce(${itemStates.read}, false)`,
       starred: sql<boolean>`coalesce(${itemStates.starred}, false)`,
       readLater: sql<boolean>`coalesce(${itemStates.readLater}, false)`,
+      readingProgress: itemStates.readingProgress,
     })
     .from(itemsTable)
     .innerJoin(
@@ -390,6 +393,7 @@ async function listItemsCollapsed(
         sql<boolean>`bool_or(coalesce(${itemStates.readLater}, false)) over (partition by ${collapseKey})`.as(
           "group_read_later",
         ),
+      readingProgress: itemStates.readingProgress,
       dupCount:
         sql<number>`cast(count(*) over (partition by ${collapseKey}) as int)`.as(
           "dup_count",
@@ -442,6 +446,7 @@ async function listItemsCollapsed(
       read: grouped.groupRead,
       starred: grouped.groupStarred,
       readLater: grouped.groupReadLater,
+      readingProgress: grouped.readingProgress,
       dupCount: grouped.dupCount,
       dupFeedTitles: grouped.dupFeedTitles,
     })
@@ -492,6 +497,7 @@ export async function searchItems(
       read: sql<boolean>`coalesce(${itemStates.read}, false)`,
       starred: sql<boolean>`coalesce(${itemStates.starred}, false)`,
       readLater: sql<boolean>`coalesce(${itemStates.readLater}, false)`,
+      readingProgress: itemStates.readingProgress,
     })
     .from(itemsTable)
     .innerJoin(
@@ -544,6 +550,7 @@ function savedPageToItem(p: SavedPage): ReaderItem {
     read: p.read,
     starred: false,
     readLater: true,
+    readingProgress: p.readingProgress,
     pageStatus: p.status,
     pageError: p.error,
   };
@@ -825,6 +832,26 @@ export async function setItemRead(
     .onConflictDoUpdate({
       target: [itemStates.userId, itemStates.itemId],
       set: { read, readAt },
+    });
+}
+
+/** Store a resumable article position without changing its read/star state. */
+export async function setItemReadingProgress(
+  userId: number,
+  itemId: number,
+  readingProgress: number | null,
+): Promise<void> {
+  await db
+    .insert(itemStates)
+    .values({
+      userId,
+      itemId,
+      readingProgress,
+      readingProgressUpdatedAt: new Date(),
+    })
+    .onConflictDoUpdate({
+      target: [itemStates.userId, itemStates.itemId],
+      set: { readingProgress, readingProgressUpdatedAt: new Date() },
     });
 }
 

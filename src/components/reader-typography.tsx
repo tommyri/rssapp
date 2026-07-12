@@ -122,27 +122,29 @@ function Segmented<T extends string>({
 }) {
   return (
     <div className="space-y-1.5">
-      <span className="text-sm">{label}</span>
-      <div role="group" aria-label={label} className="flex gap-1.5">
-        {options.map((opt) => {
-          const selected = opt.value === value;
-          return (
-            <button
-              key={opt.value}
-              type="button"
-              aria-pressed={selected}
-              onClick={() => onChange(opt.value)}
-              className={`flex-1 rounded-md border px-3 py-1.5 text-sm transition-colors ${
-                selected
-                  ? "border-primary bg-accent/60 text-foreground"
-                  : "border-border/70 text-muted-foreground hover:border-border hover:bg-accent/40 hover:text-foreground"
-              }`}
-            >
-              {opt.label}
-            </button>
-          );
-        })}
-      </div>
+      <fieldset className="border-0 p-0">
+        <legend className="mb-1.5 text-sm">{label}</legend>
+        <div className="flex gap-1.5">
+          {options.map((opt) => {
+            const selected = opt.value === value;
+            return (
+              <button
+                key={opt.value}
+                type="button"
+                aria-pressed={selected}
+                onClick={() => onChange(opt.value)}
+                className={`flex-1 rounded-md border px-3 py-1.5 text-sm transition-colors ${
+                  selected
+                    ? "border-primary bg-accent/60 text-foreground"
+                    : "border-border/70 text-muted-foreground hover:border-border hover:bg-accent/40 hover:text-foreground"
+                }`}
+              >
+                {opt.label}
+              </button>
+            );
+          })}
+        </div>
+      </fieldset>
     </div>
   );
 }

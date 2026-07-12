@@ -256,7 +256,7 @@ export default async function Home({
       </MobileShell>
 
       {/* Content pane */}
-      <main className="min-w-0 flex-1 overflow-y-auto">
+      <main data-reader-scroll className="min-w-0 flex-1 overflow-y-auto">
         <div className="mx-auto w-full max-w-3xl px-4 pb-16 md:px-8">
           {feeds.length === 0 && !readLater && !isSearch ? (
             <div className="pt-10">

@@ -31,7 +31,7 @@ export function CommandPalette({ targets }: { targets: PaletteTarget[] }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState(0);
-  const listRef = useRef<HTMLUListElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
@@ -124,7 +124,7 @@ export function CommandPalette({ targets }: { targets: PaletteTarget[] }) {
           // ignores inputs (shouldIgnoreKeyboard), so typing here is safe.
           className="w-full border-b border-border/60 bg-transparent px-4 py-3 text-sm outline-none placeholder:text-muted-foreground"
         />
-        <ul
+        <div
           id="command-palette-results"
           ref={listRef}
           role="listbox"
@@ -132,15 +132,16 @@ export function CommandPalette({ targets }: { targets: PaletteTarget[] }) {
           className="max-h-[min(50vh,20rem)] overflow-y-auto p-1.5"
         >
           {results.length === 0 ? (
-            <li className="px-2.5 py-6 text-center text-sm text-muted-foreground italic">
+            <div className="px-2.5 py-6 text-center text-sm text-muted-foreground italic">
               No matches.
-            </li>
+            </div>
           ) : (
             results.map(({ target, indices }, index) => (
-              <li
+              <div
                 key={`${target.kind}:${target.href}`}
                 id={`palette-option-${index}`}
                 role="option"
+                tabIndex={-1}
                 aria-selected={index === clamped}
                 className={`flex cursor-pointer items-baseline gap-2 rounded-md px-2.5 py-1.5 text-sm ${
                   index === clamped ? "bg-accent text-accent-foreground" : ""
@@ -162,10 +163,10 @@ export function CommandPalette({ targets }: { targets: PaletteTarget[] }) {
                 <span className="shrink-0 text-xs text-muted-foreground/70">
                   {target.kind}
                 </span>
-              </li>
+              </div>
             ))
           )}
-        </ul>
+        </div>
       </DialogContent>
     </Dialog>
   );

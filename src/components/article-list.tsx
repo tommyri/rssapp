@@ -24,15 +24,18 @@ import {
   removeSavedPageAction,
   retrySavedPageAction,
   setItemReadAction,
+  setItemReadingProgressAction,
   setItemReadLaterAction,
   setItemStarredAction,
   setItemsReadAction,
   setSavedPageReadAction,
+  setSavedPageReadingProgressAction,
 } from "@/app/actions";
 import { ArticleContent } from "@/components/article-content";
 import { SaveLinkForm } from "@/components/save-link-form";
 import { SwipeableRow } from "@/components/swipeable-row";
 import { Button } from "@/components/ui/button";
+import { useReadingProgress } from "@/components/use-reading-progress";
 import { alsoInLabel } from "@/lib/duplicates";
 import { relativeTime } from "@/lib/format";
 import { shouldIgnoreKeyboard } from "@/lib/keyboard";
@@ -132,6 +135,17 @@ export function ArticleList({
     },
     [],
   );
+
+  const expandedItem = items.find((item) => keyOf(item) === expandedId) ?? null;
+  const { articleRef, progress: readingProgress } = useReadingProgress({
+    item: expandedItem,
+    onPersist: (item, progress) => {
+      setEntryState([keyOf(item)], { readingProgress: progress });
+      return item.kind === "page"
+        ? setSavedPageReadingProgressAction(item.id, progress)
+        : setItemReadingProgressAction(item.id, progress);
+    },
+  });
 
   const flushScrollMarks = useCallback(() => {
     const ids = [...pendingScrollIds.current];
@@ -530,6 +544,26 @@ export function ArticleList({
             ) : null}
           </div>
         ) : null}
+        {expandedItem ? (
+          <div className="mt-3 flex items-center gap-2 text-[11px] text-muted-foreground">
+            <span className="shrink-0 tabular-nums">
+              Reading {Math.round(readingProgress * 100)}%
+            </span>
+            <div
+              role="progressbar"
+              aria-label="Reading progress"
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-valuenow={Math.round(readingProgress * 100)}
+              className="h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-muted"
+            >
+              <div
+                className="h-full bg-primary transition-[width] duration-150"
+                style={{ width: `${readingProgress * 100}%` }}
+              />
+            </div>
+          </div>
+        ) : null}
       </header>
 
       {view.readLater && !isSearch ? <SaveLinkForm /> : null}
@@ -695,7 +729,9 @@ export function ArticleList({
                           "Couldn't fetch a readable copy of this page."}
                       </p>
                     ) : contentHtml ? (
-                      <ArticleContent html={contentHtml} />
+                      <div ref={articleRef}>
+                        <ArticleContent html={contentHtml} />
+                      </div>
                     ) : (
                       <p className="text-sm text-muted-foreground italic">
                         No content in this feed entry.

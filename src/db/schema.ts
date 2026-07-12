@@ -8,6 +8,7 @@ import {
   jsonb,
   pgTable,
   primaryKey,
+  real,
   text,
   timestamp,
   uniqueIndex,
@@ -166,6 +167,11 @@ export const itemStates = pgTable(
     readAt: timestamp("read_at", { withTimezone: true }),
     starredAt: timestamp("starred_at", { withTimezone: true }),
     readLaterAt: timestamp("read_later_at", { withTimezone: true }),
+    // Null means no meaningful in-progress position (not started or finished).
+    readingProgress: real("reading_progress"),
+    readingProgressUpdatedAt: timestamp("reading_progress_updated_at", {
+      withTimezone: true,
+    }),
   },
   (t) => [
     primaryKey({ columns: [t.userId, t.itemId] }),
@@ -222,6 +228,11 @@ export const savedPages = pgTable(
     error: text("error"),
     read: boolean("read").notNull().default(false),
     readAt: timestamp("read_at", { withTimezone: true }),
+    // Saved pages are per-user, so their resume state can live on the row.
+    readingProgress: real("reading_progress"),
+    readingProgressUpdatedAt: timestamp("reading_progress_updated_at", {
+      withTimezone: true,
+    }),
     savedAt: timestamp("saved_at", { withTimezone: true })
       .notNull()
       .defaultNow(),

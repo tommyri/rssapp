@@ -15,6 +15,7 @@ import {
   listItems,
   markAllRead,
   setItemRead,
+  setItemReadingProgress,
   setItemReadLater,
   setItemStarred,
   setItemsRead,
@@ -25,6 +26,7 @@ import {
   retrySavedPage,
   saveLink,
   setSavedPageRead,
+  setSavedPageReadingProgress,
 } from "@/lib/saved-pages";
 
 const viewSchema = z.object({
@@ -160,6 +162,23 @@ export async function setSavedPageReadAction(
   await setSavedPageRead(userId, id, read === true);
 }
 
+export async function setSavedPageReadingProgressAction(
+  id: number,
+  progress: number | null,
+): Promise<void> {
+  if (!Number.isInteger(id)) return;
+  const parsed = z
+    .number()
+    .finite()
+    .min(0)
+    .max(1)
+    .nullable()
+    .safeParse(progress);
+  if (!parsed.success) return;
+  const userId = await getCurrentUserId();
+  await setSavedPageReadingProgress(userId, id, parsed.data);
+}
+
 export async function removeSavedPageAction(id: number): Promise<void> {
   if (!Number.isInteger(id)) return;
   const userId = await getCurrentUserId();
@@ -205,6 +224,23 @@ export async function setItemReadAction(
   await setItemRead(userId, itemId, read === true, {
     fanOut: collapse === true,
   });
+}
+
+export async function setItemReadingProgressAction(
+  itemId: number,
+  progress: number | null,
+): Promise<void> {
+  if (!Number.isInteger(itemId)) return;
+  const parsed = z
+    .number()
+    .finite()
+    .min(0)
+    .max(1)
+    .nullable()
+    .safeParse(progress);
+  if (!parsed.success) return;
+  const userId = await getCurrentUserId();
+  await setItemReadingProgress(userId, itemId, parsed.data);
 }
 
 export async function setItemsReadAction(

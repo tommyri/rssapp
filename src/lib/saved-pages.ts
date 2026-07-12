@@ -15,6 +15,7 @@ export interface SavedPage {
   status: "pending" | "ready" | "error";
   error: string | null;
   read: boolean;
+  readingProgress: number | null;
   savedAt: Date;
 }
 
@@ -115,6 +116,7 @@ const columns = {
   status: sql<"pending" | "ready" | "error">`${savedPages.status}`,
   error: savedPages.error,
   read: savedPages.read,
+  readingProgress: savedPages.readingProgress,
   savedAt: savedPages.savedAt,
 };
 
@@ -170,6 +172,18 @@ export async function setSavedPageRead(
   await db
     .update(savedPages)
     .set({ read, readAt: read ? new Date() : null })
+    .where(and(eq(savedPages.id, id), eq(savedPages.userId, userId)));
+}
+
+/** Store a resumable saved-page position (the row is already user-scoped). */
+export async function setSavedPageReadingProgress(
+  userId: number,
+  id: number,
+  readingProgress: number | null,
+): Promise<void> {
+  await db
+    .update(savedPages)
+    .set({ readingProgress, readingProgressUpdatedAt: new Date() })
     .where(and(eq(savedPages.id, id), eq(savedPages.userId, userId)));
 }
 
