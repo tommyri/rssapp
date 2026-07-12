@@ -141,7 +141,10 @@ export default async function Home({
     // App shell: fixed viewport height, chrome stays put, only the content pane
     // scrolls. On mobile the sidebar is a drawer (MobileShell) and a top bar sits
     // above the list; at md+ MobileShell renders the same nav as a static column.
-    <div className="flex h-dvh flex-col overflow-hidden md:flex-row">
+    <div
+      data-reader-shell
+      className="flex h-dvh flex-col overflow-hidden md:flex-row"
+    >
       <MobileShell>
         {/* Brand + refresh: desktop only — on mobile these live in the top bar. */}
         <div className="hidden items-center justify-between px-4 pt-5 pb-3 md:flex">

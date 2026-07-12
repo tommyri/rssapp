@@ -38,7 +38,10 @@ export function MobileShell({ children }: { children: ReactNode }) {
 
   return (
     <>
-      <header className="flex shrink-0 items-center gap-2 border-b border-sidebar-border bg-sidebar px-3 py-2 text-sidebar-foreground md:hidden">
+      <header
+        data-reader-mobile-chrome
+        className="flex shrink-0 items-center gap-2 border-b border-sidebar-border bg-sidebar px-3 py-2 text-sidebar-foreground md:hidden"
+      >
         <button
           type="button"
           onClick={() => setOpen(true)}
@@ -68,6 +71,7 @@ export function MobileShell({ children }: { children: ReactNode }) {
 
       {/* The sidebar: fixed slide-in drawer on mobile, static column at md+. */}
       <aside
+        data-reader-navigation
         aria-label="Feeds and navigation"
         className={cn(
           "z-50 flex w-[85%] max-w-xs shrink-0 flex-col overflow-y-auto border-r border-sidebar-border bg-sidebar text-sidebar-foreground",

@@ -155,6 +155,13 @@
   }
 }
 
+/* Distraction-free reader mode (ArticleList): keeps the reading column and
+ * its own scroll pane, while temporarily removing navigation chrome. */
+:root.reader-focus [data-reader-mobile-chrome],
+:root.reader-focus [data-reader-navigation] {
+  display: none;
+}
+
 /* The reading canvas: sanitized feed/extracted HTML, set like print. The
  * --reader-* custom properties are set by the typography controls (Settings →
  * Reading text; src/components/reader-typography.tsx); the fallbacks here are

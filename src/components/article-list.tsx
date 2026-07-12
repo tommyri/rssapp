@@ -8,6 +8,8 @@ import {
   ExternalLinkIcon,
   FileTextIcon,
   LinkIcon,
+  Maximize2Icon,
+  Minimize2Icon,
   RotateCwIcon,
   StarIcon,
   Trash2Icon,
@@ -40,6 +42,7 @@ import { alsoInLabel } from "@/lib/duplicates";
 import { relativeTime } from "@/lib/format";
 import { shouldIgnoreKeyboard } from "@/lib/keyboard";
 import type { ReaderItem } from "@/lib/reader";
+import { readerFocusActive } from "@/lib/reader-focus";
 import {
   getReaderScrollContainer,
   hasRemainingReaderScroll,
@@ -104,6 +107,7 @@ export function ArticleList({
   // Only one article is open at a time — opening another closes the previous.
   // Keyed by kind+id since ids collide across kinds in the Read later view.
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [focusRequested, setFocusRequested] = useState(false);
   const [scrollMark, setScrollMark] = useState(true);
   const [statusMsg, setStatusMsg] = useState("");
   const [fullContentErrors, setFullContentErrors] = useState<
@@ -121,6 +125,8 @@ export function ArticleList({
   itemsRef.current = items;
   const expandedIdRef = useRef(expandedId);
   expandedIdRef.current = expandedId;
+  const focusRequestedRef = useRef(focusRequested);
+  focusRequestedRef.current = focusRequested;
   const loadingContentRef = useRef(loadingContent);
   loadingContentRef.current = loadingContent;
 
@@ -141,6 +147,7 @@ export function ArticleList({
   );
 
   const expandedItem = items.find((item) => keyOf(item) === expandedId) ?? null;
+  const focusMode = readerFocusActive(focusRequested, expandedItem !== null);
   const { articleRef, progress: readingProgress } = useReadingProgress({
     item: expandedItem,
     onPersist: (item, progress) => {
@@ -150,6 +157,17 @@ export function ArticleList({
         : setItemReadingProgressAction(item.id, progress);
     },
   });
+
+  // Focus is transient reader state: closing an article or navigating away always
+  // restores the app chrome. It is applied post-hydration, like typography.
+  useEffect(() => {
+    document.documentElement.classList.toggle("reader-focus", focusMode);
+    return () => document.documentElement.classList.remove("reader-focus");
+  }, [focusMode]);
+
+  useEffect(() => {
+    if (expandedItem === null) setFocusRequested(false);
+  }, [expandedItem]);
 
   const flushScrollMarks = useCallback(() => {
     const ids = [...pendingScrollIds.current];
@@ -431,6 +449,11 @@ export function ArticleList({
     }
 
     function onKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape" && focusRequestedRef.current) {
+        e.preventDefault();
+        setFocusRequested(false);
+        return;
+      }
       if (shouldIgnoreKeyboard(e.target)) return;
       if (e.metaKey || e.ctrlKey || e.altKey) return;
       if (itemsRef.current.length === 0) return;
@@ -549,23 +572,38 @@ export function ArticleList({
           </div>
         ) : null}
         {expandedItem ? (
-          <div className="mt-3 flex items-center gap-2 text-[11px] text-muted-foreground">
-            <span className="shrink-0 tabular-nums">
-              Reading {Math.round(readingProgress * 100)}%
-            </span>
-            <div
-              role="progressbar"
-              aria-label="Reading progress"
-              aria-valuemin={0}
-              aria-valuemax={100}
-              aria-valuenow={Math.round(readingProgress * 100)}
-              className="h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-muted"
-            >
+          <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
+            <div className="flex min-w-48 flex-1 items-center gap-2">
+              <span className="shrink-0 tabular-nums">
+                Reading {Math.round(readingProgress * 100)}%
+              </span>
               <div
-                className="h-full bg-primary transition-[width] duration-150"
-                style={{ width: `${readingProgress * 100}%` }}
-              />
+                role="progressbar"
+                aria-label="Reading progress"
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-valuenow={Math.round(readingProgress * 100)}
+                className="h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-muted"
+              >
+                <div
+                  className="h-full bg-primary transition-[width] duration-150"
+                  style={{ width: `${readingProgress * 100}%` }}
+                />
+              </div>
             </div>
+            <button
+              type="button"
+              onClick={() => setFocusRequested((value) => !value)}
+              aria-pressed={focusMode}
+              className="inline-flex items-center gap-1.5 rounded-md border border-border/70 px-2 py-1 text-xs text-muted-foreground transition-colors hover:border-border hover:bg-accent/60 hover:text-foreground"
+            >
+              {focusMode ? (
+                <Minimize2Icon className="size-3.5" />
+              ) : (
+                <Maximize2Icon className="size-3.5" />
+              )}
+              {focusMode ? "Exit focus" : "Focus"}
+            </button>
           </div>
         ) : null}
       </header>
