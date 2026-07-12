@@ -40,6 +40,10 @@ import { alsoInLabel } from "@/lib/duplicates";
 import { relativeTime } from "@/lib/format";
 import { shouldIgnoreKeyboard } from "@/lib/keyboard";
 import type { ReaderItem } from "@/lib/reader";
+import {
+  getReaderScrollContainer,
+  hasRemainingReaderScroll,
+} from "@/lib/reader-scroll";
 import { readingTimeMinutes } from "@/lib/reading-time";
 
 const SCROLL_MARK_KEY = "rssapp:markReadOnScroll";
@@ -360,12 +364,12 @@ export function ArticleList({
 
   const smartAdvance = useCallback(() => {
     if (expandedIdRef.current) {
-      const remaining =
-        document.documentElement.scrollHeight -
-        window.scrollY -
-        window.innerHeight;
-      if (remaining > 48) {
-        window.scrollBy({ top: window.innerHeight * 0.85, behavior: "smooth" });
+      const scrollElement = getReaderScrollContainer();
+      if (hasRemainingReaderScroll(scrollElement)) {
+        scrollElement.scrollBy({
+          top: scrollElement.clientHeight * 0.85,
+          behavior: "smooth",
+        });
         return;
       }
     }

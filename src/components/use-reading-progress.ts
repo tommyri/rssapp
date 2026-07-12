@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { ReaderItem } from "@/lib/reader";
+import { getReaderScrollContainer } from "@/lib/reader-scroll";
 import {
   readingProgressAtScroll,
   resumableReadingProgress,
@@ -58,9 +59,7 @@ export function useReadingProgress({
     }
     const itemToPersist: ProgressItem = activeItem;
     const articleElement: HTMLDivElement = article;
-    const scrollElement =
-      articleElement.closest<HTMLElement>("[data-reader-scroll]") ??
-      document.documentElement;
+    const scrollElement = getReaderScrollContainer(articleElement);
 
     function geometry() {
       const articleRect = articleElement.getBoundingClientRect();
