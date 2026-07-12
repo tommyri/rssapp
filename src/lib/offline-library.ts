@@ -6,6 +6,8 @@ const DATABASE_VERSION = 1;
 const OFFLINE_OWNER_KEY = "rssapp:offline-owner";
 const OFFLINE_AUTO_DOWNLOAD_KEY = "rssapp:offline-read-later-auto-download";
 
+export type OfflineArticleSource = "manual" | "automatic";
+
 export interface OfflineArticle {
   key: string;
   userId: number;
@@ -18,6 +20,8 @@ export interface OfflineArticle {
   publishedAt: string | null;
   savedAt: string;
   contentHtml: string;
+  /** Missing on older records; treated as a manually preserved copy. */
+  source?: OfflineArticleSource;
 }
 
 export const OFFLINE_READ_LATER_DOWNLOAD_LIMIT = 50;
@@ -43,6 +47,7 @@ export function offlineArticleFromReaderItem(
   userId: number,
   item: ReaderItem,
   contentHtml: string,
+  source: OfflineArticleSource = "manual",
 ): OfflineArticle {
   return {
     key: `${userId}:${item.kind}:${item.id}`,
@@ -56,6 +61,7 @@ export function offlineArticleFromReaderItem(
     publishedAt: item.publishedAt?.toISOString() ?? null,
     savedAt: new Date().toISOString(),
     contentHtml,
+    source,
   };
 }
 
@@ -68,13 +74,54 @@ export function offlineArticlesFromReaderItems(
   userId: number,
   items: ReaderItem[],
   limit = OFFLINE_READ_LATER_DOWNLOAD_LIMIT,
+  source: OfflineArticleSource = "manual",
 ): OfflineArticle[] {
   return items.slice(0, limit).flatMap((item) => {
     const contentHtml = item.fullContentHtml ?? item.contentHtml;
     return contentHtml
-      ? [offlineArticleFromReaderItem(userId, item, contentHtml)]
+      ? [offlineArticleFromReaderItem(userId, item, contentHtml, source)]
       : [];
   });
+}
+
+export interface AutomaticOfflineReconciliationPlan {
+  articles: OfflineArticle[];
+  staleKeys: string[];
+}
+
+/**
+ * Replaces only the automatic portion of a user's library. A manual copy wins
+ * when it shares a key with an automatic candidate, including older records
+ * from before sources were tracked.
+ */
+export function automaticOfflineReconciliationPlan(
+  userId: number,
+  existing: OfflineArticle[],
+  incoming: OfflineArticle[],
+): AutomaticOfflineReconciliationPlan {
+  const existingByKey = new Map(
+    existing
+      .filter((article) => article.userId === userId)
+      .map((article) => [article.key, article]),
+  );
+  const incomingKeys = new Set(incoming.map((article) => article.key));
+
+  return {
+    articles: incoming.map((article) => {
+      const current = existingByKey.get(article.key);
+      return current?.source === "automatic"
+        ? { ...article, source: "automatic" }
+        : { ...article, source: "manual" };
+    }),
+    staleKeys: existing
+      .filter(
+        (article) =>
+          article.userId === userId &&
+          article.source === "automatic" &&
+          !incomingKeys.has(article.key),
+      )
+      .map((article) => article.key),
+  };
 }
 
 function requestResult<T>(request: IDBRequest<T>): Promise<T> {
@@ -125,6 +172,29 @@ export async function saveOfflineArticles(
     const store = transaction.objectStore(STORE_NAME);
     for (const article of articles) store.put(article);
     await transactionDone(transaction);
+  } finally {
+    database.close();
+  }
+}
+
+/**
+ * Atomically refreshes an automatic Read later set while retaining manually
+ * kept copies. It returns the number of obsolete automatic entries removed.
+ */
+export async function reconcileAutomaticOfflineArticles(
+  userId: number,
+  articles: OfflineArticle[],
+): Promise<number> {
+  const database = await openOfflineLibrary();
+  try {
+    const transaction = database.transaction(STORE_NAME, "readwrite");
+    const store = transaction.objectStore(STORE_NAME);
+    const existing = (await requestResult(store.getAll())) as OfflineArticle[];
+    const plan = automaticOfflineReconciliationPlan(userId, existing, articles);
+    for (const key of plan.staleKeys) store.delete(key);
+    for (const article of plan.articles) store.put(article);
+    await transactionDone(transaction);
+    return plan.staleKeys.length;
   } finally {
     database.close();
   }

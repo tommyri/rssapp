@@ -12,6 +12,7 @@ import {
 import {
   OFFLINE_READ_LATER_DOWNLOAD_LIMIT,
   type OfflineArticle,
+  type OfflineArticleSource,
   offlineArticlesFromReaderItems,
 } from "@/lib/offline-library";
 import { importOpmlForUser } from "@/lib/opml";
@@ -49,6 +50,7 @@ const offlineReadLaterDownloadLimitSchema = z.union([
   z.literal(50),
   z.literal(100),
 ]);
+const offlineArticleSourceSchema = z.enum(["manual", "automatic"]);
 
 export type ClientView = z.infer<typeof viewSchema>;
 
@@ -327,9 +329,16 @@ export async function fetchItemsAction(
  */
 export async function downloadReadLaterForOfflineAction(
   limit = OFFLINE_READ_LATER_DOWNLOAD_LIMIT,
+  source: OfflineArticleSource = "manual",
 ): Promise<OfflineArticle[]> {
   const parsedLimit = offlineReadLaterDownloadLimitSchema.parse(limit);
+  const parsedSource = offlineArticleSourceSchema.parse(source);
   const userId = await getCurrentUserId();
   const { items } = await listReadLater(userId);
-  return offlineArticlesFromReaderItems(userId, items, parsedLimit);
+  return offlineArticlesFromReaderItems(
+    userId,
+    items,
+    parsedLimit,
+    parsedSource,
+  );
 }

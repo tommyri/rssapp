@@ -1,9 +1,31 @@
 import { describe, expect, it, vi } from "vitest";
 import {
+  automaticOfflineReconciliationPlan,
+  type OfflineArticle,
   offlineArticleFromReaderItem,
   offlineArticlesFromReaderItems,
   parseOfflineReadLaterAutoDownloadLimit,
 } from "./offline-library";
+
+function offlineArticle(
+  id: number,
+  source: OfflineArticle["source"],
+): OfflineArticle {
+  return {
+    key: `7:item:${id}`,
+    userId: 7,
+    kind: "item",
+    itemId: id,
+    title: `Article ${id}`,
+    url: null,
+    author: null,
+    feedTitle: null,
+    publishedAt: null,
+    savedAt: "2026-07-12T12:00:00.000Z",
+    contentHtml: `<p>${id}</p>`,
+    source,
+  };
+}
 
 describe("offlineArticleFromReaderItem", () => {
   it("keeps only the safe reading payload under a user-scoped key", () => {
@@ -44,6 +66,7 @@ describe("offlineArticleFromReaderItem", () => {
       publishedAt: "2026-07-11T12:00:00.000Z",
       savedAt: "2026-07-12T12:00:00.000Z",
       contentHtml: "<p>Sanitized readable copy</p>",
+      source: "manual",
     });
 
     vi.useRealTimers();
@@ -104,5 +127,25 @@ describe("parseOfflineReadLaterAutoDownloadLimit", () => {
     expect(parseOfflineReadLaterAutoDownloadLimit("50")).toBe(50);
     expect(parseOfflineReadLaterAutoDownloadLimit("100")).toBe(100);
     expect(parseOfflineReadLaterAutoDownloadLimit("500")).toBe(0);
+  });
+});
+
+describe("automaticOfflineReconciliationPlan", () => {
+  it("removes stale automatic copies without replacing manually kept articles", () => {
+    const plan = automaticOfflineReconciliationPlan(
+      7,
+      [
+        offlineArticle(1, "manual"),
+        offlineArticle(2, "automatic"),
+        offlineArticle(3, "automatic"),
+      ],
+      [offlineArticle(1, "automatic"), offlineArticle(2, "automatic")],
+    );
+
+    expect(plan.staleKeys).toEqual(["7:item:3"]);
+    expect(plan.articles).toMatchObject([
+      { key: "7:item:1", source: "manual" },
+      { key: "7:item:2", source: "automatic" },
+    ]);
   });
 });

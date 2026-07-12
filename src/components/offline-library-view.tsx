@@ -22,6 +22,7 @@ import {
   type OfflineArticle,
   type OfflineReadLaterAutoDownloadLimit,
   parseOfflineReadLaterAutoDownloadLimit,
+  reconcileAutomaticOfflineArticles,
   removeOfflineArticle,
   saveOfflineArticles,
   setOfflineReadLaterAutoDownloadLimit,
@@ -138,14 +139,26 @@ export function OfflineLibraryView() {
       setStatus(null);
       startDownload(async () => {
         try {
-          const downloaded = await downloadReadLaterForOfflineAction(limit);
-          await saveOfflineArticles(downloaded);
+          const downloaded = await downloadReadLaterForOfflineAction(
+            limit,
+            automatic ? "automatic" : "manual",
+          );
+          let removed = 0;
+          if (automatic) {
+            removed = await reconcileAutomaticOfflineArticles(
+              ownerId,
+              downloaded,
+            );
+          } else {
+            await saveOfflineArticles(downloaded);
+          }
           setArticles(await listOfflineArticles(ownerId));
+          const message =
+            downloaded.length === 0
+              ? "None of your Read later articles has readable content to save yet."
+              : `${automatic ? "Auto-downloaded" : "Saved"} ${downloaded.length} Read later article${downloaded.length === 1 ? "" : "s"} for offline reading.`;
           setStatus({
-            message:
-              downloaded.length === 0
-                ? "None of your Read later articles has readable content to save yet."
-                : `${automatic ? "Auto-downloaded" : "Saved"} ${downloaded.length} Read later article${downloaded.length === 1 ? "" : "s"} for offline reading.`,
+            message: `${message}${removed > 0 ? ` Removed ${removed} stale automatic cop${removed === 1 ? "y" : "ies"}.` : ""}`,
             tone: "success",
           });
         } catch {
@@ -232,7 +245,7 @@ export function OfflineLibraryView() {
             <h2 className="text-sm font-medium">Auto-download Read later</h2>
             <p className="text-xs text-muted-foreground">
               When this library opens or reconnects, refresh a bounded reading
-              set on this device.
+              set on this device. Manually kept copies are never removed.
             </p>
           </div>
           <label>
