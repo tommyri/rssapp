@@ -2,8 +2,10 @@ import { describe, expect, it, vi } from "vitest";
 import {
   automaticOfflineReconciliationPlan,
   type OfflineArticle,
+  type OfflineMutation,
   offlineArticleFromReaderItem,
   offlineArticlesFromReaderItems,
+  offlineDataClearPlan,
   offlineMutationFromArticle,
   parseOfflineReadLaterAutoDownloadLimit,
 } from "./offline-library";
@@ -184,5 +186,34 @@ describe("offlineMutationFromArticle", () => {
         true,
       ),
     ).toThrow("Saved pages only support read-state sync.");
+  });
+});
+
+describe("offlineDataClearPlan", () => {
+  it("only clears the selected user's local copies and pending mutations", () => {
+    const mutation: OfflineMutation = {
+      key: "7:item:1:read",
+      userId: 7,
+      kind: "item",
+      itemId: 1,
+      field: "read",
+      value: true,
+      token: "one",
+      queuedAt: "2026-07-12T12:00:00.000Z",
+    };
+
+    expect(
+      offlineDataClearPlan(
+        7,
+        [
+          offlineArticle(1, "manual"),
+          { ...offlineArticle(2, "manual"), userId: 8 },
+        ],
+        [mutation, { ...mutation, key: "8:item:1:read", userId: 8 }],
+      ),
+    ).toEqual({
+      articleKeys: ["7:item:1"],
+      mutationKeys: ["7:item:1:read"],
+    });
   });
 });

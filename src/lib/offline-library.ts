@@ -44,6 +44,11 @@ export interface OfflineMutation {
   queuedAt: string;
 }
 
+export interface OfflineDataClearPlan {
+  articleKeys: string[];
+  mutationKeys: string[];
+}
+
 export const OFFLINE_READ_LATER_DOWNLOAD_LIMIT = 50;
 export const OFFLINE_READ_LATER_AUTO_DOWNLOAD_LIMITS = [
   0, 25, 50, 100,
@@ -113,6 +118,26 @@ export function offlineMutationFromArticle(
     token: mutationToken(),
     queuedAt: new Date().toISOString(),
   };
+}
+
+export function offlineDataClearPlan(
+  userId: number,
+  articles: OfflineArticle[],
+  mutations: OfflineMutation[],
+): OfflineDataClearPlan {
+  return {
+    articleKeys: articles
+      .filter((article) => article.userId === userId)
+      .map((article) => article.key),
+    mutationKeys: mutations
+      .filter((mutation) => mutation.userId === userId)
+      .map((mutation) => mutation.key),
+  };
+}
+
+/** Approximate on-device library size; excludes browser and service-worker overhead. */
+export function offlineLibraryByteEstimate(articles: OfflineArticle[]): number {
+  return new TextEncoder().encode(JSON.stringify(articles)).byteLength;
 }
 
 /**
@@ -303,6 +328,30 @@ export async function removeOfflineMutationIfUnchanged(
   }
 }
 
+/** Deletes every local copy and queued mutation belonging to one user. */
+export async function clearOfflineDataForUser(userId: number): Promise<number> {
+  const database = await openOfflineLibrary();
+  try {
+    const transaction = database.transaction(
+      [STORE_NAME, MUTATION_STORE_NAME],
+      "readwrite",
+    );
+    const articleStore = transaction.objectStore(STORE_NAME);
+    const mutationStore = transaction.objectStore(MUTATION_STORE_NAME);
+    const [articles, mutations] = await Promise.all([
+      requestResult(articleStore.getAll()) as Promise<OfflineArticle[]>,
+      requestResult(mutationStore.getAll()) as Promise<OfflineMutation[]>,
+    ]);
+    const plan = offlineDataClearPlan(userId, articles, mutations);
+    for (const key of plan.articleKeys) articleStore.delete(key);
+    for (const key of plan.mutationKeys) mutationStore.delete(key);
+    await transactionDone(transaction);
+    return plan.articleKeys.length + plan.mutationKeys.length;
+  } finally {
+    database.close();
+  }
+}
+
 /**
  * Atomically refreshes an automatic Read later set while retaining manually
  * kept copies. It returns the number of obsolete automatic entries removed.
@@ -367,6 +416,12 @@ export function getOfflineOwner(): number | null {
   return Number.isInteger(userId) && userId > 0 ? userId : null;
 }
 
+export function clearOfflineOwner(userId: number): void {
+  if (getOfflineOwner() === userId && typeof localStorage !== "undefined") {
+    localStorage.removeItem(OFFLINE_OWNER_KEY);
+  }
+}
+
 function offlineAutoDownloadKey(userId: number): string {
   return `${OFFLINE_AUTO_DOWNLOAD_KEY}:${userId}`;
 }
@@ -386,5 +441,21 @@ export function setOfflineReadLaterAutoDownloadLimit(
 ): void {
   if (typeof localStorage !== "undefined") {
     localStorage.setItem(offlineAutoDownloadKey(userId), String(limit));
+  }
+}
+
+export function clearOfflineReadLaterAutoDownloadLimit(userId: number): void {
+  if (typeof localStorage !== "undefined") {
+    localStorage.removeItem(offlineAutoDownloadKey(userId));
+  }
+}
+
+/** Clears the user-visible local data even if IndexedDB itself has failed. */
+export async function clearOfflineDeviceData(userId: number): Promise<number> {
+  try {
+    return await clearOfflineDataForUser(userId);
+  } finally {
+    clearOfflineReadLaterAutoDownloadLimit(userId);
+    clearOfflineOwner(userId);
   }
 }

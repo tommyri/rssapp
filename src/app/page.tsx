@@ -15,6 +15,7 @@ import { PwaRegister } from "@/components/pwa-register";
 import { ReaderGlobalKeyboard } from "@/components/reader-global-keyboard";
 import { RefreshButton } from "@/components/refresh-button";
 import { SearchForm } from "@/components/search-form";
+import { SignOutButton } from "@/components/sign-out-button";
 import { StarterFeeds } from "@/components/starter-feeds";
 import { getCurrentUserId } from "@/lib/current-user";
 import {
@@ -32,7 +33,6 @@ import {
   effectiveShowingAll,
   toggleShowHref,
 } from "@/lib/subscription-settings";
-import { signOutAction } from "./actions";
 
 interface SearchParams {
   feed?: string;
@@ -255,11 +255,10 @@ export default async function Home({
               <SidebarUtil href="/settings" label="Settings" />
               <SidebarUtil href="/offline" label="Offline" />
             </div>
-            <form action={signOutAction}>
-              <button type="submit" className={`${utilButtonClass} w-full`}>
-                Sign out
-              </button>
-            </form>
+            <SignOutButton
+              userId={userId}
+              className={`${utilButtonClass} w-full`}
+            />
           </div>
         </div>
       </MobileShell>

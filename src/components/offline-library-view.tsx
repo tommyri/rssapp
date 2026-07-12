@@ -13,8 +13,18 @@ import { downloadReadLaterForOfflineAction } from "@/app/actions";
 import { ArticleContent } from "@/components/article-content";
 import { OfflineMutationSync } from "@/components/offline-mutation-sync";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { normalizeEmbedLoadingPreferences } from "@/lib/embed-loading";
 import {
+  clearOfflineDeviceData,
   getOfflineOwner,
   getOfflineReadLaterAutoDownloadLimit,
   listOfflineArticles,
@@ -24,6 +34,7 @@ import {
   type OfflineArticle,
   type OfflineMutableField,
   type OfflineReadLaterAutoDownloadLimit,
+  offlineLibraryByteEstimate,
   parseOfflineReadLaterAutoDownloadLimit,
   reconcileAutomaticOfflineArticles,
   removeOfflineArticle,
@@ -54,7 +65,9 @@ export function OfflineLibraryView() {
   const [query, setQuery] = useState("");
   const [autoDownloadLimit, setAutoDownloadLimit] =
     useState<OfflineReadLaterAutoDownloadLimit>(0);
+  const [clearDialogOpen, setClearDialogOpen] = useState(false);
   const [downloading, startDownload] = useTransition();
+  const [clearing, startClearing] = useTransition();
   const automaticDownloadRun = useRef<string | null>(null);
 
   useEffect(() => {
@@ -114,6 +127,10 @@ export function OfflineLibraryView() {
         .includes(normalized),
     );
   }, [articles, query]);
+  const librarySize = useMemo(
+    () => formatByteEstimate(offlineLibraryByteEstimate(articles)),
+    [articles],
+  );
 
   async function removeArticle(article: OfflineArticle) {
     try {
@@ -241,6 +258,29 @@ export function OfflineLibraryView() {
     }
   }
 
+  function clearDeviceData() {
+    if (ownerId === null) return;
+    startClearing(async () => {
+      let message = "Offline data cleared from this device.";
+      let tone: OfflineStatusTone = "success";
+      try {
+        const cleared = await clearOfflineDeviceData(ownerId);
+        message = `Cleared ${cleared} offline record${cleared === 1 ? "" : "s"} from this device.`;
+      } catch {
+        tone = "error";
+        message =
+          "Could not fully clear offline storage, but this device is signed out of offline reading.";
+      } finally {
+        setArticles([]);
+        setExpandedKey(null);
+        setAutoDownloadLimit(0);
+        setOwnerId(null);
+        setClearDialogOpen(false);
+        setStatus({ message, tone });
+      }
+    });
+  }
+
   return (
     <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-6 md:px-8">
       {ownerId !== null ? <OfflineMutationSync userId={ownerId} /> : null}
@@ -297,6 +337,27 @@ export function OfflineLibraryView() {
               ))}
             </select>
           </label>
+        </section>
+      ) : null}
+
+      {ownerId !== null ? (
+        <section className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-muted/30 px-4 py-3">
+          <div>
+            <h2 className="text-sm font-medium">Device storage</h2>
+            <p className="text-xs text-muted-foreground">
+              {articles.length} reading cop{articles.length === 1 ? "y" : "ies"}{" "}
+              · about {librarySize} of local article text.
+            </p>
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive"
+            onClick={() => setClearDialogOpen(true)}
+          >
+            Clear offline data
+          </Button>
         </section>
       ) : null}
 
@@ -453,6 +514,39 @@ export function OfflineLibraryView() {
           ) : null}
         </>
       )}
+
+      <Dialog open={clearDialogOpen} onOpenChange={setClearDialogOpen}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Clear offline data from this device?</DialogTitle>
+            <DialogDescription>
+              This removes saved reading copies, queued changes, and automatic
+              download settings. It does not delete your account or server data.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button type="button" variant="outline" disabled={clearing}>
+                Cancel
+              </Button>
+            </DialogClose>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={clearDeviceData}
+              disabled={clearing}
+            >
+              {clearing ? "Clearing…" : "Clear offline data"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </main>
   );
+}
+
+function formatByteEstimate(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${Math.ceil(bytes / 1024)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
