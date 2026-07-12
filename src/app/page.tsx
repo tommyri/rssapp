@@ -9,6 +9,7 @@ import { AddFeedForm } from "@/components/add-feed-form";
 import { ArticleList } from "@/components/article-list";
 import { FeedIcon } from "@/components/feed-icon";
 import { FeedMenu } from "@/components/feed-menu";
+import { MobileShell } from "@/components/mobile-shell";
 import { ReaderGlobalKeyboard } from "@/components/reader-global-keyboard";
 import { RefreshButton } from "@/components/refresh-button";
 import { SearchForm } from "@/components/search-form";
@@ -137,12 +138,13 @@ export default async function Home({
       : totalUnread;
 
   return (
-    // md:flex-none matters: flex-1 sets flex-basis:0%, which overrides h-dvh
-    // and lets the frame grow with content — breaking the independent panes.
-    <div className="flex flex-1 flex-col md:h-dvh md:flex-none md:flex-row md:overflow-hidden">
-      {/* Sidebar */}
-      <aside className="flex w-full shrink-0 flex-col border-b border-sidebar-border bg-sidebar text-sidebar-foreground md:w-72 md:overflow-y-auto md:border-r md:border-b-0">
-        <div className="flex items-center justify-between px-4 pt-5 pb-3">
+    // App shell: fixed viewport height, chrome stays put, only the content pane
+    // scrolls. On mobile the sidebar is a drawer (MobileShell) and a top bar sits
+    // above the list; at md+ MobileShell renders the same nav as a static column.
+    <div className="flex h-dvh flex-col overflow-hidden md:flex-row">
+      <MobileShell>
+        {/* Brand + refresh: desktop only — on mobile these live in the top bar. */}
+        <div className="hidden items-center justify-between px-4 pt-5 pb-3 md:flex">
           <Link
             href="/"
             className="font-serif text-2xl font-bold tracking-tight"
@@ -251,10 +253,10 @@ export default async function Home({
             </form>
           </div>
         </div>
-      </aside>
+      </MobileShell>
 
       {/* Content pane */}
-      <main className="min-w-0 flex-1 md:overflow-y-auto">
+      <main className="min-w-0 flex-1 overflow-y-auto">
         <div className="mx-auto w-full max-w-3xl px-4 pb-16 md:px-8">
           {feeds.length === 0 && !readLater && !isSearch ? (
             <div className="pt-10">

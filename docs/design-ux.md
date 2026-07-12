@@ -110,7 +110,9 @@ section list lives once in `src/lib/settings-sections.ts`.
 
 ## Mobile web
 
-Feedbin proves a web reader can be the best phone experience ("the mobile site is so good it turns out to be the best app"). Requirements: fast stacked navigation, comfortable tap targets, pull-to-refresh, mark-read-on-scroll working in the list. PWA installability stays "later" polish.
+Feedbin proves a web reader can be the best phone experience ("the mobile site is so good it turns out to be the best app"). Requirements: comfortable tap targets, pull-to-refresh, mark-read-on-scroll working in the list. PWA installability stays "later" polish.
+
+**Navigation** *(drawer since July 2026)*: below md the feed sidebar is a left-slide **drawer** behind a slim sticky top bar (menu · brand · refresh), so the article list is the primary surface instead of sitting below a full-height feed list. One app-shell layout — fixed viewport height, only the content pane scrolls — and the drawer is the *same* element that's the static sidebar at md+ (`md:static`), so nothing is duplicated. The drawer closes on navigation, Escape, or scrim tap (`src/components/mobile-shell.tsx`).
 
 **Swipe gestures** *(shipped July 2026)*: swipe a collapsed row right = toggle read, left
 = toggle read-later — matching our triage verbs (a post is either read or kept). iOS-mail
