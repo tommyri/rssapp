@@ -4,6 +4,7 @@ const DATABASE_NAME = "rssapp-offline-library";
 const STORE_NAME = "articles";
 const DATABASE_VERSION = 1;
 const OFFLINE_OWNER_KEY = "rssapp:offline-owner";
+const OFFLINE_AUTO_DOWNLOAD_KEY = "rssapp:offline-read-later-auto-download";
 
 export interface OfflineArticle {
   key: string;
@@ -20,6 +21,23 @@ export interface OfflineArticle {
 }
 
 export const OFFLINE_READ_LATER_DOWNLOAD_LIMIT = 50;
+export const OFFLINE_READ_LATER_AUTO_DOWNLOAD_LIMITS = [
+  0, 25, 50, 100,
+] as const;
+
+export type OfflineReadLaterAutoDownloadLimit =
+  (typeof OFFLINE_READ_LATER_AUTO_DOWNLOAD_LIMITS)[number];
+
+export function parseOfflineReadLaterAutoDownloadLimit(
+  value: string | null,
+): OfflineReadLaterAutoDownloadLimit {
+  const parsed = Number(value);
+  return OFFLINE_READ_LATER_AUTO_DOWNLOAD_LIMITS.includes(
+    parsed as OfflineReadLaterAutoDownloadLimit,
+  )
+    ? (parsed as OfflineReadLaterAutoDownloadLimit)
+    : 0;
+}
 
 export function offlineArticleFromReaderItem(
   userId: number,
@@ -151,4 +169,26 @@ export function getOfflineOwner(): number | null {
   if (typeof localStorage === "undefined") return null;
   const userId = Number(localStorage.getItem(OFFLINE_OWNER_KEY));
   return Number.isInteger(userId) && userId > 0 ? userId : null;
+}
+
+function offlineAutoDownloadKey(userId: number): string {
+  return `${OFFLINE_AUTO_DOWNLOAD_KEY}:${userId}`;
+}
+
+export function getOfflineReadLaterAutoDownloadLimit(
+  userId: number,
+): OfflineReadLaterAutoDownloadLimit {
+  if (typeof localStorage === "undefined") return 0;
+  return parseOfflineReadLaterAutoDownloadLimit(
+    localStorage.getItem(offlineAutoDownloadKey(userId)),
+  );
+}
+
+export function setOfflineReadLaterAutoDownloadLimit(
+  userId: number,
+  limit: OfflineReadLaterAutoDownloadLimit,
+): void {
+  if (typeof localStorage !== "undefined") {
+    localStorage.setItem(offlineAutoDownloadKey(userId), String(limit));
+  }
 }

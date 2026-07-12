@@ -1,17 +1,30 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState, useTransition } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useTransition,
+} from "react";
 import { downloadReadLaterForOfflineAction } from "@/app/actions";
 import { ArticleContent } from "@/components/article-content";
 import { Button } from "@/components/ui/button";
 import { normalizeEmbedLoadingPreferences } from "@/lib/embed-loading";
 import {
   getOfflineOwner,
+  getOfflineReadLaterAutoDownloadLimit,
   listOfflineArticles,
+  OFFLINE_READ_LATER_AUTO_DOWNLOAD_LIMITS,
+  OFFLINE_READ_LATER_DOWNLOAD_LIMIT,
   type OfflineArticle,
+  type OfflineReadLaterAutoDownloadLimit,
+  parseOfflineReadLaterAutoDownloadLimit,
   removeOfflineArticle,
   saveOfflineArticles,
+  setOfflineReadLaterAutoDownloadLimit,
 } from "@/lib/offline-library";
 import {
   type OfflineStatusTone,
@@ -31,13 +44,20 @@ export function OfflineLibraryView() {
   const [expandedKey, setExpandedKey] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [online, setOnline] = useState(true);
+  const [onlineEpoch, setOnlineEpoch] = useState(0);
   const [status, setStatus] = useState<OfflineStatus | null>(null);
   const [query, setQuery] = useState("");
+  const [autoDownloadLimit, setAutoDownloadLimit] =
+    useState<OfflineReadLaterAutoDownloadLimit>(0);
   const [downloading, startDownload] = useTransition();
+  const automaticDownloadRun = useRef<string | null>(null);
 
   useEffect(() => {
     setOnline(navigator.onLine);
-    const onOnline = () => setOnline(true);
+    const onOnline = () => {
+      setOnline(true);
+      setOnlineEpoch((current) => current + 1);
+    };
     const onOffline = () => setOnline(false);
     window.addEventListener("online", onOnline);
     window.addEventListener("offline", onOffline);
@@ -50,6 +70,9 @@ export function OfflineLibraryView() {
   useEffect(() => {
     const userId = getOfflineOwner();
     setOwnerId(userId);
+    setAutoDownloadLimit(
+      userId ? getOfflineReadLaterAutoDownloadLimit(userId) : 0,
+    );
     if (!userId) {
       setLoading(false);
       return;
@@ -102,36 +125,74 @@ export function OfflineLibraryView() {
     }
   }
 
-  function downloadReadLater() {
-    if (ownerId === null) {
-      setStatus({
-        message: "Open the reader while online before downloading articles.",
-        tone: "error",
+  const downloadReadLater = useCallback(
+    (limit = OFFLINE_READ_LATER_DOWNLOAD_LIMIT, automatic = false) => {
+      if (ownerId === null) {
+        setStatus({
+          message: "Open the reader while online before downloading articles.",
+          tone: "error",
+        });
+        return;
+      }
+
+      setStatus(null);
+      startDownload(async () => {
+        try {
+          const downloaded = await downloadReadLaterForOfflineAction(limit);
+          await saveOfflineArticles(downloaded);
+          setArticles(await listOfflineArticles(ownerId));
+          setStatus({
+            message:
+              downloaded.length === 0
+                ? "None of your Read later articles has readable content to save yet."
+                : `${automatic ? "Auto-downloaded" : "Saved"} ${downloaded.length} Read later article${downloaded.length === 1 ? "" : "s"} for offline reading.`,
+            tone: "success",
+          });
+        } catch {
+          setStatus({
+            message: automatic
+              ? "Could not automatically download your Read later articles."
+              : "Could not download your Read later articles for offline reading.",
+            tone: "error",
+          });
+        }
       });
+    },
+    [ownerId],
+  );
+
+  useEffect(() => {
+    if (
+      ownerId === null ||
+      !online ||
+      loading ||
+      downloading ||
+      autoDownloadLimit === 0
+    ) {
       return;
     }
 
-    setStatus(null);
-    startDownload(async () => {
-      try {
-        const downloaded = await downloadReadLaterForOfflineAction();
-        await saveOfflineArticles(downloaded);
-        setArticles(await listOfflineArticles(ownerId));
-        setStatus({
-          message:
-            downloaded.length === 0
-              ? "None of your Read later articles has readable content to save yet."
-              : `Saved ${downloaded.length} Read later article${downloaded.length === 1 ? "" : "s"} for offline reading.`,
-          tone: "success",
-        });
-      } catch {
-        setStatus({
-          message:
-            "Could not download your Read later articles for offline reading.",
-          tone: "error",
-        });
-      }
-    });
+    const run = `${ownerId}:${autoDownloadLimit}:${onlineEpoch}`;
+    if (automaticDownloadRun.current === run) return;
+    automaticDownloadRun.current = run;
+    downloadReadLater(autoDownloadLimit, true);
+  }, [
+    autoDownloadLimit,
+    downloading,
+    downloadReadLater,
+    loading,
+    online,
+    onlineEpoch,
+    ownerId,
+  ]);
+
+  function updateAutoDownloadLimit(value: string) {
+    const limit = parseOfflineReadLaterAutoDownloadLimit(value);
+    automaticDownloadRun.current = null;
+    setAutoDownloadLimit(limit);
+    if (ownerId !== null) {
+      setOfflineReadLaterAutoDownloadLimit(ownerId, limit);
+    }
   }
 
   return (
@@ -165,6 +226,33 @@ export function OfflineLibraryView() {
         </output>
       ) : null}
 
+      {ownerId !== null ? (
+        <section className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-muted/30 px-4 py-3">
+          <div>
+            <h2 className="text-sm font-medium">Auto-download Read later</h2>
+            <p className="text-xs text-muted-foreground">
+              When this library opens or reconnects, refresh a bounded reading
+              set on this device.
+            </p>
+          </div>
+          <label>
+            <span className="sr-only">Automatically download Read later</span>
+            <select
+              aria-label="Automatically download Read later"
+              value={autoDownloadLimit}
+              onChange={(event) => updateAutoDownloadLimit(event.target.value)}
+              className="h-8 rounded-md border border-input bg-background px-2 text-sm"
+            >
+              {OFFLINE_READ_LATER_AUTO_DOWNLOAD_LIMITS.map((limit) => (
+                <option key={limit} value={limit}>
+                  {limit === 0 ? "Off" : `Latest ${limit}`}
+                </option>
+              ))}
+            </select>
+          </label>
+        </section>
+      ) : null}
+
       {ownerId !== null && online ? (
         <section className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-muted/30 px-4 py-3">
           <div>
@@ -177,7 +265,7 @@ export function OfflineLibraryView() {
           <Button
             type="button"
             size="sm"
-            onClick={downloadReadLater}
+            onClick={() => downloadReadLater()}
             disabled={loading || downloading}
           >
             {downloading ? "Downloading…" : "Download Read later"}
@@ -195,8 +283,8 @@ export function OfflineLibraryView() {
         </p>
       ) : articles.length === 0 ? (
         <p className="py-16 text-center text-sm text-muted-foreground">
-          No articles saved offline yet. Open an article in the reader and
-          choose Keep offline.
+          No articles saved offline yet. Open an article and choose Keep
+          offline, or download your Read later queue.
         </p>
       ) : (
         <>

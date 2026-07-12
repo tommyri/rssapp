@@ -44,6 +44,12 @@ const viewSchema = z.object({
   sortOrder: z.enum(["newest", "oldest"]).optional(),
 });
 
+const offlineReadLaterDownloadLimitSchema = z.union([
+  z.literal(25),
+  z.literal(50),
+  z.literal(100),
+]);
+
 export type ClientView = z.infer<typeof viewSchema>;
 
 export interface ActionState {
@@ -319,14 +325,11 @@ export async function fetchItemsAction(
  * browser storage. This intentionally excludes images, embeds, and mutable
  * reader state so an offline download remains bounded and safe to persist.
  */
-export async function downloadReadLaterForOfflineAction(): Promise<
-  OfflineArticle[]
-> {
+export async function downloadReadLaterForOfflineAction(
+  limit = OFFLINE_READ_LATER_DOWNLOAD_LIMIT,
+): Promise<OfflineArticle[]> {
+  const parsedLimit = offlineReadLaterDownloadLimitSchema.parse(limit);
   const userId = await getCurrentUserId();
   const { items } = await listReadLater(userId);
-  return offlineArticlesFromReaderItems(
-    userId,
-    items,
-    OFFLINE_READ_LATER_DOWNLOAD_LIMIT,
-  );
+  return offlineArticlesFromReaderItems(userId, items, parsedLimit);
 }

@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   offlineArticleFromReaderItem,
   offlineArticlesFromReaderItems,
+  parseOfflineReadLaterAutoDownloadLimit,
 } from "./offline-library";
 
 describe("offlineArticleFromReaderItem", () => {
@@ -93,5 +94,15 @@ describe("offlineArticlesFromReaderItems", () => {
       key: "7:item:1",
       contentHtml: "<p>full copy</p>",
     });
+  });
+});
+
+describe("parseOfflineReadLaterAutoDownloadLimit", () => {
+  it("accepts the bounded automatic-download options and disables unknown values", () => {
+    expect(parseOfflineReadLaterAutoDownloadLimit(null)).toBe(0);
+    expect(parseOfflineReadLaterAutoDownloadLimit("25")).toBe(25);
+    expect(parseOfflineReadLaterAutoDownloadLimit("50")).toBe(50);
+    expect(parseOfflineReadLaterAutoDownloadLimit("100")).toBe(100);
+    expect(parseOfflineReadLaterAutoDownloadLimit("500")).toBe(0);
   });
 });
