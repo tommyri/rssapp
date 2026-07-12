@@ -10,6 +10,7 @@ import { ArticleList } from "@/components/article-list";
 import { FeedIcon } from "@/components/feed-icon";
 import { FeedMenu } from "@/components/feed-menu";
 import { MobileShell } from "@/components/mobile-shell";
+import { PwaRegister } from "@/components/pwa-register";
 import { ReaderGlobalKeyboard } from "@/components/reader-global-keyboard";
 import { RefreshButton } from "@/components/refresh-button";
 import { SearchForm } from "@/components/search-form";
@@ -147,6 +148,7 @@ export default async function Home({
       data-reader-shell
       className="flex h-dvh flex-col overflow-hidden md:flex-row"
     >
+      <PwaRegister userId={userId} />
       <MobileShell>
         {/* Brand + refresh: desktop only — on mobile these live in the top bar. */}
         <div className="hidden items-center justify-between px-4 pt-5 pb-3 md:flex">
@@ -246,10 +248,11 @@ export default async function Home({
         <div className="space-y-3 border-t border-sidebar-border px-4 py-4">
           <AddFeedForm />
           <div className="space-y-1.5">
-            <div className="grid grid-cols-3 gap-1.5">
+            <div className="grid grid-cols-2 gap-1.5">
               <SidebarUtil href="/feeds" label="Manage" />
               <SidebarUtil href="/rules" label="Rules" />
               <SidebarUtil href="/settings" label="Settings" />
+              <SidebarUtil href="/offline" label="Offline" />
             </div>
             <form action={signOutAction}>
               <button type="submit" className={`${utilButtonClass} w-full`}>
@@ -280,6 +283,7 @@ export default async function Home({
               unreadCount={unreadCount}
               collapse={collapse}
               embedLoading={embedLoading}
+              offlineUserId={userId}
             />
           )}
         </div>

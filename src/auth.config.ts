@@ -16,7 +16,14 @@ export const authConfig = {
     // auth endpoints. Returning false sends the user to the signIn page.
     authorized({ auth, request }) {
       const { pathname } = request.nextUrl;
-      if (pathname === "/login" || pathname.startsWith("/api/auth"))
+      if (
+        pathname === "/login" ||
+        pathname.startsWith("/api/auth") ||
+        pathname === "/service-worker.js" ||
+        pathname === "/manifest.webmanifest" ||
+        pathname === "/icon" ||
+        pathname === "/apple-icon"
+      )
         return true;
       return !!auth?.user;
     },

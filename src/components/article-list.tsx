@@ -5,6 +5,7 @@ import {
   BookmarkIcon,
   CheckIcon,
   CircleIcon,
+  DownloadIcon,
   ExternalLinkIcon,
   FileTextIcon,
   LinkIcon,
@@ -42,6 +43,10 @@ import { useReadingProgress } from "@/components/use-reading-progress";
 import { alsoInLabel } from "@/lib/duplicates";
 import type { EmbedLoadingPreferences } from "@/lib/embed-loading";
 import { relativeTime } from "@/lib/format";
+import {
+  offlineArticleFromReaderItem,
+  saveOfflineArticle,
+} from "@/lib/offline-library";
 import type { ReaderItem } from "@/lib/reader";
 import { readerFocusActive } from "@/lib/reader-focus";
 import {
@@ -71,6 +76,7 @@ interface Props {
    */
   collapse?: boolean;
   embedLoading: EmbedLoadingPreferences;
+  offlineUserId: number;
 }
 
 /** Composite key: ids are only unique within a kind (feed item vs saved page). */
@@ -100,6 +106,7 @@ export function ArticleList({
   unreadCount = 0,
   collapse = false,
   embedLoading,
+  offlineUserId,
 }: Props) {
   const router = useRouter();
   // Starred / Read later are archive views: no unread filter or mark-all.
@@ -312,6 +319,17 @@ export function ArticleList({
         next.delete(item.id);
         return next;
       });
+    }
+  }
+
+  async function keepOffline(item: ReaderItem, contentHtml: string) {
+    try {
+      await saveOfflineArticle(
+        offlineArticleFromReaderItem(offlineUserId, item, contentHtml),
+      );
+      setStatusMsg("Available offline.");
+    } catch {
+      setStatusMsg("Couldn't save for offline reading.");
     }
   }
 
@@ -655,6 +673,14 @@ export function ArticleList({
                         <ActionButton asLink href={item.url}>
                           <ExternalLinkIcon className="size-3.5" />
                           Open original
+                        </ActionButton>
+                      ) : null}
+                      {contentHtml ? (
+                        <ActionButton
+                          onClick={() => void keepOffline(item, contentHtml)}
+                        >
+                          <DownloadIcon className="size-3.5" />
+                          Keep offline
                         </ActionButton>
                       ) : null}
                       {isPage ? (
