@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useTransition } from "react";
 import {
+  saveLinkAction,
   setItemReadAction,
   setItemReadLaterAction,
   setItemStarredAction,
@@ -16,6 +17,14 @@ import {
 } from "@/lib/offline-library";
 
 async function applyOfflineMutation(mutation: OfflineMutation): Promise<void> {
+  if (mutation.kind === "save-link") {
+    const formData = new FormData();
+    formData.set("url", mutation.url);
+    const result = await saveLinkAction({ ok: true, message: "" }, formData);
+    if (!result.ok) throw new Error(result.message);
+    return;
+  }
+
   if (mutation.kind === "page") {
     if (mutation.field !== "read") {
       throw new Error("Saved-page mutation is not supported.");

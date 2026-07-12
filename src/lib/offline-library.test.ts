@@ -6,6 +6,7 @@ import {
   offlineArticleFromReaderItem,
   offlineArticlesFromReaderItems,
   offlineDataClearPlan,
+  offlineMutationForSavedLink,
   offlineMutationFromArticle,
   parseOfflineReadLaterAutoDownloadLimit,
 } from "./offline-library";
@@ -186,6 +187,29 @@ describe("offlineMutationFromArticle", () => {
         true,
       ),
     ).toThrow("Saved pages only support read-state sync.");
+  });
+});
+
+describe("offlineMutationForSavedLink", () => {
+  it("uses the canonical URL with a unique, user-scoped mutation key", () => {
+    const mutation = offlineMutationForSavedLink(
+      7,
+      "Example.com/article?utm_source=newsletter#section",
+    );
+
+    expect(mutation).toMatchObject({
+      userId: 7,
+      kind: "save-link",
+      url: "https://example.com/article",
+    });
+    expect(mutation.key).toMatch(/^7:save-link:/);
+    expect(mutation.token).toEqual(expect.any(String));
+  });
+
+  it("rejects non-web URLs before they reach the device queue", () => {
+    expect(() =>
+      offlineMutationForSavedLink(7, "mailto:reader@example.com"),
+    ).toThrow("Enter a valid web address.");
   });
 });
 

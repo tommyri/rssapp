@@ -36,6 +36,7 @@ import {
   type OfflineReadLaterAutoDownloadLimit,
   offlineLibraryByteEstimate,
   parseOfflineReadLaterAutoDownloadLimit,
+  queueOfflineSavedLink,
   reconcileAutomaticOfflineArticles,
   removeOfflineArticle,
   saveOfflineArticles,
@@ -65,9 +66,11 @@ export function OfflineLibraryView() {
   const [query, setQuery] = useState("");
   const [autoDownloadLimit, setAutoDownloadLimit] =
     useState<OfflineReadLaterAutoDownloadLimit>(0);
+  const [linkToSave, setLinkToSave] = useState("");
   const [clearDialogOpen, setClearDialogOpen] = useState(false);
   const [downloading, startDownload] = useTransition();
   const [clearing, startClearing] = useTransition();
+  const [savingLink, startSavingLink] = useTransition();
   const automaticDownloadRun = useRef<string | null>(null);
 
   useEffect(() => {
@@ -258,6 +261,33 @@ export function OfflineLibraryView() {
     }
   }
 
+  function queueSavedLink(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (ownerId === null) return;
+
+    startSavingLink(async () => {
+      try {
+        await queueOfflineSavedLink(ownerId, linkToSave);
+        setLinkToSave("");
+        setStatus({
+          message: online
+            ? "Link queued and syncing now."
+            : "Link saved on this device. It will be added to Read later when you reconnect.",
+          tone: "success",
+        });
+        window.dispatchEvent(new Event(OFFLINE_MUTATIONS_QUEUED_EVENT));
+      } catch (error) {
+        setStatus({
+          message:
+            error instanceof Error
+              ? error.message
+              : "Could not save that link on this device.",
+          tone: "error",
+        });
+      }
+    });
+  }
+
   function clearDeviceData() {
     if (ownerId === null) return;
     startClearing(async () => {
@@ -337,6 +367,36 @@ export function OfflineLibraryView() {
               ))}
             </select>
           </label>
+        </section>
+      ) : null}
+
+      {ownerId !== null ? (
+        <section className="mt-3 rounded-lg border bg-muted/30 px-4 py-3">
+          <h2 className="text-sm font-medium">Save a link to Read later</h2>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Queue a web link on this device. It will be saved and made readable
+            after you reconnect.
+          </p>
+          <form onSubmit={queueSavedLink} className="mt-3 flex gap-2">
+            <input
+              type="url"
+              inputMode="url"
+              value={linkToSave}
+              onChange={(event) => setLinkToSave(event.target.value)}
+              placeholder="Paste a link to read later…"
+              aria-label="Link to read later"
+              className="h-8 min-w-0 flex-1 rounded-md border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+              disabled={savingLink}
+            />
+            <Button
+              type="submit"
+              variant="outline"
+              size="sm"
+              disabled={savingLink}
+            >
+              {savingLink ? "Saving…" : "Save"}
+            </Button>
+          </form>
         </section>
       ) : null}
 

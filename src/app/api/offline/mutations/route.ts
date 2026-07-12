@@ -4,7 +4,11 @@ import {
   offlineMutationPayloadSchema,
 } from "@/lib/offline-mutation-payload";
 import { setItemRead, setItemReadLater, setItemStarred } from "@/lib/reader";
-import { setSavedPageRead } from "@/lib/saved-pages";
+import {
+  extractSavedPage,
+  saveLink,
+  setSavedPageRead,
+} from "@/lib/saved-pages";
 
 export const runtime = "nodejs";
 
@@ -12,6 +16,19 @@ async function applyMutation(
   userId: number,
   mutation: OfflineSyncMutation,
 ): Promise<void> {
+  if (mutation.kind === "save-link") {
+    const result = await saveLink(userId, mutation.url);
+    if (!result.ok) throw new Error(result.error);
+    if (!result.alreadySaved) {
+      try {
+        await extractSavedPage(result.id);
+      } catch {
+        // The scheduled sweep will retry any page left pending.
+      }
+    }
+    return;
+  }
+
   if (mutation.kind === "page") {
     await setSavedPageRead(userId, mutation.itemId, mutation.value);
     return;

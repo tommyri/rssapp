@@ -1,3 +1,4 @@
+import { canonicalizeUrl } from "@/lib/canonical-url";
 import type { ReaderItem } from "@/lib/reader";
 
 const DATABASE_NAME = "rssapp-offline-library";
@@ -31,18 +32,29 @@ export interface OfflineArticle {
   readLater?: boolean;
 }
 
-export interface OfflineMutation {
-  /** Coalesces repeated changes to the same reader field. */
+interface OfflineMutationBase {
   key: string;
   userId: number;
+  /** Identifies this exact value so a newer queued change cannot be deleted. */
+  token: string;
+  queuedAt: string;
+}
+
+export interface OfflineReaderMutation extends OfflineMutationBase {
+  /** Coalesces repeated changes to the same reader field. */
   kind: ReaderItem["kind"];
   itemId: number;
   field: OfflineMutableField;
   value: boolean;
-  /** Identifies this exact value so a newer queued toggle cannot be deleted. */
-  token: string;
-  queuedAt: string;
 }
+
+/** A link saved locally until it can be added to the user's Read later queue. */
+export interface OfflineSaveLinkMutation extends OfflineMutationBase {
+  kind: "save-link";
+  url: string;
+}
+
+export type OfflineMutation = OfflineReaderMutation | OfflineSaveLinkMutation;
 
 export interface OfflineDataClearPlan {
   articleKeys: string[];
@@ -116,6 +128,29 @@ export function offlineMutationFromArticle(
     field,
     value,
     token: mutationToken(),
+    queuedAt: new Date().toISOString(),
+  };
+}
+
+/**
+ * Queues an arbitrary web link using the same canonical form as Read later,
+ * keeping retries idempotent once the device reconnects.
+ */
+export function offlineMutationForSavedLink(
+  userId: number,
+  rawUrl: string,
+): OfflineSaveLinkMutation {
+  const url = canonicalizeUrl(rawUrl);
+  if (!url || url.length > 2048) {
+    throw new Error("Enter a valid web address.");
+  }
+  const token = mutationToken();
+  return {
+    key: `${userId}:save-link:${token}`,
+    userId,
+    kind: "save-link",
+    url,
+    token,
     queuedAt: new Date().toISOString(),
   };
 }
@@ -287,6 +322,23 @@ export async function updateOfflineArticleAndQueueMutation(
     transaction.objectStore(MUTATION_STORE_NAME).put(mutation);
     await transactionDone(transaction);
     return updated;
+  } finally {
+    database.close();
+  }
+}
+
+/** Writes a pending Read later link into the device-local mutation queue. */
+export async function queueOfflineSavedLink(
+  userId: number,
+  rawUrl: string,
+): Promise<OfflineSaveLinkMutation> {
+  const mutation = offlineMutationForSavedLink(userId, rawUrl);
+  const database = await openOfflineLibrary();
+  try {
+    const transaction = database.transaction(MUTATION_STORE_NAME, "readwrite");
+    transaction.objectStore(MUTATION_STORE_NAME).put(mutation);
+    await transactionDone(transaction);
+    return mutation;
   } finally {
     database.close();
   }

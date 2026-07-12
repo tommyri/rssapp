@@ -24,9 +24,18 @@ describe("offlineMutationPayloadSchema", () => {
             field: "read",
             value: true,
           },
+          {
+            key: "7:save-link:a-token",
+            token: "c-token",
+            userId: 7,
+            kind: "save-link",
+            url: "https://example.com/article",
+          },
         ],
       }),
-    ).toMatchObject({ mutations: [{ kind: "item" }, { kind: "page" }] });
+    ).toMatchObject({
+      mutations: [{ kind: "item" }, { kind: "page" }, { kind: "save-link" }],
+    });
   });
 
   it("rejects unsupported saved-page mutations", () => {
@@ -41,6 +50,22 @@ describe("offlineMutationPayloadSchema", () => {
             itemId: 3,
             field: "starred",
             value: true,
+          },
+        ],
+      }).success,
+    ).toBe(false);
+  });
+
+  it("rejects non-web links before the worker attempts a replay", () => {
+    expect(
+      offlineMutationPayloadSchema.safeParse({
+        mutations: [
+          {
+            key: "7:save-link:a-token",
+            token: "a-token",
+            userId: 7,
+            kind: "save-link",
+            url: "mailto:reader@example.com",
           },
         ],
       }).success,
