@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { OfflineMutationSync } from "@/components/offline-mutation-sync";
 import { setOfflineOwner } from "@/lib/offline-library";
 
 /** Registers the offline shell only for an authenticated reader session. */
@@ -20,5 +21,5 @@ export function PwaRegister({ userId }: { userId: number }) {
     return () => window.removeEventListener("load", register);
   }, [userId]);
 
-  return null;
+  return <OfflineMutationSync userId={userId} />;
 }

@@ -11,21 +11,25 @@ import {
 } from "react";
 import { downloadReadLaterForOfflineAction } from "@/app/actions";
 import { ArticleContent } from "@/components/article-content";
+import { OfflineMutationSync } from "@/components/offline-mutation-sync";
 import { Button } from "@/components/ui/button";
 import { normalizeEmbedLoadingPreferences } from "@/lib/embed-loading";
 import {
   getOfflineOwner,
   getOfflineReadLaterAutoDownloadLimit,
   listOfflineArticles,
+  OFFLINE_MUTATIONS_QUEUED_EVENT,
   OFFLINE_READ_LATER_AUTO_DOWNLOAD_LIMITS,
   OFFLINE_READ_LATER_DOWNLOAD_LIMIT,
   type OfflineArticle,
+  type OfflineMutableField,
   type OfflineReadLaterAutoDownloadLimit,
   parseOfflineReadLaterAutoDownloadLimit,
   reconcileAutomaticOfflineArticles,
   removeOfflineArticle,
   saveOfflineArticles,
   setOfflineReadLaterAutoDownloadLimit,
+  updateOfflineArticleAndQueueMutation,
 } from "@/lib/offline-library";
 import {
   type OfflineStatusTone,
@@ -126,6 +130,35 @@ export function OfflineLibraryView() {
     }
   }
 
+  async function queueArticleChange(
+    article: OfflineArticle,
+    field: OfflineMutableField,
+    value: boolean,
+  ) {
+    try {
+      const updated = await updateOfflineArticleAndQueueMutation(
+        article,
+        field,
+        value,
+      );
+      setArticles((current) =>
+        current.map((item) => (item.key === article.key ? updated : item)),
+      );
+      setStatus({
+        message: online
+          ? "Change queued and syncing now."
+          : "Change saved offline. It will sync when you reconnect.",
+        tone: "success",
+      });
+      window.dispatchEvent(new Event(OFFLINE_MUTATIONS_QUEUED_EVENT));
+    } catch {
+      setStatus({
+        message: "Could not save that offline change.",
+        tone: "error",
+      });
+    }
+  }
+
   const downloadReadLater = useCallback(
     (limit = OFFLINE_READ_LATER_DOWNLOAD_LIMIT, automatic = false) => {
       if (ownerId === null) {
@@ -210,6 +243,7 @@ export function OfflineLibraryView() {
 
   return (
     <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-6 md:px-8">
+      {ownerId !== null ? <OfflineMutationSync userId={ownerId} /> : null}
       <div className="flex flex-wrap items-baseline justify-between gap-3">
         <div>
           <h1 className="font-serif text-2xl font-bold tracking-tight">
@@ -348,6 +382,54 @@ export function OfflineLibraryView() {
                           >
                             Open original
                           </a>
+                        ) : null}
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() =>
+                            void queueArticleChange(
+                              article,
+                              "read",
+                              !article.read,
+                            )
+                          }
+                        >
+                          {article.read ? "Mark unread" : "Mark read"}
+                        </Button>
+                        {article.kind === "item" ? (
+                          <>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() =>
+                                void queueArticleChange(
+                                  article,
+                                  "starred",
+                                  !article.starred,
+                                )
+                              }
+                            >
+                              {article.starred ? "Unstar" : "Star"}
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() =>
+                                void queueArticleChange(
+                                  article,
+                                  "readLater",
+                                  !article.readLater,
+                                )
+                              }
+                            >
+                              {article.readLater
+                                ? "Remove from Read later"
+                                : "Save to Read later"}
+                            </Button>
+                          </>
                         ) : null}
                         <Button
                           type="button"

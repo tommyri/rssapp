@@ -4,6 +4,7 @@ import {
   type OfflineArticle,
   offlineArticleFromReaderItem,
   offlineArticlesFromReaderItems,
+  offlineMutationFromArticle,
   parseOfflineReadLaterAutoDownloadLimit,
 } from "./offline-library";
 
@@ -67,6 +68,9 @@ describe("offlineArticleFromReaderItem", () => {
       savedAt: "2026-07-12T12:00:00.000Z",
       contentHtml: "<p>Sanitized readable copy</p>",
       source: "manual",
+      read: false,
+      starred: false,
+      readLater: false,
     });
 
     vi.useRealTimers();
@@ -135,7 +139,7 @@ describe("automaticOfflineReconciliationPlan", () => {
     const plan = automaticOfflineReconciliationPlan(
       7,
       [
-        offlineArticle(1, "manual"),
+        { ...offlineArticle(1, "manual"), read: true },
         offlineArticle(2, "automatic"),
         offlineArticle(3, "automatic"),
       ],
@@ -144,8 +148,41 @@ describe("automaticOfflineReconciliationPlan", () => {
 
     expect(plan.staleKeys).toEqual(["7:item:3"]);
     expect(plan.articles).toMatchObject([
-      { key: "7:item:1", source: "manual" },
+      { key: "7:item:1", source: "manual", read: true },
       { key: "7:item:2", source: "automatic" },
     ]);
+  });
+});
+
+describe("offlineMutationFromArticle", () => {
+  it("coalesces a reader field under a user-scoped mutation key", () => {
+    const mutation = offlineMutationFromArticle(
+      offlineArticle(42, "manual"),
+      "starred",
+      true,
+    );
+
+    expect(mutation).toMatchObject({
+      key: "7:item:42:starred",
+      userId: 7,
+      kind: "item",
+      itemId: 42,
+      field: "starred",
+      value: true,
+    });
+    expect(mutation.token).toEqual(expect.any(String));
+  });
+
+  it("only allows read changes for saved pages", () => {
+    expect(() =>
+      offlineMutationFromArticle(offlineArticle(7, "manual"), "starred", true),
+    ).not.toThrow();
+    expect(() =>
+      offlineMutationFromArticle(
+        { ...offlineArticle(8, "manual"), kind: "page" },
+        "starred",
+        true,
+      ),
+    ).toThrow("Saved pages only support read-state sync.");
   });
 });

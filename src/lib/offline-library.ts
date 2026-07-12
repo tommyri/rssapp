@@ -2,11 +2,14 @@ import type { ReaderItem } from "@/lib/reader";
 
 const DATABASE_NAME = "rssapp-offline-library";
 const STORE_NAME = "articles";
-const DATABASE_VERSION = 1;
+const MUTATION_STORE_NAME = "mutations";
+const DATABASE_VERSION = 2;
 const OFFLINE_OWNER_KEY = "rssapp:offline-owner";
 const OFFLINE_AUTO_DOWNLOAD_KEY = "rssapp:offline-read-later-auto-download";
 
 export type OfflineArticleSource = "manual" | "automatic";
+export type OfflineMutableField = "read" | "starred" | "readLater";
+export const OFFLINE_MUTATIONS_QUEUED_EVENT = "rssapp:offline-mutations-queued";
 
 export interface OfflineArticle {
   key: string;
@@ -22,6 +25,23 @@ export interface OfflineArticle {
   contentHtml: string;
   /** Missing on older records; treated as a manually preserved copy. */
   source?: OfflineArticleSource;
+  /** Reader state is optional so earlier offline records remain readable. */
+  read?: boolean;
+  starred?: boolean;
+  readLater?: boolean;
+}
+
+export interface OfflineMutation {
+  /** Coalesces repeated changes to the same reader field. */
+  key: string;
+  userId: number;
+  kind: ReaderItem["kind"];
+  itemId: number;
+  field: OfflineMutableField;
+  value: boolean;
+  /** Identifies this exact value so a newer queued toggle cannot be deleted. */
+  token: string;
+  queuedAt: string;
 }
 
 export const OFFLINE_READ_LATER_DOWNLOAD_LIMIT = 50;
@@ -62,6 +82,36 @@ export function offlineArticleFromReaderItem(
     savedAt: new Date().toISOString(),
     contentHtml,
     source,
+    read: item.read,
+    starred: item.starred,
+    readLater: item.readLater,
+  };
+}
+
+function mutationToken(): string {
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
+    return crypto.randomUUID();
+  }
+  return `${Date.now()}:${Math.random()}`;
+}
+
+export function offlineMutationFromArticle(
+  article: OfflineArticle,
+  field: OfflineMutableField,
+  value: boolean,
+): OfflineMutation {
+  if (article.kind === "page" && field !== "read") {
+    throw new Error("Saved pages only support read-state sync.");
+  }
+  return {
+    key: `${article.userId}:${article.kind}:${article.itemId}:${field}`,
+    userId: article.userId,
+    kind: article.kind,
+    itemId: article.itemId,
+    field,
+    value,
+    token: mutationToken(),
+    queuedAt: new Date().toISOString(),
   };
 }
 
@@ -111,7 +161,13 @@ export function automaticOfflineReconciliationPlan(
       const current = existingByKey.get(article.key);
       return current?.source === "automatic"
         ? { ...article, source: "automatic" }
-        : { ...article, source: "manual" };
+        : {
+            ...article,
+            source: "manual",
+            read: current?.read ?? article.read,
+            starred: current?.starred ?? article.starred,
+            readLater: current?.readLater ?? article.readLater,
+          };
     }),
     staleKeys: existing
       .filter(
@@ -150,6 +206,11 @@ function openOfflineLibrary(): Promise<IDBDatabase> {
       if (!request.result.objectStoreNames.contains(STORE_NAME)) {
         request.result.createObjectStore(STORE_NAME, { keyPath: "key" });
       }
+      if (!request.result.objectStoreNames.contains(MUTATION_STORE_NAME)) {
+        request.result.createObjectStore(MUTATION_STORE_NAME, {
+          keyPath: "key",
+        });
+      }
     });
     request.addEventListener("success", () => resolve(request.result));
     request.addEventListener("error", () => reject(request.error));
@@ -171,6 +232,71 @@ export async function saveOfflineArticles(
     const transaction = database.transaction(STORE_NAME, "readwrite");
     const store = transaction.objectStore(STORE_NAME);
     for (const article of articles) store.put(article);
+    await transactionDone(transaction);
+  } finally {
+    database.close();
+  }
+}
+
+/** Atomically applies a local reader-state change and queues its server sync. */
+export async function updateOfflineArticleAndQueueMutation(
+  article: OfflineArticle,
+  field: OfflineMutableField,
+  value: boolean,
+): Promise<OfflineArticle> {
+  // A user interaction promotes an automatic copy to a preserved manual one,
+  // so the next automatic set refresh cannot overwrite its local state.
+  const updated = {
+    ...article,
+    source: "manual",
+    [field]: value,
+  } as OfflineArticle;
+  const mutation = offlineMutationFromArticle(updated, field, value);
+  const database = await openOfflineLibrary();
+  try {
+    const transaction = database.transaction(
+      [STORE_NAME, MUTATION_STORE_NAME],
+      "readwrite",
+    );
+    transaction.objectStore(STORE_NAME).put(updated);
+    transaction.objectStore(MUTATION_STORE_NAME).put(mutation);
+    await transactionDone(transaction);
+    return updated;
+  } finally {
+    database.close();
+  }
+}
+
+export async function listOfflineMutations(
+  userId: number,
+): Promise<OfflineMutation[]> {
+  const database = await openOfflineLibrary();
+  try {
+    const transaction = database.transaction(MUTATION_STORE_NAME, "readonly");
+    const records = await requestResult(
+      transaction.objectStore(MUTATION_STORE_NAME).getAll(),
+    );
+    await transactionDone(transaction);
+    return (records as OfflineMutation[])
+      .filter((mutation) => mutation.userId === userId)
+      .sort((a, b) => a.queuedAt.localeCompare(b.queuedAt));
+  } finally {
+    database.close();
+  }
+}
+
+/** Removes only the mutation version that was successfully applied. */
+export async function removeOfflineMutationIfUnchanged(
+  mutation: OfflineMutation,
+): Promise<void> {
+  const database = await openOfflineLibrary();
+  try {
+    const transaction = database.transaction(MUTATION_STORE_NAME, "readwrite");
+    const store = transaction.objectStore(MUTATION_STORE_NAME);
+    const current = (await requestResult(store.get(mutation.key))) as
+      | OfflineMutation
+      | undefined;
+    if (current?.token === mutation.token) store.delete(mutation.key);
     await transactionDone(transaction);
   } finally {
     database.close();
