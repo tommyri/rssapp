@@ -110,7 +110,15 @@ section list lives once in `src/lib/settings-sections.ts`.
 
 ## Mobile web
 
-Feedbin proves a web reader can be the best phone experience ("the mobile site is so good it turns out to be the best app"). Requirements: fast stacked navigation, comfortable tap targets, pull-to-refresh, mark-read-on-scroll working in the list. Swipe-row gestures (mark read / star) and PWA installability are "later" polish.
+Feedbin proves a web reader can be the best phone experience ("the mobile site is so good it turns out to be the best app"). Requirements: fast stacked navigation, comfortable tap targets, pull-to-refresh, mark-read-on-scroll working in the list. PWA installability stays "later" polish.
+
+**Swipe gestures** *(shipped July 2026)*: swipe a collapsed row right = toggle read, left
+= toggle read-later — matching our triage verbs (a post is either read or kept). iOS-mail
+mechanics: the row follows the finger once the drag is clearly horizontal (vertical
+always wins — hijacking scroll is the worse failure), an icon zone arms at the trigger
+threshold, release fires, row springs back. Collapsed headers only, so expanded articles
+keep horizontal code scrolling. Two gestures is the deliberate ceiling — more would need
+a legend, and gestures that need a legend have failed.
 
 ## Anti-patterns (documented backlash — do not ship)
 

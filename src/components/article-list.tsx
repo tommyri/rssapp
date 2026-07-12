@@ -31,6 +31,7 @@ import {
 } from "@/app/actions";
 import { ArticleContent } from "@/components/article-content";
 import { SaveLinkForm } from "@/components/save-link-form";
+import { SwipeableRow } from "@/components/swipeable-row";
 import { Button } from "@/components/ui/button";
 import { alsoInLabel } from "@/lib/duplicates";
 import { relativeTime } from "@/lib/format";
@@ -582,79 +583,105 @@ export function ArticleList({
                   animationDelay: `${Math.min(index, STAGGER_CAP) * 30}ms`,
                 }}
               >
-                <button
-                  type="button"
-                  onClick={() => toggleExpanded(item)}
-                  className="group flex w-full cursor-pointer items-start gap-3 px-1 py-3.5 text-left transition-colors hover:bg-accent/40"
+                {/* Touch: swipe the collapsed header right to toggle read, left
+                    to toggle read-later (docs/design-ux.md mobile). Header only
+                    — article content needs its own horizontal scrolling. */}
+                <SwipeableRow
+                  onSwipeRight={() => toggleRead(item)}
+                  onSwipeLeft={
+                    item.kind === "item"
+                      ? () => toggleReadLater(item)
+                      : undefined
+                  }
+                  rightIcon={
+                    item.read ? (
+                      <CircleIcon className="size-4" />
+                    ) : (
+                      <CheckIcon className="size-4" />
+                    )
+                  }
+                  leftIcon={
+                    item.readLater ? (
+                      <BookmarkCheckIcon className="size-4" />
+                    ) : (
+                      <BookmarkIcon className="size-4" />
+                    )
+                  }
                 >
-                  <span
-                    aria-hidden
-                    className={`mt-[7px] size-2 shrink-0 rounded-full transition-colors ${
-                      item.read ? "bg-transparent" : "bg-primary"
-                    }`}
-                  />
-                  <span className="min-w-0 flex-1">
+                  <button
+                    type="button"
+                    onClick={() => toggleExpanded(item)}
+                    className="group flex w-full cursor-pointer items-start gap-3 px-1 py-3.5 text-left transition-colors hover:bg-accent/40"
+                  >
                     <span
-                      className={
-                        isOpen
-                          ? "block font-serif text-[22px] leading-tight font-bold"
-                          : `block truncate text-[15px] leading-snug font-semibold ${
-                              item.read ? "text-muted-foreground" : ""
-                            }`
-                      }
-                    >
-                      {item.starred ? (
-                        <StarIcon className="mr-1 inline-block size-3.5 fill-current align-[-0.15em] text-primary" />
-                      ) : null}
-                      {isPage ? (
-                        <LinkIcon className="mr-1 inline-block size-3.5 align-[-0.15em] text-muted-foreground" />
-                      ) : item.readLater ? (
-                        <BookmarkCheckIcon className="mr-1 inline-block size-3.5 align-[-0.15em] text-primary" />
-                      ) : null}
-                      {item.title ?? "(untitled)"}
-                    </span>
-                    {!isOpen && (pageSubtitle || snippet) ? (
-                      <span
-                        className={`mt-0.5 line-clamp-2 block text-[13px] leading-normal ${
-                          item.read
-                            ? "text-muted-foreground/60"
-                            : "text-muted-foreground"
-                        }`}
-                      >
-                        {pageSubtitle || snippet}
-                      </span>
-                    ) : null}
-                    <span
-                      className={`mt-1 block text-xs text-muted-foreground/80 ${
-                        isOpen ? "" : "truncate"
+                      aria-hidden
+                      className={`mt-[7px] size-2 shrink-0 rounded-full transition-colors ${
+                        item.read ? "bg-transparent" : "bg-primary"
                       }`}
-                    >
-                      {item.feedTitle}
-                      {item.dupFeedTitles && item.dupFeedTitles.length > 0 ? (
-                        <span className="text-muted-foreground/70">
-                          {` · also in ${alsoInLabel(item.dupFeedTitles)}`}
+                    />
+                    <span className="min-w-0 flex-1">
+                      <span
+                        className={
+                          isOpen
+                            ? "block font-serif text-[22px] leading-tight font-bold"
+                            : `block truncate text-[15px] leading-snug font-semibold ${
+                                item.read ? "text-muted-foreground" : ""
+                              }`
+                        }
+                      >
+                        {item.starred ? (
+                          <StarIcon className="mr-1 inline-block size-3.5 fill-current align-[-0.15em] text-primary" />
+                        ) : null}
+                        {isPage ? (
+                          <LinkIcon className="mr-1 inline-block size-3.5 align-[-0.15em] text-muted-foreground" />
+                        ) : item.readLater ? (
+                          <BookmarkCheckIcon className="mr-1 inline-block size-3.5 align-[-0.15em] text-primary" />
+                        ) : null}
+                        {item.title ?? "(untitled)"}
+                      </span>
+                      {!isOpen && (pageSubtitle || snippet) ? (
+                        <span
+                          className={`mt-0.5 line-clamp-2 block text-[13px] leading-normal ${
+                            item.read
+                              ? "text-muted-foreground/60"
+                              : "text-muted-foreground"
+                          }`}
+                        >
+                          {pageSubtitle || snippet}
                         </span>
                       ) : null}
-                      {isPage
-                        ? ` · saved ${relativeTime(new Date(item.sortTs))}`
-                        : item.publishedAt
-                          ? ` · ${
-                              isOpen
-                                ? new Date(item.publishedAt).toLocaleString()
-                                : relativeTime(new Date(item.publishedAt))
-                            }`
-                          : ""}
-                      {item.author ? ` · ${item.author}` : ""}
-                      {/* "N min read" (the Medium convention): no "~" — it
+                      <span
+                        className={`mt-1 block text-xs text-muted-foreground/80 ${
+                          isOpen ? "" : "truncate"
+                        }`}
+                      >
+                        {item.feedTitle}
+                        {item.dupFeedTitles && item.dupFeedTitles.length > 0 ? (
+                          <span className="text-muted-foreground/70">
+                            {` · also in ${alsoInLabel(item.dupFeedTitles)}`}
+                          </span>
+                        ) : null}
+                        {isPage
+                          ? ` · saved ${relativeTime(new Date(item.sortTs))}`
+                          : item.publishedAt
+                            ? ` · ${
+                                isOpen
+                                  ? new Date(item.publishedAt).toLocaleString()
+                                  : relativeTime(new Date(item.publishedAt))
+                              }`
+                            : ""}
+                        {item.author ? ` · ${item.author}` : ""}
+                        {/* "N min read" (the Medium convention): no "~" — it
                           doubles up punctuation after the separator dot, and
                           "read" keeps it from scanning as a second timestamp. */}
-                      {minutes !== null ? ` · ${minutes} min read` : ""}
-                      {isOpen && !isPage && item.fullContentHtml ? (
-                        <span className="italic"> · full content</span>
-                      ) : null}
+                        {minutes !== null ? ` · ${minutes} min read` : ""}
+                        {isOpen && !isPage && item.fullContentHtml ? (
+                          <span className="italic"> · full content</span>
+                        ) : null}
+                      </span>
                     </span>
-                  </span>
-                </button>
+                  </button>
+                </SwipeableRow>
 
                 {isOpen ? (
                   <div className="row-enter pr-1 pb-5 pl-6">
