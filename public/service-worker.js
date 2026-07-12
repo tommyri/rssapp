@@ -1,9 +1,14 @@
-const SHELL_CACHE = "rssapp-offline-shell-v3";
+const SHELL_CACHE = "rssapp-offline-shell-v4";
 const OFFLINE_PAGE = "/offline";
 const OFFLINE_DATABASE = "rssapp-offline-library";
-const OFFLINE_DATABASE_VERSION = 2;
+const OFFLINE_DATABASE_VERSION = 3;
+const ARTICLE_STORE = "articles";
 const MUTATION_STORE = "mutations";
+const SETTINGS_STORE = "settings";
 const BACKGROUND_SYNC_TAG = "rssapp-offline-mutations";
+const AUTOMATIC_DOWNLOAD_SYNC_TAG = "rssapp-offline-read-later";
+const AUTOMATIC_DOWNLOAD_PERIODIC_SYNC_TAG =
+  "rssapp-offline-read-later-periodic";
 
 async function cacheOfflineShell() {
   const cache = await caches.open(SHELL_CACHE);
@@ -72,11 +77,14 @@ function openOfflineDatabase() {
   return new Promise((resolve, reject) => {
     const request = indexedDB.open(OFFLINE_DATABASE, OFFLINE_DATABASE_VERSION);
     request.addEventListener("upgradeneeded", () => {
-      if (!request.result.objectStoreNames.contains("articles")) {
-        request.result.createObjectStore("articles", { keyPath: "key" });
+      if (!request.result.objectStoreNames.contains(ARTICLE_STORE)) {
+        request.result.createObjectStore(ARTICLE_STORE, { keyPath: "key" });
       }
       if (!request.result.objectStoreNames.contains(MUTATION_STORE)) {
         request.result.createObjectStore(MUTATION_STORE, { keyPath: "key" });
+      }
+      if (!request.result.objectStoreNames.contains(SETTINGS_STORE)) {
+        request.result.createObjectStore(SETTINGS_STORE, { keyPath: "key" });
       }
     });
     request.addEventListener("success", () => resolve(request.result));
@@ -136,9 +144,96 @@ async function syncQueuedMutations() {
   }
 }
 
+async function readAutomaticDownloadSettings() {
+  const database = await openOfflineDatabase();
+  try {
+    const transaction = database.transaction(SETTINGS_STORE, "readonly");
+    const records = await requestResult(
+      transaction.objectStore(SETTINGS_STORE).getAll(),
+    );
+    await transactionDone(transaction);
+    return records.filter(
+      (setting) =>
+        Number.isInteger(setting?.userId) &&
+        [25, 50, 100].includes(setting?.limit),
+    );
+  } finally {
+    database.close();
+  }
+}
+
+async function reconcileAutomaticArticles(userId, incoming) {
+  const database = await openOfflineDatabase();
+  try {
+    const transaction = database.transaction(ARTICLE_STORE, "readwrite");
+    const store = transaction.objectStore(ARTICLE_STORE);
+    const existing = await requestResult(store.getAll());
+    const existingByKey = new Map(
+      existing
+        .filter((article) => article.userId === userId)
+        .map((article) => [article.key, article]),
+    );
+    const incomingKeys = new Set(incoming.map((article) => article.key));
+
+    for (const article of incoming) {
+      const current = existingByKey.get(article.key);
+      if (!current || current.source === "automatic") {
+        store.put({ ...article, source: "automatic" });
+      } else {
+        store.put({
+          ...article,
+          source: "manual",
+          read: current?.read ?? article.read,
+          starred: current?.starred ?? article.starred,
+          readLater: current?.readLater ?? article.readLater,
+        });
+      }
+    }
+
+    for (const article of existing) {
+      if (
+        article.userId === userId &&
+        article.source === "automatic" &&
+        !incomingKeys.has(article.key)
+      ) {
+        store.delete(article.key);
+      }
+    }
+    await transactionDone(transaction);
+  } finally {
+    database.close();
+  }
+}
+
+async function refreshAutomaticReadLater() {
+  const settings = await readAutomaticDownloadSettings();
+  for (const setting of settings) {
+    const response = await fetch(
+      `/api/offline/read-later?limit=${setting.limit}`,
+      { credentials: "same-origin" },
+    );
+    if (response.status === 401 || response.status === 403) return;
+    if (!response.ok) throw new Error("Automatic offline download failed.");
+    const result = await response.json();
+    if (result?.userId !== setting.userId || !Array.isArray(result?.articles)) {
+      continue;
+    }
+    await reconcileAutomaticArticles(setting.userId, result.articles);
+  }
+}
+
 self.addEventListener("sync", (event) => {
   if (event.tag === BACKGROUND_SYNC_TAG) {
     event.waitUntil(syncQueuedMutations());
+  }
+  if (event.tag === AUTOMATIC_DOWNLOAD_SYNC_TAG) {
+    event.waitUntil(refreshAutomaticReadLater());
+  }
+});
+
+self.addEventListener("periodicsync", (event) => {
+  if (event.tag === AUTOMATIC_DOWNLOAD_PERIODIC_SYNC_TAG) {
+    event.waitUntil(refreshAutomaticReadLater());
   }
 });
 

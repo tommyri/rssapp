@@ -4,7 +4,8 @@ import type { ReaderItem } from "@/lib/reader";
 const DATABASE_NAME = "rssapp-offline-library";
 const STORE_NAME = "articles";
 const MUTATION_STORE_NAME = "mutations";
-const DATABASE_VERSION = 2;
+const SETTINGS_STORE_NAME = "settings";
+const DATABASE_VERSION = 3;
 const OFFLINE_OWNER_KEY = "rssapp:offline-owner";
 const OFFLINE_AUTO_DOWNLOAD_KEY = "rssapp:offline-read-later-auto-download";
 
@@ -68,6 +69,12 @@ export const OFFLINE_READ_LATER_AUTO_DOWNLOAD_LIMITS = [
 
 export type OfflineReadLaterAutoDownloadLimit =
   (typeof OFFLINE_READ_LATER_AUTO_DOWNLOAD_LIMITS)[number];
+
+interface OfflineAutomaticDownloadSetting {
+  key: string;
+  userId: number;
+  limit: OfflineReadLaterAutoDownloadLimit;
+}
 
 export function parseOfflineReadLaterAutoDownloadLimit(
   value: string | null,
@@ -219,7 +226,7 @@ export function automaticOfflineReconciliationPlan(
   return {
     articles: incoming.map((article) => {
       const current = existingByKey.get(article.key);
-      return current?.source === "automatic"
+      return !current || current.source === "automatic"
         ? { ...article, source: "automatic" }
         : {
             ...article,
@@ -268,6 +275,11 @@ function openOfflineLibrary(): Promise<IDBDatabase> {
       }
       if (!request.result.objectStoreNames.contains(MUTATION_STORE_NAME)) {
         request.result.createObjectStore(MUTATION_STORE_NAME, {
+          keyPath: "key",
+        });
+      }
+      if (!request.result.objectStoreNames.contains(SETTINGS_STORE_NAME)) {
+        request.result.createObjectStore(SETTINGS_STORE_NAME, {
           keyPath: "key",
         });
       }
@@ -385,7 +397,7 @@ export async function clearOfflineDataForUser(userId: number): Promise<number> {
   const database = await openOfflineLibrary();
   try {
     const transaction = database.transaction(
-      [STORE_NAME, MUTATION_STORE_NAME],
+      [STORE_NAME, MUTATION_STORE_NAME, SETTINGS_STORE_NAME],
       "readwrite",
     );
     const articleStore = transaction.objectStore(STORE_NAME);
@@ -397,6 +409,9 @@ export async function clearOfflineDataForUser(userId: number): Promise<number> {
     const plan = offlineDataClearPlan(userId, articles, mutations);
     for (const key of plan.articleKeys) articleStore.delete(key);
     for (const key of plan.mutationKeys) mutationStore.delete(key);
+    transaction
+      .objectStore(SETTINGS_STORE_NAME)
+      .delete(offlineAutoDownloadKey(userId));
     await transactionDone(transaction);
     return plan.articleKeys.length + plan.mutationKeys.length;
   } finally {
@@ -487,12 +502,28 @@ export function getOfflineReadLaterAutoDownloadLimit(
   );
 }
 
-export function setOfflineReadLaterAutoDownloadLimit(
+export async function setOfflineReadLaterAutoDownloadLimit(
   userId: number,
   limit: OfflineReadLaterAutoDownloadLimit,
-): void {
+): Promise<void> {
+  if (!OFFLINE_READ_LATER_AUTO_DOWNLOAD_LIMITS.includes(limit)) {
+    throw new Error("Unsupported automatic download limit.");
+  }
   if (typeof localStorage !== "undefined") {
     localStorage.setItem(offlineAutoDownloadKey(userId), String(limit));
+  }
+  const database = await openOfflineLibrary();
+  try {
+    const transaction = database.transaction(SETTINGS_STORE_NAME, "readwrite");
+    const setting: OfflineAutomaticDownloadSetting = {
+      key: offlineAutoDownloadKey(userId),
+      userId,
+      limit,
+    };
+    transaction.objectStore(SETTINGS_STORE_NAME).put(setting);
+    await transactionDone(transaction);
+  } finally {
+    database.close();
   }
 }
 

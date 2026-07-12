@@ -138,6 +138,18 @@ describe("parseOfflineReadLaterAutoDownloadLimit", () => {
 });
 
 describe("automaticOfflineReconciliationPlan", () => {
+  it("keeps a new automatic copy eligible for the next bounded refresh", () => {
+    const plan = automaticOfflineReconciliationPlan(
+      7,
+      [],
+      [offlineArticle(1, "automatic")],
+    );
+
+    expect(plan.articles).toMatchObject([
+      { key: "7:item:1", source: "automatic" },
+    ]);
+  });
+
   it("removes stale automatic copies without replacing manually kept articles", () => {
     const plan = automaticOfflineReconciliationPlan(
       7,

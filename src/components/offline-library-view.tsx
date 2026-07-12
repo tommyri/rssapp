@@ -23,6 +23,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { normalizeEmbedLoadingPreferences } from "@/lib/embed-loading";
+import { scheduleAutomaticOfflineDownload } from "@/lib/offline-background-download";
 import {
   clearOfflineDeviceData,
   getOfflineOwner,
@@ -257,7 +258,11 @@ export function OfflineLibraryView() {
     automaticDownloadRun.current = null;
     setAutoDownloadLimit(limit);
     if (ownerId !== null) {
-      setOfflineReadLaterAutoDownloadLimit(ownerId, limit);
+      void setOfflineReadLaterAutoDownloadLimit(ownerId, limit)
+        .then(() => scheduleAutomaticOfflineDownload(limit))
+        .catch(() => {
+          // The foreground open/reconnect refresh still uses the local setting.
+        });
     }
   }
 

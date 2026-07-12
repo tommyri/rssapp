@@ -2,9 +2,12 @@
 
 import { useEffect } from "react";
 import { OfflineMutationSync } from "@/components/offline-mutation-sync";
+import { scheduleAutomaticOfflineDownload } from "@/lib/offline-background-download";
 import {
+  getOfflineReadLaterAutoDownloadLimit,
   OFFLINE_MUTATIONS_QUEUED_EVENT,
   setOfflineOwner,
+  setOfflineReadLaterAutoDownloadLimit,
 } from "@/lib/offline-library";
 
 const BACKGROUND_SYNC_TAG = "rssapp-offline-mutations";
@@ -17,6 +20,12 @@ interface BackgroundSyncRegistration {
 export function PwaRegister({ userId }: { userId: number }) {
   useEffect(() => {
     setOfflineOwner(userId);
+    const automaticDownloadLimit = getOfflineReadLaterAutoDownloadLimit(userId);
+    void setOfflineReadLaterAutoDownloadLimit(userId, automaticDownloadLimit)
+      .then(() => scheduleAutomaticOfflineDownload(automaticDownloadLimit))
+      .catch(() => {
+        // The foreground open/reconnect refresh still works without IndexedDB.
+      });
 
     function requestBackgroundSync() {
       if (!("serviceWorker" in navigator)) return;
