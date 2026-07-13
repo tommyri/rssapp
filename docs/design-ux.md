@@ -17,7 +17,10 @@ Follow the NetNewsWire timeline recipe (the best-documented design reasoning in 
 - **Colored dot for unread** — the de-facto convention (NNW, Reeder, Feedbin); ours is the primary accent
 - **No auto-extracted thumbnails.** NNW documents the failure modes: cropped faces, social-share icons, tracking pixels picked by mistake. If we ever add thumbnails it's per-feed opt-in for image-heavy feeds
 - No grid lines; whitespace separation reads more "publication," less "spreadsheet"
-- One good default density; compact/comfortable modes can come later
+- **Reader-selectable density** — Comfortable preserves the original two-line
+  preview rows; Compact tightens rows and uses one-line previews for faster
+  scanning. This is an account preference in Reading settings; opening an
+  article always keeps the comfortable reading layout.
 - **Per-feed settings** live on the `subscriptions.settings` column. Shipped: full-content default, auto-read-days override, **sort order** (newest vs oldest first), and **unread-only by default** (feeds can open on all articles instead).
 
 Sorting: newest-first globally and for folder/all views. A feed can opt into oldest-first so nothing gets buried; pagination follows the chosen order.

@@ -12,6 +12,10 @@ import {
   subscriptions,
   users,
 } from "@/db/schema";
+import {
+  type ArticleListDensity,
+  normalizeArticleListDensity,
+} from "@/lib/article-list-density";
 import { otherFeedTitles } from "@/lib/duplicates";
 import {
   type EmbedLoadingPreferences,
@@ -947,6 +951,16 @@ export async function getCollapseDuplicates(userId: number): Promise<boolean> {
     .from(users)
     .where(eq(users.id, userId));
   return rows[0]?.settings?.collapseDuplicates !== false;
+}
+
+export async function getArticleListDensity(
+  userId: number,
+): Promise<ArticleListDensity> {
+  const rows = await db
+    .select({ settings: users.settings })
+    .from(users)
+    .where(eq(users.id, userId));
+  return normalizeArticleListDensity(rows[0]?.settings?.articleListDensity);
 }
 
 export async function getEmbedLoadingPreferences(

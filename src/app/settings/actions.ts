@@ -4,6 +4,7 @@ import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
 import { users } from "@/db/schema";
+import { isArticleListDensity } from "@/lib/article-list-density";
 import { getCurrentUserId } from "@/lib/current-user";
 import {
   EMBED_PROVIDERS,
@@ -64,6 +65,10 @@ export async function updateReadingPrefsAction(
   }
   // Unchecked checkboxes are omitted from FormData entirely.
   const collapseDuplicates = formData.get("collapseDuplicates") === "on";
+  const articleListDensity = String(formData.get("articleListDensity") ?? "");
+  if (!isArticleListDensity(articleListDensity)) {
+    return { ok: false, message: "Choose an article list density." };
+  }
   const embedDefault = String(formData.get("embedDefault") ?? "");
   if (!isEmbedLoadMode(embedDefault)) {
     return { ok: false, message: "Choose how embeds should load." };
@@ -84,6 +89,7 @@ export async function updateReadingPrefsAction(
   const settings = {
     ...(user?.settings ?? {}),
     collapseDuplicates,
+    articleListDensity,
     embedLoading: { default: embedDefault, providers: embedProviders },
   };
   if (days) settings.autoReadDays = days;

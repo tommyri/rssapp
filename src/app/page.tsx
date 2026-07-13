@@ -21,6 +21,7 @@ import { getCurrentUserId } from "@/lib/current-user";
 import { listLabelSummaries } from "@/lib/labels";
 import {
   type FeedSummary,
+  getArticleListDensity,
   getCollapseDuplicates,
   getEmbedLoadingPreferences,
   listFeeds,
@@ -70,6 +71,7 @@ export default async function Home({
   const [
     feeds,
     collapse,
+    articleListDensity,
     embedLoading,
     labels,
     sidebarFolders,
@@ -77,6 +79,7 @@ export default async function Home({
   ] = await Promise.all([
     listFeeds(userId),
     getCollapseDuplicates(userId),
+    getArticleListDensity(userId),
     getEmbedLoadingPreferences(userId),
     listLabelSummaries(userId),
     listSidebarFolders(userId),
@@ -311,6 +314,7 @@ export default async function Home({
                 isSearch={isSearch}
                 unreadCount={unreadCount}
                 collapse={collapse}
+                density={articleListDensity}
                 embedLoading={embedLoading}
                 offlineUserId={userId}
                 availableLabels={labels}

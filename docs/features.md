@@ -68,7 +68,11 @@ Phased plan. Each phase should ship as a usable app — MVP alone should be good
 - **Distraction-free reading mode** *(shipped July 2026)* — collapse the sidebar/chrome for a full-focus single column. Exit from the reader header or with Escape.
 - **Reading progress + resume** *(shipped July 2026)* — a thin progress bar and remembered scroll position so long articles resume where you left off.
 - **Highlights & notes** (stretch) — highlight passages and jot notes on articles and saved pages; a natural companion to save-any-link.
-- **Density + "river" mode** (stretch) — compact/comfortable density and an optional single-column continuous reading mode (both "later" in design-ux.md).
+- **Article-list density** *(shipped July 2026)* — comfortable (the original
+  two-line previews) or compact (tighter, one-line-preview rows), saved with
+  reading preferences and applied everywhere in the reader.
+- **"River" mode** (stretch) — an optional single-column continuous reading
+  mode remains a later design-ux exploration.
 
 ### Navigation & power-user speed
 - **Command palette / quick switcher** *(shipped July 2026)* — `⌘K`/`Ctrl+K` opens a fuzzy-filtered jump list of every feed, folder, view, and app page; arrows + Enter to jump. Available on every page (mounted session-gated from the root layout — `GlobalCommandPalette`), not just the reader. Dependency-free: a pure subsequence matcher with word-start/run bonuses (`src/lib/fuzzy.ts`, unit-tested) over the existing dialog primitives, with matched characters highlighted. The chord works even while typing in a field (unlike the single-key canon, it can't collide). Multiplies the keyboard-shortcuts investment.

@@ -12,6 +12,7 @@ import { ReaderTypographyForm } from "@/components/reader-typography";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { db } from "@/db";
 import { users } from "@/db/schema";
+import { normalizeArticleListDensity } from "@/lib/article-list-density";
 import { getCurrentUserId } from "@/lib/current-user";
 import { normalizeEmbedLoadingPreferences } from "@/lib/embed-loading";
 // Categorized settings (docs/design-ux.md): the rail/pills are a selector, not
@@ -70,6 +71,9 @@ export default async function SettingsPage({
         <ReadingPrefsForm
           autoReadDays={user?.settings.autoReadDays ?? null}
           collapseDuplicates={user?.settings.collapseDuplicates ?? true}
+          articleListDensity={normalizeArticleListDensity(
+            user?.settings.articleListDensity,
+          )}
           embedLoading={normalizeEmbedLoadingPreferences(
             user?.settings.embedLoading,
           )}

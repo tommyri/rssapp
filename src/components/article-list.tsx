@@ -41,6 +41,10 @@ import {
   useReaderKeyboard,
 } from "@/components/use-reader-keyboard";
 import { useReadingProgress } from "@/components/use-reading-progress";
+import {
+  type ArticleListDensity,
+  articleListDensityClasses,
+} from "@/lib/article-list-density";
 import { alsoInLabel } from "@/lib/duplicates";
 import type { EmbedLoadingPreferences } from "@/lib/embed-loading";
 import { relativeTime } from "@/lib/format";
@@ -77,6 +81,7 @@ interface Props {
    * and marking a story read should clear its copies in other feeds too.
    */
   collapse?: boolean;
+  density: ArticleListDensity;
   embedLoading: EmbedLoadingPreferences;
   offlineUserId: number;
   availableLabels: ReaderLabel[];
@@ -108,6 +113,7 @@ export function ArticleList({
   isSearch = false,
   unreadCount = 0,
   collapse = false,
+  density,
   embedLoading,
   offlineUserId,
   availableLabels,
@@ -537,6 +543,11 @@ export function ArticleList({
           {items.map((item, index) => {
             const key = keyOf(item);
             const isOpen = expandedId === key;
+            // Density is a scanning preference. An open article always uses the
+            // comfortable row metrics that existed before this setting.
+            const rowDensity = articleListDensityClasses(
+              isOpen ? "comfortable" : density,
+            );
             const isPage = item.kind === "page";
             const contentHtml = item.fullContentHtml ?? item.contentHtml;
             const error = fullContentErrors.get(item.id);
@@ -590,11 +601,11 @@ export function ArticleList({
                   <button
                     type="button"
                     onClick={() => toggleExpanded(item)}
-                    className="group flex w-full cursor-pointer items-start gap-3 px-1 py-3.5 text-left transition-colors hover:bg-accent/40"
+                    className={`group flex w-full cursor-pointer items-start text-left transition-colors hover:bg-accent/40 ${rowDensity.header}`}
                   >
                     <span
                       aria-hidden
-                      className={`mt-[7px] size-2 shrink-0 rounded-full transition-colors ${
+                      className={`${rowDensity.unreadDot} size-2 shrink-0 rounded-full transition-colors ${
                         item.read ? "bg-transparent" : "bg-primary"
                       }`}
                     />
@@ -603,7 +614,7 @@ export function ArticleList({
                         className={
                           isOpen
                             ? "block font-serif text-[22px] leading-tight font-bold"
-                            : `block truncate text-[15px] leading-snug font-semibold ${
+                            : `block truncate font-semibold ${rowDensity.title} ${
                                 item.read ? "text-muted-foreground" : ""
                               }`
                         }
@@ -620,7 +631,7 @@ export function ArticleList({
                       </span>
                       {!isOpen && (pageSubtitle || snippet) ? (
                         <span
-                          className={`mt-0.5 line-clamp-2 block text-[13px] leading-normal ${
+                          className={`block ${rowDensity.snippet} ${
                             item.read
                               ? "text-muted-foreground/60"
                               : "text-muted-foreground"
@@ -630,7 +641,7 @@ export function ArticleList({
                         </span>
                       ) : null}
                       <span
-                        className={`mt-1 block text-xs text-muted-foreground/80 ${
+                        className={`block text-muted-foreground/80 ${rowDensity.metadata} ${
                           isOpen ? "" : "truncate"
                         }`}
                       >

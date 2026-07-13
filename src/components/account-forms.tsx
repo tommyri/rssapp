@@ -17,6 +17,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import type { ArticleListDensity } from "@/lib/article-list-density";
 import {
   EMBED_PROVIDER_LABELS,
   EMBED_PROVIDERS,
@@ -102,10 +103,12 @@ export function ChangeEmailForm({ currentEmail }: { currentEmail: string }) {
 export function ReadingPrefsForm({
   autoReadDays,
   collapseDuplicates,
+  articleListDensity,
   embedLoading,
 }: {
   autoReadDays: number | null;
   collapseDuplicates: boolean;
+  articleListDensity: ArticleListDensity;
   embedLoading: EmbedLoadingPreferences;
 }) {
   const [state, formAction, isPending] = useActionState(
@@ -121,6 +124,8 @@ export function ReadingPrefsForm({
       : String(autoReadDays),
   );
   const [collapse, setCollapse] = useState(collapseDuplicates);
+  const [density, setDensity] =
+    useState<ArticleListDensity>(articleListDensity);
   const [defaultMode, setDefaultMode] = useState<EmbedLoadMode>(
     embedLoading.default,
   );
@@ -128,6 +133,7 @@ export function ReadingPrefsForm({
   const preferenceSnapshot = JSON.stringify({
     days,
     collapse,
+    density,
     defaultMode,
     providers,
   });
@@ -155,6 +161,51 @@ export function ReadingPrefsForm({
       }}
       className="space-y-4"
     >
+      <section className="space-y-4 rounded-lg border p-4">
+        <div className="space-y-1">
+          <h3 className="font-medium">Article list</h3>
+          <p className="text-xs text-muted-foreground">
+            Control how much information each collapsed article row shows. Open
+            articles always keep the same comfortable reading layout.
+          </p>
+        </div>
+        <fieldset className="space-y-2">
+          <legend className="text-sm font-medium">Density</legend>
+          <label className="flex cursor-pointer items-start gap-2">
+            <input
+              type="radio"
+              name="articleListDensity"
+              value="comfortable"
+              checked={density === "comfortable"}
+              onChange={() => setDensity("comfortable")}
+              className="mt-0.5 accent-primary"
+            />
+            <span>
+              <span className="block text-sm">Comfortable</span>
+              <span className="mt-0.5 block text-xs text-muted-foreground">
+                Two-line previews and the original row spacing.
+              </span>
+            </span>
+          </label>
+          <label className="flex cursor-pointer items-start gap-2">
+            <input
+              type="radio"
+              name="articleListDensity"
+              value="compact"
+              checked={density === "compact"}
+              onChange={() => setDensity("compact")}
+              className="mt-0.5 accent-primary"
+            />
+            <span>
+              <span className="block text-sm">Compact</span>
+              <span className="mt-0.5 block text-xs text-muted-foreground">
+                Tighter rows and one-line previews for faster scanning.
+              </span>
+            </span>
+          </label>
+        </fieldset>
+      </section>
+
       <section className="space-y-4 rounded-lg border p-4">
         <h3 className="font-medium">Unread management</h3>
         <div className="space-y-2">

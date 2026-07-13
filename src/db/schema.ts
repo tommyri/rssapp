@@ -13,6 +13,7 @@ import {
   timestamp,
   uniqueIndex,
 } from "drizzle-orm/pg-core";
+import type { ArticleListDensity } from "@/lib/article-list-density";
 import type { EmbedLoadingPreferences } from "@/lib/embed-loading";
 
 const tsvector = customType<{ data: string }>({
@@ -35,6 +36,7 @@ export const users = pgTable("users", {
   settings: jsonb("settings").notNull().default({}).$type<{
     autoReadDays?: number;
     collapseDuplicates?: boolean;
+    articleListDensity?: ArticleListDensity;
     embedLoading?: EmbedLoadingPreferences;
     collapsedFolderIds?: number[];
     sidebarFolderIds?: number[];
