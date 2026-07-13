@@ -53,10 +53,9 @@ function apply(theme: Theme, disableTransition: boolean): void {
 }
 
 /**
- * Owns the theme setting and the <html> class, replacing next-themes (whose
- * provider injects a client-rendered <script> that React 19 warns about). The
- * no-flash work is done by the inline script in layout.tsx; this only tracks the
- * choice and keeps the class in sync afterwards — it renders no script itself.
+ * Owns the theme setting and the <html> class. The no-flash work is done by
+ * ThemeScript during HTML parsing; this only tracks the choice and keeps the
+ * class in sync afterwards — it renders no script itself.
  */
 export function ThemeProvider({ children }: { children: ReactNode }) {
   // Server + first client render assume "system" (matching the SSR <html>); the

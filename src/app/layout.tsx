@@ -3,6 +3,7 @@ import { Geist, Geist_Mono, Newsreader } from "next/font/google";
 import { GlobalCommandPalette } from "@/components/global-command-palette";
 import { ReaderTypographyController } from "@/components/reader-typography";
 import { ThemeProvider } from "@/components/theme-provider";
+import { ThemeScript } from "@/components/theme-script";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -28,12 +29,6 @@ export const metadata: Metadata = {
   description: "A self-hosted RSS reader",
 };
 
-// Applies the saved theme (or the system preference) to <html> before the first
-// paint, so there's no flash. Server-rendered into <head> — unlike next-themes'
-// provider, it never emits a <script> during a client render (which React 19
-// warns about). The "theme" key must match THEME_STORAGE_KEY in theme-provider.
-const THEME_SCRIPT = `(function(){try{var e=document.documentElement,t=localStorage.getItem("theme")||"system",d=t==="dark"||(t==="system"&&matchMedia("(prefers-color-scheme:dark)").matches);e.classList.toggle("dark",d);e.style.colorScheme=d?"dark":"light"}catch(_){}})()`;
-
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -48,8 +43,7 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <head>
-        {/* biome-ignore lint/security/noDangerouslySetInnerHtml: static, app-built no-flash theme script */}
-        <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
+        <ThemeScript />
       </head>
       <body className="flex min-h-full flex-col">
         <ThemeProvider>
