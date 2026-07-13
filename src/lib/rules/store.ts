@@ -1,6 +1,6 @@
 import { and, desc, eq } from "drizzle-orm";
 import { db } from "@/db";
-import { feeds, rules } from "@/db/schema";
+import { feeds, labels, rules } from "@/db/schema";
 import type { RuleAction, RuleField, RuleMatchType } from "./engine";
 
 export interface RuleListEntry {
@@ -11,6 +11,8 @@ export interface RuleListEntry {
   matchType: RuleMatchType;
   pattern: string;
   action: RuleAction;
+  labelId: number | null;
+  labelName: string | null;
   enabled: boolean;
 }
 
@@ -24,10 +26,13 @@ export async function listRules(userId: number): Promise<RuleListEntry[]> {
       matchType: rules.matchType,
       pattern: rules.pattern,
       action: rules.action,
+      labelId: rules.labelId,
+      labelName: labels.name,
       enabled: rules.enabled,
     })
     .from(rules)
     .leftJoin(feeds, eq(feeds.id, rules.feedId))
+    .leftJoin(labels, eq(labels.id, rules.labelId))
     .where(eq(rules.userId, userId))
     .orderBy(desc(rules.id));
   return rows as RuleListEntry[];
@@ -39,6 +44,7 @@ export interface NewRule {
   matchType: RuleMatchType;
   pattern: string;
   action: RuleAction;
+  labelId: number | null;
 }
 
 export async function createRule(

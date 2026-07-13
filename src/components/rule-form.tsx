@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import {
   createRuleAction,
   previewRuleAction,
@@ -32,8 +32,10 @@ function SubmitButton({
 
 export function RuleForm({
   feeds,
+  labels,
 }: {
   feeds: { feedId: number; title: string }[];
+  labels: { id: number; name: string }[];
 }) {
   const [state, formAction, createPending] = useActionState(
     createRuleAction,
@@ -43,6 +45,7 @@ export function RuleForm({
     previewRuleAction,
     initialPreview,
   );
+  const [action, setAction] = useState("mute");
 
   return (
     <form action={formAction} className="space-y-3 rounded-lg border p-4">
@@ -82,11 +85,35 @@ export function RuleForm({
         />
 
         <span>then</span>
-        <select name="action" defaultValue="mute" className={selectClass}>
+        <select
+          name="action"
+          value={action}
+          onChange={(event) => setAction(event.target.value)}
+          className={selectClass}
+        >
           <option value="mute">mute</option>
           <option value="mark_read">mark read</option>
           <option value="star">star</option>
+          <option value="tag">apply label</option>
         </select>
+        {action === "tag" ? (
+          <>
+            <span>as</span>
+            <select
+              name="labelId"
+              defaultValue=""
+              className={selectClass}
+              aria-label="Label to apply"
+            >
+              <option value="">choose a label</option>
+              {labels.map((label) => (
+                <option key={label.id} value={label.id}>
+                  {label.name}
+                </option>
+              ))}
+            </select>
+          </>
+        ) : null}
       </div>
 
       <div className="flex flex-wrap items-center gap-4">
@@ -129,7 +156,9 @@ export function RuleForm({
                     ? "mute matching articles"
                     : preview.action === "mark_read"
                       ? "mark matching articles read"
-                      : "star matching articles"
+                      : preview.action === "star"
+                        ? "star matching articles"
+                        : "apply the selected label to matching articles"
                 }.`
               : ""}
           </p>

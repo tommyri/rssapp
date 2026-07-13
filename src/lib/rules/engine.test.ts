@@ -108,4 +108,12 @@ describe("combineActions", () => {
       starred: false,
     });
   });
+
+  it("keeps label-only rules out of article state", () => {
+    expect(combineActions(["tag"])).toEqual({
+      muted: false,
+      read: false,
+      starred: false,
+    });
+  });
 });

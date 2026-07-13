@@ -215,7 +215,7 @@ export const itemLabels = pgTable(
 );
 
 // Per-user automation (docs/features.md v1): match new items by keyword/regex
-// and mute, mark read, or star them. Values of field/match_type/action are
+// and mute, mark read, star, or label them. Values of field/match_type/action are
 // constrained by the TS unions in src/lib/rules/engine.ts.
 export const rules = pgTable(
   "rules",
@@ -231,11 +231,19 @@ export const rules = pgTable(
     field: text("field").notNull(), // 'title' | 'content' | 'author'
     matchType: text("match_type").notNull(), // 'contains' | 'regex'
     pattern: text("pattern").notNull(),
-    action: text("action").notNull(), // 'mute' | 'mark_read' | 'star'
+    action: text("action").notNull(), // 'mute' | 'mark_read' | 'star' | 'tag'
+    // Required for tag rules; deleting a label also removes its rules.
+    labelId: bigint("label_id", { mode: "number" }).references(
+      () => labels.id,
+      { onDelete: "cascade" },
+    ),
     enabled: boolean("enabled").notNull().default(true),
     createdAt: createdAt(),
   },
-  (t) => [index("rules_user_idx").on(t.userId)],
+  (t) => [
+    index("rules_user_idx").on(t.userId),
+    index("rules_label_idx").on(t.labelId),
+  ],
 );
 
 // Per-user "save any link to read later" (docs/features.md v0.2): arbitrary web

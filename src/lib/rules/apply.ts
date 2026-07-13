@@ -1,6 +1,13 @@
 import { and, desc, eq, isNull, or, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { feeds, itemStates, items, rules, subscriptions } from "@/db/schema";
+import {
+  feeds,
+  itemLabels,
+  itemStates,
+  items,
+  rules,
+  subscriptions,
+} from "@/db/schema";
 import {
   type ActionFlags,
   combineActions,
@@ -24,50 +31,81 @@ export interface RuleRow {
   matchType: RuleMatchType;
   pattern: string;
   action: RuleAction;
+  labelId: number | null;
 }
 
 export interface IngestedItem extends MatchableItem {
   id: number;
 }
 
-/** Upsert state flags, OR-ing with whatever state already exists. */
-async function upsertFlags(
-  entries: { userId: number; itemId: number; flags: ActionFlags }[],
-): Promise<void> {
+interface RuleApplication {
+  userId: number;
+  itemId: number;
+  flags: ActionFlags;
+  labelIds: number[];
+}
+
+/** Apply matched state flags and labels without removing existing choices. */
+async function applyEffects(entries: RuleApplication[]): Promise<void> {
   if (entries.length === 0) return;
+  const stateEntries = entries.filter(
+    ({ flags }) => flags.muted || flags.read || flags.starred,
+  );
+  const labelAssignments = new Map<
+    string,
+    { labelId: number; itemId: number }
+  >();
+  for (const { itemId, labelIds } of entries) {
+    for (const labelId of labelIds) {
+      labelAssignments.set(`${labelId}:${itemId}`, { labelId, itemId });
+    }
+  }
+  if (stateEntries.length === 0 && labelAssignments.size === 0) return;
+
   const now = new Date();
 
-  await db
-    .insert(itemStates)
-    .values(
-      entries.map(({ userId, itemId, flags }) => ({
-        userId,
-        itemId,
-        muted: flags.muted,
-        read: flags.read,
-        readAt: flags.read ? now : null,
-        starred: flags.starred,
-        starredAt: flags.starred ? now : null,
-      })),
-    )
-    .onConflictDoUpdate({
-      target: [itemStates.userId, itemStates.itemId],
-      set: {
-        muted: sql`${itemStates.muted} or excluded.muted`,
-        read: sql`${itemStates.read} or excluded.read`,
-        readAt: sql`coalesce(${itemStates.readAt}, excluded.read_at)`,
-        starred: sql`${itemStates.starred} or excluded.starred`,
-        starredAt: sql`coalesce(${itemStates.starredAt}, excluded.starred_at)`,
-      },
-    });
+  await db.transaction(async (tx) => {
+    if (stateEntries.length > 0) {
+      await tx
+        .insert(itemStates)
+        .values(
+          stateEntries.map(({ userId, itemId, flags }) => ({
+            userId,
+            itemId,
+            muted: flags.muted,
+            read: flags.read,
+            readAt: flags.read ? now : null,
+            starred: flags.starred,
+            starredAt: flags.starred ? now : null,
+          })),
+        )
+        .onConflictDoUpdate({
+          target: [itemStates.userId, itemStates.itemId],
+          set: {
+            muted: sql`${itemStates.muted} or excluded.muted`,
+            read: sql`${itemStates.read} or excluded.read`,
+            readAt: sql`coalesce(${itemStates.readAt}, excluded.read_at)`,
+            starred: sql`${itemStates.starred} or excluded.starred`,
+            starredAt: sql`coalesce(${itemStates.starredAt}, excluded.starred_at)`,
+          },
+        });
+    }
+
+    if (labelAssignments.size > 0) {
+      await tx
+        .insert(itemLabels)
+        .values([...labelAssignments.values()])
+        .onConflictDoNothing();
+    }
+  });
 }
 
 /** Evaluate rules against items and produce the state rows to write. */
 function evaluate(
   ruleRows: RuleRow[],
   candidates: IngestedItem[],
-): { userId: number; itemId: number; flags: ActionFlags }[] {
-  const out: { userId: number; itemId: number; flags: ActionFlags }[] = [];
+): RuleApplication[] {
+  const out: RuleApplication[] = [];
   const byUser = new Map<number, RuleRow[]>();
   for (const r of ruleRows) {
     const list = byUser.get(r.userId) ?? [];
@@ -77,11 +115,16 @@ function evaluate(
 
   for (const [userId, userRules] of byUser) {
     for (const item of candidates) {
-      const actions = userRules
-        .filter((r) => ruleMatches(r, item))
-        .map((r) => r.action);
-      if (actions.length === 0) continue;
-      out.push({ userId, itemId: item.id, flags: combineActions(actions) });
+      const matches = userRules.filter((rule) => ruleMatches(rule, item));
+      if (matches.length === 0) continue;
+      out.push({
+        userId,
+        itemId: item.id,
+        flags: combineActions(matches.map((rule) => rule.action)),
+        labelIds: matches.flatMap((rule) =>
+          rule.action === "tag" && rule.labelId !== null ? [rule.labelId] : [],
+        ),
+      });
     }
   }
   return out;
@@ -105,6 +148,7 @@ export async function applyRulesToNewItems(
       matchType: rules.matchType,
       pattern: rules.pattern,
       action: rules.action,
+      labelId: rules.labelId,
     })
     .from(rules)
     .innerJoin(
@@ -122,7 +166,7 @@ export async function applyRulesToNewItems(
     )) as RuleRow[];
   if (ruleRows.length === 0) return;
 
-  await upsertFlags(evaluate(ruleRows, newItems));
+  await applyEffects(evaluate(ruleRows, newItems));
 }
 
 /**
@@ -153,7 +197,7 @@ export async function applyRuleToExistingItems(
     )) as IngestedItem[];
 
   const entries = evaluate([{ ...rule, userId }], candidates);
-  await upsertFlags(entries);
+  await applyEffects(entries);
   return entries.length;
 }
 

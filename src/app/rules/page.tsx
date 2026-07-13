@@ -3,6 +3,7 @@ import { ConfirmButton } from "@/components/confirm-button";
 import { RuleForm } from "@/components/rule-form";
 import { Button } from "@/components/ui/button";
 import { getCurrentUserId } from "@/lib/current-user";
+import { listLabels } from "@/lib/labels";
 import { listFeeds } from "@/lib/reader";
 import { listRules, type RuleListEntry } from "@/lib/rules";
 import { deleteRuleAction, toggleRuleAction } from "./actions";
@@ -11,19 +12,25 @@ const ACTION_LABEL: Record<string, string> = {
   mute: "mute",
   mark_read: "mark read",
   star: "star",
+  tag: "apply label",
 };
 
 function describe(rule: RuleListEntry): string {
   const scope = rule.feedId ? (rule.feedTitle ?? "one feed") : "all feeds";
   const match = rule.matchType === "regex" ? "matches" : "contains";
-  return `In ${scope}, when ${rule.field} ${match} “${rule.pattern}” → ${ACTION_LABEL[rule.action]}`;
+  const action =
+    rule.action === "tag" && rule.labelName
+      ? `apply label “${rule.labelName}”`
+      : ACTION_LABEL[rule.action];
+  return `In ${scope}, when ${rule.field} ${match} “${rule.pattern}” → ${action}`;
 }
 
 export default async function RulesPage() {
   const userId = await getCurrentUserId();
-  const [rules, feeds] = await Promise.all([
+  const [rules, feeds, labels] = await Promise.all([
     listRules(userId),
     listFeeds(userId),
+    listLabels(userId),
   ]);
 
   return (
@@ -39,12 +46,13 @@ export default async function RulesPage() {
             feedId: f.feedId,
             title: f.title ?? f.url,
           }))}
+          labels={labels}
         />
 
         {rules.length === 0 ? (
           <p className="py-8 text-center text-sm text-muted-foreground">
             No rules yet. Rules run on new articles as they arrive — mute the
-            noise, star what matters.
+            noise, star what matters, and label what you want to keep.
           </p>
         ) : (
           <ul className="divide-y divide-border rounded-lg border">

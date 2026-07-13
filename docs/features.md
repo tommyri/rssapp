@@ -38,7 +38,7 @@ Phased plan. Each phase should ship as a usable app — MVP alone should be good
 
 *Shipped.*
 
-- **Rules & filters** — auto-mark-read, auto-star/tag, or mute by keyword/author/feed. Promoted from "later" after the competitive analysis: it's the #1 feature Inoreader power users pay for, the only real answer to unread overload, and the core of our "clean UI, powerful underneath" position (see competitive-analysis.md)
+- **Rules & filters** — auto-mark-read, auto-star, auto-label, or mute by keyword/author/feed. Promoted from "later" after the competitive analysis: it's the #1 feature Inoreader power users pay for, the only real answer to unread overload, and the core of our "clean UI, powerful underneath" position (see competitive-analysis.md)
 - **Full-content extraction** — for truncated feeds, fetch the article page and extract readable content (Readability); per-feed toggle
 - **Search** — full-text search across titles and content (Postgres FTS)
 - **Account settings** — change email and password in the app (currently only possible via direct database access; single-user means a forgotten password has no reset path)
@@ -75,7 +75,7 @@ Phased plan. Each phase should ship as a usable app — MVP alone should be good
 - **Collapsible + drag-to-organize sidebar** — collapse folders and reorder feeds/folders by drag; the sidebar is static today.
 
 ### Organization, rules & feed health
-- **Tags / labels** *(foundation shipped July 2026)* — create, rename, and delete per-user labels; assign them to feed articles and saved web pages from the reading view; and open a unified label view from the sidebar. Still open: the `tag` rule action, which will build on this shared model.
+- **Tags / labels** *(shipped July 2026)* — create, rename, and delete per-user labels; assign them to feed articles and saved web pages from the reading view; open a unified label view from the sidebar; and apply a label automatically through a matching rule. Deleting a label also deletes any rules that apply it.
 - **Rules v2** *(preview shipped July 2026)* — test an unsaved rule against a bounded recent sample, inspect matching articles and its resulting action before saving. Still open: a "notify" action and richer apply-to-existing (builds on `src/lib/rules/engine.ts`).
 - **Feed health: silent & paused feeds** *(shipped July 2026)* — Manage feeds flags **quiet** feeds ("last new article 5 months ago": fetches succeed but the newest stored article is older than 90 days — the site stopped publishing, or the feed moved and the URL is a husk) and adds **Pause/Resume**: pausing keeps the feed and its articles but stops fetching (the gentler alternative to unsubscribing a broken feed); paused feeds show a pause icon in the sidebar. Pause lives on `subscriptions.settings.paused` — per-subscription, so it's multi-tenant correct: the scheduler polls a feed while at least one non-paused subscription wants it, and manual refresh-all skips the user's paused feeds. Resuming marks the feed due so it fetches on the next tick. No migration needed; the Save form can't clobber a pause (pinned by a unit test).
 

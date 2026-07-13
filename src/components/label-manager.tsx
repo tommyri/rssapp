@@ -40,7 +40,7 @@ export function LabelManager({ labels }: { labels: LabelSummary[] }) {
   function remove(label: LabelSummary) {
     if (
       !window.confirm(
-        `Delete “${label.name}”? It will be removed from ${label.count} saved entr${label.count === 1 ? "y" : "ies"}.`,
+        `Delete “${label.name}”? It will be removed from ${label.count} saved entr${label.count === 1 ? "y" : "ies"}${label.ruleCount === 0 ? "" : ` and delete ${label.ruleCount} label rule${label.ruleCount === 1 ? "" : "s"}`}.`,
       )
     ) {
       return;
@@ -106,6 +106,9 @@ export function LabelManager({ labels }: { labels: LabelSummary[] }) {
               </form>
               <span className="text-xs text-muted-foreground">
                 {label.count} entr{label.count === 1 ? "y" : "ies"}
+                {label.ruleCount > 0
+                  ? ` · ${label.ruleCount} rule${label.ruleCount === 1 ? "" : "s"}`
+                  : ""}
               </span>
               <Button
                 type="button"

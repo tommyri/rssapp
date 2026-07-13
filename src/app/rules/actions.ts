@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { getCurrentUserId } from "@/lib/current-user";
+import { listLabels } from "@/lib/labels";
 import {
   applyRuleToExistingItems,
   createRule,
@@ -34,19 +35,37 @@ const newRuleSchema = z.object({
   matchType: z.enum(RULE_MATCH_TYPES),
   pattern: z.string(),
   action: z.enum(RULE_ACTIONS),
+  labelId: z.coerce.number().int().positive().nullable(),
   applyExisting: z.boolean(),
 });
 
 function parseNewRule(formData: FormData) {
   const rawFeedId = String(formData.get("feedId") ?? "");
+  const rawLabelId = String(formData.get("labelId") ?? "");
   return newRuleSchema.safeParse({
     feedId: rawFeedId === "all" || rawFeedId === "" ? null : rawFeedId,
     field: formData.get("field"),
     matchType: formData.get("matchType"),
     pattern: String(formData.get("pattern") ?? "").trim(),
     action: formData.get("action"),
+    labelId: rawLabelId === "" ? null : rawLabelId,
     applyExisting: formData.get("applyExisting") === "on",
   });
+}
+
+async function validateRule(
+  userId: number,
+  rule: Omit<z.infer<typeof newRuleSchema>, "applyExisting">,
+): Promise<string | null> {
+  const patternError = validatePattern(rule.matchType, rule.pattern);
+  if (patternError) return patternError;
+  if (rule.action !== "tag") return null;
+  if (rule.labelId === null) return "Choose a label to apply.";
+
+  const labels = await listLabels(userId);
+  return labels.some((label) => label.id === rule.labelId)
+    ? null
+    : "That label is no longer available.";
 }
 
 export async function createRuleAction(
@@ -57,10 +76,9 @@ export async function createRuleAction(
   if (!parsed.success) return { ok: false, message: "Invalid rule input." };
 
   const { applyExisting, ...rule } = parsed.data;
-  const patternError = validatePattern(rule.matchType, rule.pattern);
-  if (patternError) return { ok: false, message: patternError };
-
   const userId = await getCurrentUserId();
+  const validationError = await validateRule(userId, rule);
+  if (validationError) return { ok: false, message: validationError };
   await createRule(userId, rule);
 
   let suffix = "";
@@ -82,10 +100,9 @@ export async function previewRuleAction(
   if (!parsed.success) return { ok: false, message: "Invalid rule input." };
 
   const { applyExisting: _applyExisting, ...rule } = parsed.data;
-  const patternError = validatePattern(rule.matchType, rule.pattern);
-  if (patternError) return { ok: false, message: patternError };
-
   const userId = await getCurrentUserId();
+  const validationError = await validateRule(userId, rule);
+  if (validationError) return { ok: false, message: validationError };
   const preview = await previewRuleAgainstRecentItems(userId, rule);
   const matched = preview.matches.length;
   const message =

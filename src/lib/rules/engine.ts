@@ -3,7 +3,7 @@
 
 export const RULE_FIELDS = ["title", "content", "author"] as const;
 export const RULE_MATCH_TYPES = ["contains", "regex"] as const;
-export const RULE_ACTIONS = ["mute", "mark_read", "star"] as const;
+export const RULE_ACTIONS = ["mute", "mark_read", "star", "tag"] as const;
 
 export type RuleField = (typeof RULE_FIELDS)[number];
 export type RuleMatchType = (typeof RULE_MATCH_TYPES)[number];

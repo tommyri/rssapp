@@ -4,6 +4,7 @@ import {
   itemLabels,
   items,
   labels,
+  rules,
   savedPageLabels,
   savedPages,
   subscriptions,
@@ -18,6 +19,7 @@ export interface ReaderLabel {
 
 export interface LabelSummary extends ReaderLabel {
   count: number;
+  ruleCount: number;
 }
 
 export type LabelTarget =
@@ -52,6 +54,10 @@ export async function listLabelSummaries(
       ) + (
         select count(*) from ${savedPageLabels}
         where ${savedPageLabels.labelId} = ${labels.id}
+      )`.mapWith(Number),
+      ruleCount: sql<number>`(
+        select count(*) from ${rules}
+        where ${rules.labelId} = ${labels.id}
       )`.mapWith(Number),
     })
     .from(labels)
