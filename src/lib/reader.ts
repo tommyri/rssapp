@@ -107,6 +107,22 @@ export const listFeeds = cache(
   },
 );
 
+export interface SidebarFolder {
+  id: number;
+  name: string;
+}
+
+/** Every folder, including empty ones, in a stable default order. */
+export async function listSidebarFolders(
+  userId: number,
+): Promise<SidebarFolder[]> {
+  return db
+    .select({ id: folders.id, name: folders.name })
+    .from(folders)
+    .where(eq(folders.userId, userId))
+    .orderBy(asc(folders.name));
+}
+
 export interface ManagedFeed {
   feedId: number;
   url: string;
@@ -182,12 +198,7 @@ export async function listManagedFeeds(userId: number): Promise<ManagedFeed[]> {
 
 /** The user's folder names, for suggestions when assigning a feed to a folder. */
 export async function listFolders(userId: number): Promise<string[]> {
-  const rows = await db
-    .select({ name: folders.name })
-    .from(folders)
-    .where(eq(folders.userId, userId))
-    .orderBy(asc(folders.name));
-  return rows.map((r) => r.name);
+  return (await listSidebarFolders(userId)).map((folder) => folder.name);
 }
 
 export interface ReaderItem {

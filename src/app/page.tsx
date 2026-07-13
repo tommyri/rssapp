@@ -8,14 +8,13 @@ import {
 import Link from "next/link";
 import { AddFeedForm } from "@/components/add-feed-form";
 import { ArticleList } from "@/components/article-list";
-import { FeedIcon } from "@/components/feed-icon";
-import { FeedMenu } from "@/components/feed-menu";
 import { MobileShell } from "@/components/mobile-shell";
 import { PullToRefresh } from "@/components/pull-to-refresh";
 import { PwaRegister } from "@/components/pwa-register";
 import { ReaderGlobalKeyboard } from "@/components/reader-global-keyboard";
 import { RefreshButton } from "@/components/refresh-button";
 import { SearchForm } from "@/components/search-form";
+import { SidebarOrganizer } from "@/components/sidebar-organizer";
 import { SignOutButton } from "@/components/sign-out-button";
 import { StarterFeeds } from "@/components/starter-feeds";
 import { getCurrentUserId } from "@/lib/current-user";
@@ -28,9 +27,11 @@ import {
   listItems,
   listLabelItems,
   listReadLater,
+  listSidebarFolders,
   savedCounts,
   searchEverything,
 } from "@/lib/reader";
+import { listSidebarPreferences } from "@/lib/sidebar-organization";
 import { STARTER_FEEDS } from "@/lib/starter-feeds";
 import {
   effectiveShowingAll,
@@ -66,11 +67,20 @@ export default async function Home({
   const isSearch = query.length > 0;
 
   const userId = await getCurrentUserId();
-  const [feeds, collapse, embedLoading, labels] = await Promise.all([
+  const [
+    feeds,
+    collapse,
+    embedLoading,
+    labels,
+    sidebarFolders,
+    sidebarPreferences,
+  ] = await Promise.all([
     listFeeds(userId),
     getCollapseDuplicates(userId),
     getEmbedLoadingPreferences(userId),
     listLabelSummaries(userId),
+    listSidebarFolders(userId),
+    listSidebarPreferences(userId),
   ]);
   const activeLabel = labelId
     ? labels.find((label) => label.id === labelId)
@@ -122,25 +132,25 @@ export default async function Home({
     readLater && !isSearch ? `:${saved.readLater}` : ""
   }`;
 
-  // Group feeds by folder for the sidebar; feeds without a folder go last.
-  const byFolder = new Map<number, { name: string; feeds: FeedSummary[] }>();
+  // Keep even empty folders visible so they can be reorganized and reused.
+  const byFolder = new Map<number, { name: string; feeds: FeedSummary[] }>(
+    sidebarFolders.map((folder) => [
+      folder.id,
+      { name: folder.name, feeds: [] },
+    ]),
+  );
   const ungrouped: FeedSummary[] = [];
   for (const f of feeds) {
     if (f.folderId !== null && f.folderName !== null) {
-      const group = byFolder.get(f.folderId) ?? {
-        name: f.folderName,
-        feeds: [],
-      };
-      group.feeds.push(f);
-      byFolder.set(f.folderId, group);
+      const group = byFolder.get(f.folderId);
+      if (group) group.feeds.push(f);
+      else ungrouped.push(f);
     } else {
       ungrouped.push(f);
     }
   }
-  const folderGroups = [...byFolder.entries()].sort((a, b) =>
-    a[1].name.localeCompare(b[1].name),
-  );
-  const folderNames = folderGroups.map(([, g]) => g.name);
+  const folderGroups = [...byFolder.entries()];
+  const folderNames = sidebarFolders.map((folder) => folder.name);
 
   const title = isSearch
     ? `“${query}”`
@@ -240,56 +250,18 @@ export default async function Home({
             </div>
           ) : null}
 
-          {folderGroups.map(([id, group]) => (
-            <div key={id} className="pt-3">
-              <Link
-                href={`/?folder=${id}`}
-                className={`block rounded-md px-2 py-1 text-[11px] font-semibold tracking-[0.08em] uppercase transition-colors ${
-                  folderId === id
-                    ? "text-primary"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                {group.name}
-              </Link>
-              {group.feeds.map((f) => (
-                <FeedLink
-                  key={f.feedId}
-                  href={`/?feed=${f.feedId}`}
-                  active={feedId === f.feedId}
-                  label={f.title ?? f.url}
-                  count={f.unread}
-                  error={f.lastError}
-                  paused={f.paused}
-                  icon={<FeedIcon siteUrl={f.siteUrl} feedUrl={f.url} />}
-                  menu={<FeedMenu feed={f} folderNames={folderNames} />}
-                />
-              ))}
-            </div>
-          ))}
-
-          {ungrouped.length > 0 ? (
-            <div className="pt-3">
-              {folderGroups.length > 0 ? (
-                <div className="px-2 py-1 text-[11px] font-semibold tracking-[0.08em] text-muted-foreground uppercase">
-                  Feeds
-                </div>
-              ) : null}
-              {ungrouped.map((f) => (
-                <FeedLink
-                  key={f.feedId}
-                  href={`/?feed=${f.feedId}`}
-                  active={feedId === f.feedId}
-                  label={f.title ?? f.url}
-                  count={f.unread}
-                  error={f.lastError}
-                  paused={f.paused}
-                  icon={<FeedIcon siteUrl={f.siteUrl} feedUrl={f.url} />}
-                  menu={<FeedMenu feed={f} folderNames={folderNames} />}
-                />
-              ))}
-            </div>
-          ) : null}
+          <SidebarOrganizer
+            folderGroups={folderGroups.map(([id, group]) => ({
+              id,
+              name: group.name,
+              feeds: group.feeds,
+            }))}
+            ungrouped={ungrouped}
+            folderNames={folderNames}
+            activeFeedId={feedId}
+            activeFolderId={folderId}
+            sidebarPreferences={sidebarPreferences}
+          />
 
           {feeds.length === 0 ? (
             <p className="px-2 py-4 text-sm text-muted-foreground">

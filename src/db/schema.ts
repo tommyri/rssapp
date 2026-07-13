@@ -36,6 +36,9 @@ export const users = pgTable("users", {
     autoReadDays?: number;
     collapseDuplicates?: boolean;
     embedLoading?: EmbedLoadingPreferences;
+    collapsedFolderIds?: number[];
+    sidebarFolderIds?: number[];
+    sidebarFeedIds?: Record<string, number[]>;
   }>(),
   createdAt: createdAt(),
 });
