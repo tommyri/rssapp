@@ -5,8 +5,10 @@ import { db } from "@/db";
 import {
   feeds,
   folders,
+  itemLabels,
   itemStates,
   items as itemsTable,
+  labels,
   subscriptions,
   users,
 } from "@/db/schema";
@@ -15,6 +17,7 @@ import {
   type EmbedLoadingPreferences,
   normalizeEmbedLoadingPreferences,
 } from "@/lib/embed-loading";
+import { labelsForTargets, type ReaderLabel } from "@/lib/labels";
 import type { ExportEntry } from "@/lib/opml";
 import { DEFAULT_AUTO_READ_DAYS } from "@/lib/reading-prefs";
 import {
@@ -222,6 +225,8 @@ export interface ReaderItem {
   pageStatus?: "pending" | "ready" | "error";
   /** Saved-page extraction error, when pageStatus === "error". */
   pageError?: string | null;
+  /** Per-user labels, loaded for all online reader views. */
+  labels?: ReaderLabel[];
 }
 
 /** Which articles to show — a feed, a folder, starred, read-later, or everything. */
@@ -239,6 +244,8 @@ export interface ReaderView {
    * single-feed, Starred and Read later are never collapsed.
    */
   collapse?: boolean;
+  /** Shows the user's unified feed-item and saved-page label view. */
+  labelId?: number;
 }
 
 export interface ItemCursor {
@@ -267,8 +274,36 @@ function viewConditions(userId: number, view: ReaderView) {
   if (view.folderId) conditions.push(eq(subscriptions.folderId, view.folderId));
   if (view.starred) conditions.push(eq(itemStates.starred, true));
   if (view.readLater) conditions.push(eq(itemStates.readLater, true));
+  if (view.labelId) {
+    conditions.push(sql`exists (
+      select 1 from ${itemLabels}
+      inner join ${labels} on ${labels.id} = ${itemLabels.labelId}
+      where ${itemLabels.itemId} = ${itemsTable.id}
+        and ${labels.id} = ${view.labelId}
+        and ${labels.userId} = ${userId}
+    )`);
+  }
   if (view.unreadOnly) conditions.push(sql`${itemStates.read} is not true`);
   return conditions;
+}
+
+async function attachReaderLabels(
+  userId: number,
+  readerItems: ReaderItem[],
+): Promise<ReaderItem[]> {
+  if (readerItems.length === 0) return readerItems;
+  const byTarget = await labelsForTargets(
+    userId,
+    readerItems.map((item) =>
+      item.kind === "item"
+        ? { kind: "item", itemId: item.id }
+        : { kind: "page", savedPageId: item.id },
+    ),
+  );
+  return readerItems.map((item) => ({
+    ...item,
+    labels: byTarget.get(`${item.kind}:${item.id}`) ?? [],
+  }));
 }
 
 /** One page of articles for a view, keyset-paginated (newest-first unless feed is oldest-first). */
@@ -282,7 +317,8 @@ export async function listItems(
     opts.collapse &&
     opts.feedId === undefined &&
     !opts.starred &&
-    !opts.readLater
+    !opts.readLater &&
+    !opts.labelId
   ) {
     return listItemsCollapsed(userId, opts);
   }
@@ -338,7 +374,10 @@ export async function listItems(
     )
     .limit(limit + 1); // one extra row to detect whether more exist
 
-  return { items: rows.slice(0, limit), hasMore: rows.length > limit };
+  return {
+    items: await attachReaderLabels(userId, rows.slice(0, limit)),
+    hasMore: rows.length > limit,
+  };
 }
 
 // The grouping key for duplicate collapsing: items that share a canonical_url
@@ -464,7 +503,10 @@ async function listItemsCollapsed(
     kind: "item" as const,
     dupFeedTitles: otherFeedTitles(r.dupFeedTitles, r.feedTitle),
   }));
-  return { items, hasMore: rows.length > limit };
+  return {
+    items: await attachReaderLabels(userId, items),
+    hasMore: rows.length > limit,
+  };
 }
 
 const SEARCH_LIMIT = 50;
@@ -483,7 +525,7 @@ export async function searchItems(
   // with both and OR them so either language's inflections match.
   const tsquery = sql`(websearch_to_tsquery('english', ${query}) || websearch_to_tsquery('norwegian', ${query}))`;
 
-  return db
+  const rows = await db
     .select({
       kind: sql<"item">`'item'`,
       id: itemsTable.id,
@@ -527,6 +569,7 @@ export async function searchItems(
       sql`${sortKey} desc`,
     )
     .limit(SEARCH_LIMIT);
+  return attachReaderLabels(userId, rows);
 }
 
 /** Map a saved web page into the shared ReaderItem shape for the unified views. */
@@ -572,7 +615,30 @@ export async function listReadLater(userId: number): Promise<ItemsPage> {
     listItems(userId, { readLater: true, limit: READ_LATER_LIMIT }),
     listSavedPages(userId),
   ]);
-  const merged = [...feedItems.items, ...pages.map(savedPageToItem)].sort(
+  const savedItems = await attachReaderLabels(
+    userId,
+    pages.map(savedPageToItem),
+  );
+  const merged = [...feedItems.items, ...savedItems].sort(
+    (a, b) => b.sortTs.getTime() - a.sortTs.getTime(),
+  );
+  return { items: merged.slice(0, READ_LATER_LIMIT), hasMore: false };
+}
+
+/** The unified archive for one user-owned label, newest first. */
+export async function listLabelItems(
+  userId: number,
+  labelId: number,
+): Promise<ItemsPage> {
+  const [feedItems, pages] = await Promise.all([
+    listItems(userId, { labelId, limit: READ_LATER_LIMIT }),
+    listSavedPages(userId, labelId),
+  ]);
+  const savedItems = await attachReaderLabels(
+    userId,
+    pages.map(savedPageToItem),
+  );
+  const merged = [...feedItems.items, ...savedItems].sort(
     (a, b) => b.sortTs.getTime() - a.sortTs.getTime(),
   );
   return { items: merged.slice(0, READ_LATER_LIMIT), hasMore: false };
@@ -587,7 +653,11 @@ export async function searchEverything(
     searchItems(userId, query),
     searchSavedPages(userId, query),
   ]);
-  return [...items, ...pages.map(savedPageToItem)]
+  const savedItems = await attachReaderLabels(
+    userId,
+    pages.map(savedPageToItem),
+  );
+  return [...items, ...savedItems]
     .sort((a, b) => b.sortTs.getTime() - a.sortTs.getTime())
     .slice(0, SEARCH_LIMIT);
 }

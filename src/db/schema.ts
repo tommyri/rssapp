@@ -182,6 +182,38 @@ export const itemStates = pgTable(
   ],
 );
 
+// Per-user organization, shared by feed articles and saved web pages through
+// separate join tables. Labels are intentionally independent of subscriptions:
+// an article can remain labeled even if it is also saved to Read later.
+export const labels = pgTable(
+  "labels",
+  {
+    id: id(),
+    userId: bigint("user_id", { mode: "number" })
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [uniqueIndex("labels_user_name_idx").on(t.userId, t.name)],
+);
+
+export const itemLabels = pgTable(
+  "item_labels",
+  {
+    labelId: bigint("label_id", { mode: "number" })
+      .notNull()
+      .references(() => labels.id, { onDelete: "cascade" }),
+    itemId: bigint("item_id", { mode: "number" })
+      .notNull()
+      .references(() => items.id, { onDelete: "cascade" }),
+  },
+  (t) => [
+    primaryKey({ columns: [t.labelId, t.itemId] }),
+    index("item_labels_item_idx").on(t.itemId),
+  ],
+);
+
 // Per-user automation (docs/features.md v1): match new items by keyword/regex
 // and mute, mark read, or star them. Values of field/match_type/action are
 // constrained by the TS unions in src/lib/rules/engine.ts.
@@ -249,6 +281,22 @@ export const savedPages = pgTable(
     index("saved_pages_user_saved_idx").on(t.userId, t.savedAt),
     index("saved_pages_status_idx").on(t.status),
     index("saved_pages_search_idx").using("gin", t.searchVector),
+  ],
+);
+
+export const savedPageLabels = pgTable(
+  "saved_page_labels",
+  {
+    labelId: bigint("label_id", { mode: "number" })
+      .notNull()
+      .references(() => labels.id, { onDelete: "cascade" }),
+    savedPageId: bigint("saved_page_id", { mode: "number" })
+      .notNull()
+      .references(() => savedPages.id, { onDelete: "cascade" }),
+  },
+  (t) => [
+    primaryKey({ columns: [t.labelId, t.savedPageId] }),
+    index("saved_page_labels_page_idx").on(t.savedPageId),
   ],
 );
 

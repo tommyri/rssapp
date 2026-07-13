@@ -31,6 +31,7 @@ import {
   setSavedPageReadingProgressAction,
 } from "@/app/actions";
 import { ArticleContent } from "@/components/article-content";
+import { ArticleLabelPicker } from "@/components/article-label-picker";
 import { ArticleListHeader } from "@/components/article-list-header";
 import { SaveLinkForm } from "@/components/save-link-form";
 import { SwipeableRow } from "@/components/swipeable-row";
@@ -43,6 +44,7 @@ import { useReadingProgress } from "@/components/use-reading-progress";
 import { alsoInLabel } from "@/lib/duplicates";
 import type { EmbedLoadingPreferences } from "@/lib/embed-loading";
 import { relativeTime } from "@/lib/format";
+import type { ReaderLabel } from "@/lib/labels";
 import {
   offlineArticleFromReaderItem,
   saveOfflineArticle,
@@ -77,6 +79,7 @@ interface Props {
   collapse?: boolean;
   embedLoading: EmbedLoadingPreferences;
   offlineUserId: number;
+  availableLabels: ReaderLabel[];
 }
 
 /** Composite key: ids are only unique within a kind (feed item vs saved page). */
@@ -107,10 +110,11 @@ export function ArticleList({
   collapse = false,
   embedLoading,
   offlineUserId,
+  availableLabels,
 }: Props) {
   const router = useRouter();
   // Starred / Read later are archive views: no unread filter or mark-all.
-  const isArchiveView = Boolean(view.starred || view.readLater);
+  const isArchiveView = Boolean(view.starred || view.readLater || view.labelId);
   const [items, setItems] = useState<ReaderItem[]>(initialItems);
   const [hasMore, setHasMore] = useState(initialHasMore);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -283,6 +287,20 @@ export function ArticleList({
     void setItemReadLaterAction(item.id, !item.readLater).then(() =>
       router.refresh(),
     );
+  }
+
+  function updateItemLabels(
+    item: ReaderItem,
+    label: ReaderLabel,
+    assigned: boolean,
+  ) {
+    const labels = item.labels ?? [];
+    const nextLabels = assigned
+      ? [...labels.filter((current) => current.id !== label.id), label].sort(
+          (a, b) => a.name.localeCompare(b.name),
+        )
+      : labels.filter((current) => current.id !== label.id);
+    setEntryState([keyOf(item)], { labels: nextLabels });
   }
 
   function removePage(item: ReaderItem) {
@@ -639,6 +657,18 @@ export function ArticleList({
                         {isOpen && !isPage && item.fullContentHtml ? (
                           <span className="italic"> · full content</span>
                         ) : null}
+                        {item.labels && item.labels.length > 0 ? (
+                          <span className="ml-1 inline-flex flex-wrap gap-1 align-middle">
+                            {item.labels.map((label) => (
+                              <span
+                                key={label.id}
+                                className="rounded-sm bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground"
+                              >
+                                {label.name}
+                              </span>
+                            ))}
+                          </span>
+                        ) : null}
                       </span>
                     </span>
                   </button>
@@ -683,6 +713,13 @@ export function ArticleList({
                           Keep offline
                         </ActionButton>
                       ) : null}
+                      <ArticleLabelPicker
+                        item={item}
+                        labels={availableLabels}
+                        onChange={(label, assigned) =>
+                          updateItemLabels(item, label, assigned)
+                        }
+                      />
                       {isPage ? (
                         <>
                           {item.pageStatus === "error" ? (

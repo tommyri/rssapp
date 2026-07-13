@@ -41,6 +41,7 @@ const viewSchema = z.object({
   folderId: z.number().int().positive().optional(),
   starred: z.boolean().optional(),
   readLater: z.boolean().optional(),
+  labelId: z.number().int().positive().optional(),
   unreadOnly: z.boolean().optional(),
   sortOrder: z.enum(["newest", "oldest"]).optional(),
 });

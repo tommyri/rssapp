@@ -1,6 +1,6 @@
 import { and, desc, eq, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { savedPages } from "@/db/schema";
+import { labels, savedPageLabels, savedPages } from "@/db/schema";
 import { canonicalizeUrl } from "@/lib/canonical-url";
 import { extractReadablePage } from "@/lib/feeds/extract";
 
@@ -123,10 +123,29 @@ const columns = {
 const LIST_LIMIT = 500;
 
 /** All of a user's saved pages, newest first (for the unified Read later view). */
-export async function listSavedPages(userId: number): Promise<SavedPage[]> {
-  return db
-    .select(columns)
-    .from(savedPages)
+export async function listSavedPages(
+  userId: number,
+  labelId?: number,
+): Promise<SavedPage[]> {
+  const query = db.select(columns).from(savedPages).$dynamic();
+  if (labelId !== undefined) {
+    return query
+      .innerJoin(
+        savedPageLabels,
+        eq(savedPageLabels.savedPageId, savedPages.id),
+      )
+      .innerJoin(labels, eq(labels.id, savedPageLabels.labelId))
+      .where(
+        and(
+          eq(savedPages.userId, userId),
+          eq(labels.userId, userId),
+          eq(labels.id, labelId),
+        ),
+      )
+      .orderBy(desc(savedPages.savedAt), desc(savedPages.id))
+      .limit(LIST_LIMIT);
+  }
+  return query
     .where(eq(savedPages.userId, userId))
     .orderBy(desc(savedPages.savedAt), desc(savedPages.id))
     .limit(LIST_LIMIT);

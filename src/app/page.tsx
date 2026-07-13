@@ -2,6 +2,7 @@ import {
   BookmarkIcon,
   PauseIcon,
   StarIcon,
+  TagIcon,
   TriangleAlertIcon,
 } from "lucide-react";
 import Link from "next/link";
@@ -18,12 +19,14 @@ import { SearchForm } from "@/components/search-form";
 import { SignOutButton } from "@/components/sign-out-button";
 import { StarterFeeds } from "@/components/starter-feeds";
 import { getCurrentUserId } from "@/lib/current-user";
+import { listLabelSummaries } from "@/lib/labels";
 import {
   type FeedSummary,
   getCollapseDuplicates,
   getEmbedLoadingPreferences,
   listFeeds,
   listItems,
+  listLabelItems,
   listReadLater,
   savedCounts,
   searchEverything,
@@ -40,6 +43,7 @@ interface SearchParams {
   view?: string;
   show?: string;
   q?: string;
+  label?: string;
 }
 
 function parseId(value: string | undefined): number | undefined {
@@ -58,14 +62,19 @@ export default async function Home({
   const starred = params.view === "starred";
   const readLater = params.view === "later";
   const query = (params.q ?? "").trim();
+  const labelId = parseId(params.label);
   const isSearch = query.length > 0;
 
   const userId = await getCurrentUserId();
-  const [feeds, collapse, embedLoading] = await Promise.all([
+  const [feeds, collapse, embedLoading, labels] = await Promise.all([
     listFeeds(userId),
     getCollapseDuplicates(userId),
     getEmbedLoadingPreferences(userId),
+    listLabelSummaries(userId),
   ]);
+  const activeLabel = labelId
+    ? labels.find((label) => label.id === labelId)
+    : undefined;
   const activeFeed = feedId
     ? feeds.find((f) => f.feedId === feedId)
     : undefined;
@@ -75,13 +84,21 @@ export default async function Home({
     feedId ? (activeFeed?.defaultUnreadOnly ?? true) : undefined,
   );
   // Starred and Read later are archive views — read state doesn't gate them.
-  const unreadOnly = !showingAll && !starred && !readLater;
+  const unreadOnly = !showingAll && !starred && !readLater && !activeLabel;
   const sortOrder =
     feedId && !starred && !readLater && !isSearch
       ? (activeFeed?.sortOrder ?? "newest")
       : undefined;
 
-  const view = { feedId, folderId, starred, readLater, unreadOnly, sortOrder };
+  const view = {
+    feedId,
+    folderId,
+    starred,
+    readLater,
+    unreadOnly,
+    sortOrder,
+    labelId: activeLabel?.id,
+  };
 
   const [page, saved] = await Promise.all([
     isSearch
@@ -91,7 +108,9 @@ export default async function Home({
         }))
       : readLater
         ? listReadLater(userId)
-        : listItems(userId, { ...view, limit: 50, collapse }),
+        : activeLabel
+          ? listLabelItems(userId, activeLabel.id)
+          : listItems(userId, { ...view, limit: 50, collapse }),
     savedCounts(userId),
   ]);
   const totalUnread = feeds.reduce((sum, f) => sum + f.unread, 0);
@@ -99,7 +118,7 @@ export default async function Home({
   // Read later is a client-owned list that also grows via the save form; folding
   // the saved count into its key remounts it after a save so the new page shows,
   // without remounting other views on every router.refresh().
-  const viewKey = `${feedId ?? ""}:${folderId ?? ""}:${starred}:${readLater}:${showingAll}:${sortOrder ?? ""}:${query}${
+  const viewKey = `${feedId ?? ""}:${folderId ?? ""}:${starred}:${readLater}:${activeLabel?.id ?? ""}:${showingAll}:${sortOrder ?? ""}:${query}${
     readLater && !isSearch ? `:${saved.readLater}` : ""
   }`;
 
@@ -129,11 +148,13 @@ export default async function Home({
       ? "Starred"
       : readLater
         ? "Read later"
-        : feedId
-          ? (feeds.find((f) => f.feedId === feedId)?.title ?? "Feed")
-          : folderId
-            ? (byFolder.get(folderId)?.name ?? "Folder")
-            : "All articles";
+        : activeLabel
+          ? activeLabel.name
+          : feedId
+            ? (feeds.find((f) => f.feedId === feedId)?.title ?? "Feed")
+            : folderId
+              ? (byFolder.get(folderId)?.name ?? "Folder")
+              : "All articles";
 
   const unreadCount = feedId
     ? (feeds.find((f) => f.feedId === feedId)?.unread ?? 0)
@@ -169,7 +190,14 @@ export default async function Home({
         <nav className="flex-1 space-y-0.5 px-2 pb-4">
           <FeedLink
             href="/"
-            active={!feedId && !folderId && !starred && !readLater && !isSearch}
+            active={
+              !feedId &&
+              !folderId &&
+              !starred &&
+              !readLater &&
+              !activeLabel &&
+              !isSearch
+            }
             label="All articles"
             count={totalUnread}
           />
@@ -187,6 +215,30 @@ export default async function Home({
             marker={<BookmarkIcon className="size-4" />}
             count={saved.readLater}
           />
+
+          {labels.length > 0 ? (
+            <div className="pt-3">
+              <div className="flex items-center justify-between px-2 py-1 text-[11px] font-semibold tracking-[0.08em] text-muted-foreground uppercase">
+                <span>Labels</span>
+                <Link
+                  href="/labels"
+                  className="font-normal tracking-normal normal-case hover:text-foreground"
+                >
+                  Manage
+                </Link>
+              </div>
+              {labels.map((label) => (
+                <FeedLink
+                  key={label.id}
+                  href={`/?label=${label.id}`}
+                  active={activeLabel?.id === label.id}
+                  label={label.name}
+                  count={label.count}
+                  marker={<TagIcon className="size-4" />}
+                />
+              ))}
+            </div>
+          ) : null}
 
           {folderGroups.map(([id, group]) => (
             <div key={id} className="pt-3">
@@ -252,6 +304,7 @@ export default async function Home({
             <div className="grid grid-cols-2 gap-1.5">
               <SidebarUtil href="/feeds" label="Manage" />
               <SidebarUtil href="/rules" label="Rules" />
+              <SidebarUtil href="/labels" label="Labels" />
               <SidebarUtil href="/settings" label="Settings" />
               <SidebarUtil href="/offline" label="Offline" />
             </div>
@@ -266,7 +319,7 @@ export default async function Home({
       {/* Content pane */}
       <main data-reader-scroll className="min-w-0 flex-1 overflow-y-auto">
         <div className="mx-auto w-full max-w-3xl px-4 pb-16 md:px-8">
-          {feeds.length === 0 && !readLater && !isSearch ? (
+          {feeds.length === 0 && !readLater && !activeLabel && !isSearch ? (
             <div className="pt-10">
               <StarterFeeds feeds={STARTER_FEEDS} />
             </div>
@@ -288,6 +341,7 @@ export default async function Home({
                 collapse={collapse}
                 embedLoading={embedLoading}
                 offlineUserId={userId}
+                availableLabels={labels}
               />
             </PullToRefresh>
           )}
