@@ -73,8 +73,11 @@ Phased plan. Each phase should ship as a usable app — MVP alone should be good
   distinguishes highlights with a note, and clicking the passage opens that
   note in place for adding, editing, or deletion. Overlapping passages are
   deliberately supported: the shared text gains a stronger treatment and a
-  chooser lets readers open either annotation. Anchors store both quote and
-  character range, so changed content is never highlighted incorrectly.
+  chooser lets readers open either annotation. The sidebar **Highlights**
+  library unifies annotations from feed articles and saved pages, supports an
+  All/Notes-only filter, and returns to the centered source passage. Anchors
+  store both quote and character range, so changed content is never highlighted
+  incorrectly.
 - **Article-list density** *(shipped July 2026)* — comfortable (the original
   two-line previews) or compact (tighter, one-line-preview rows), saved with
   reading preferences and applied everywhere in the reader.

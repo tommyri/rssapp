@@ -104,6 +104,7 @@ function highlightIdsForMark(mark: HTMLElement): number[] {
 function wrapHighlightSegments(
   root: HTMLElement,
   highlights: ArticleHighlight[],
+  focusedHighlightId?: number,
 ) {
   const nodes: Array<{ node: Text; start: number; end: number }> = [];
   const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
@@ -163,6 +164,14 @@ function wrapHighlightSegments(
       if (activeHighlights.some((highlight) => highlight.note?.trim())) {
         mark.dataset.readerNote = "true";
       }
+      if (
+        focusedHighlightId !== undefined &&
+        activeHighlights.some(
+          (highlight) => highlight.id === focusedHighlightId,
+        )
+      ) {
+        mark.dataset.readerHighlightFocus = "true";
+      }
       mark.append(segment);
       fragment.append(mark);
     }
@@ -173,10 +182,11 @@ function wrapHighlightSegments(
 export function renderHighlights(
   root: HTMLElement,
   highlights: ArticleHighlight[],
+  focusedHighlightId?: number,
 ) {
   clearRenderedHighlights(root);
   const renderable = renderableHighlights(root.textContent ?? "", highlights);
-  wrapHighlightSegments(root, renderable);
+  wrapHighlightSegments(root, renderable, focusedHighlightId);
 }
 
 /** Updates note affordances without touching the text nodes that form a mark. */
@@ -249,6 +259,7 @@ export function ArticleContent({
   html,
   embedLoading,
   highlights = [],
+  focusHighlightId,
   onCreateHighlight,
   onUpdateHighlightNote,
   onDeleteHighlight,
@@ -256,6 +267,8 @@ export function ArticleContent({
   html: string;
   embedLoading: EmbedLoadingPreferences;
   highlights?: ArticleHighlight[];
+  /** Highlight-library source links open and center this persisted annotation. */
+  focusHighlightId?: number;
   onCreateHighlight?: (
     anchor: HighlightAnchor,
     note: string,
@@ -270,6 +283,7 @@ export function ArticleContent({
   const renderedHtml = deferEmbedsHtml(html);
   const ref = useRef<HTMLDivElement>(null);
   const sourceHtmlRef = useRef(renderedHtml);
+  const focusedHighlightRef = useRef<number | null>(null);
   const noteInputRef = useRef<HTMLTextAreaElement>(null);
   const highlightDialogRef = useRef<HTMLElement>(null);
   const selectionDialogRef = useRef<HTMLDivElement>(null);
@@ -348,11 +362,35 @@ export function ArticleContent({
       container.innerHTML = renderedHtml;
       sourceHtmlRef.current = renderedHtml;
     }
-    renderHighlights(container, highlights);
+    renderHighlights(container, highlights, focusHighlightId);
     syncHighlightNotes(container, highlights);
     const nextHtml = container.innerHTML;
     setArticleHtml((current) => (current === nextHtml ? current : nextHtml));
-  }, [highlights, renderedHtml]);
+  }, [focusHighlightId, highlights, renderedHtml]);
+
+  useEffect(() => {
+    if (
+      focusHighlightId === undefined ||
+      focusedHighlightRef.current === focusHighlightId ||
+      !articleHtml.includes("data-reader-highlight")
+    ) {
+      return;
+    }
+    const container = ref.current;
+    if (!container) return;
+    const mark = [
+      ...container.querySelectorAll<HTMLElement>("mark[data-reader-highlight]"),
+    ].find((candidate) =>
+      highlightIdsForMark(candidate).includes(focusHighlightId),
+    );
+    if (!mark) return;
+
+    focusedHighlightRef.current = focusHighlightId;
+    const frame = window.requestAnimationFrame(() => {
+      mark.scrollIntoView({ block: "center" });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [articleHtml, focusHighlightId]);
 
   useEffect(() => {
     if (editingHighlightId !== null) noteInputRef.current?.focus();

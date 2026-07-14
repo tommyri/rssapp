@@ -151,6 +151,18 @@ export async function listSavedPages(
     .limit(LIST_LIMIT);
 }
 
+/** One saved page for a user-scoped reader route. */
+export async function getSavedPage(
+  userId: number,
+  id: number,
+): Promise<SavedPage | null> {
+  const [page] = await db
+    .select(columns)
+    .from(savedPages)
+    .where(and(eq(savedPages.id, id), eq(savedPages.userId, userId)));
+  return page ?? null;
+}
+
 /** Full-text search over a user's saved pages; recency as tiebreak. */
 export async function searchSavedPages(
   userId: number,

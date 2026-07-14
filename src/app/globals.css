@@ -297,6 +297,18 @@
   box-shadow: inset 0 -0.18em 0
     color-mix(in srgb, var(--primary) 62%, var(--background));
 }
+.article-content mark[data-reader-highlight-focus="true"] {
+  animation: reader-highlight-focus 1.25s ease-out;
+  scroll-margin-block: 22vh;
+}
+@keyframes reader-highlight-focus {
+  0% {
+    background-color: color-mix(in srgb, var(--primary) 78%, var(--background));
+  }
+  100% {
+    background-color: color-mix(in srgb, var(--primary) 36%, var(--background));
+  }
+}
 .article-content hr {
   border: 0;
   border-top: 1px solid var(--border);

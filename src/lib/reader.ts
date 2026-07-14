@@ -21,10 +21,12 @@ import {
   type EmbedLoadingPreferences,
   normalizeEmbedLoadingPreferences,
 } from "@/lib/embed-loading";
+import { getHighlightTarget } from "@/lib/highlights";
 import { labelsForTargets, type ReaderLabel } from "@/lib/labels";
 import type { ExportEntry } from "@/lib/opml";
 import { DEFAULT_AUTO_READ_DAYS } from "@/lib/reading-prefs";
 import {
+  getSavedPage,
   listSavedPages,
   type SavedPage,
   savedPagesCount,
@@ -261,6 +263,12 @@ export interface ReaderView {
   collapse?: boolean;
   /** Shows the user's unified feed-item and saved-page label view. */
   labelId?: number;
+  /** A direct source row, used when returning to an annotation. */
+  itemId?: number;
+  /** Reader source routes may reveal a muted item without changing its mute state. */
+  includeMuted?: boolean;
+  /** A one-item annotation source behaves as an archive, not an unread feed. */
+  highlight?: boolean;
 }
 
 export interface ItemCursor {
@@ -281,12 +289,11 @@ export interface ItemsPage {
 const sortKey = sql`coalesce(${itemsTable.publishedAt}, ${itemsTable.createdAt})`;
 
 function viewConditions(userId: number, view: ReaderView) {
-  const conditions = [
-    eq(subscriptions.userId, userId),
-    sql`${itemStates.muted} is not true`,
-  ];
+  const conditions = [eq(subscriptions.userId, userId)];
+  if (!view.includeMuted) conditions.push(sql`${itemStates.muted} is not true`);
   if (view.feedId) conditions.push(eq(itemsTable.feedId, view.feedId));
   if (view.folderId) conditions.push(eq(subscriptions.folderId, view.folderId));
+  if (view.itemId) conditions.push(eq(itemsTable.id, view.itemId));
   if (view.starred) conditions.push(eq(itemStates.starred, true));
   if (view.readLater) conditions.push(eq(itemStates.readLater, true));
   if (view.labelId) {
@@ -331,6 +338,7 @@ export async function listItems(
   if (
     opts.collapse &&
     opts.feedId === undefined &&
+    opts.itemId === undefined &&
     !opts.starred &&
     !opts.readLater &&
     !opts.labelId
@@ -616,6 +624,30 @@ function savedPageToItem(p: SavedPage): ReaderItem {
     pageStatus: p.status,
     pageError: p.error,
   };
+}
+
+/** Resolve an owned annotation back to its exact reader item or saved page. */
+export async function getReaderItemForHighlight(
+  userId: number,
+  highlightId: number,
+): Promise<ReaderItem | null> {
+  const target = await getHighlightTarget(userId, highlightId);
+  if (!target) return null;
+  if (target.kind === "item") {
+    const page = await listItems(userId, {
+      itemId: target.id,
+      includeMuted: true,
+      limit: 1,
+    });
+    return page.items[0] ?? null;
+  }
+
+  const savedPage = await getSavedPage(userId, target.id);
+  if (!savedPage) return null;
+  const [readerItem] = await attachReaderLabels(userId, [
+    savedPageToItem(savedPage),
+  ]);
+  return readerItem ?? null;
 }
 
 const READ_LATER_LIMIT = 500;

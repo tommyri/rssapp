@@ -129,28 +129,33 @@ describe("renderHighlights", () => {
       const text = root.textContent ?? "";
       const nestedQuote = "one short sentence";
       const nestedStart = text.indexOf(nestedQuote);
-      renderHighlights(root, [
-        {
-          id: 1,
-          quote: text,
-          startOffset: 0,
-          endOffset: text.length,
-          note: "Paragraph note.",
-        },
-        {
-          id: 2,
-          quote: nestedQuote,
-          startOffset: nestedStart,
-          endOffset: nestedStart + nestedQuote.length,
-          note: "Sentence note.",
-        },
-      ]);
+      renderHighlights(
+        root,
+        [
+          {
+            id: 1,
+            quote: text,
+            startOffset: 0,
+            endOffset: text.length,
+            note: "Paragraph note.",
+          },
+          {
+            id: 2,
+            quote: nestedQuote,
+            startOffset: nestedStart,
+            endOffset: nestedStart + nestedQuote.length,
+            note: "Sentence note.",
+          },
+        ],
+        2,
+      );
 
       const overlap = root.querySelector(
         "mark[data-reader-highlight-ids='1,2']",
       );
       expect(overlap?.textContent).toBe(nestedQuote);
       expect(overlap?.dataset.readerHighlightCount).toBe("2");
+      expect(overlap?.dataset.readerHighlightFocus).toBe("true");
       expect(root.querySelectorAll("mark mark")).toHaveLength(0);
       expect(root.textContent).toBe(text);
     });

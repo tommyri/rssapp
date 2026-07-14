@@ -44,6 +44,7 @@ const viewSchema = z.object({
   labelId: z.number().int().positive().optional(),
   unreadOnly: z.boolean().optional(),
   sortOrder: z.enum(["newest", "oldest"]).optional(),
+  highlight: z.boolean().optional(),
 });
 
 const offlineReadLaterDownloadLimitSchema = z.union([

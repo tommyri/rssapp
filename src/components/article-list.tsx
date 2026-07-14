@@ -96,6 +96,9 @@ interface Props {
   embedLoading: EmbedLoadingPreferences;
   offlineUserId: number;
   availableLabels: ReaderLabel[];
+  /** Opens one source article when arriving from the Highlights library. */
+  initialExpandedId?: string;
+  focusHighlightId?: number;
 }
 
 /** Composite key: ids are only unique within a kind (feed item vs saved page). */
@@ -128,16 +131,22 @@ export function ArticleList({
   embedLoading,
   offlineUserId,
   availableLabels,
+  initialExpandedId,
+  focusHighlightId,
 }: Props) {
   const router = useRouter();
   // Starred / Read later are archive views: no unread filter or mark-all.
-  const isArchiveView = Boolean(view.starred || view.readLater || view.labelId);
+  const isArchiveView = Boolean(
+    view.starred || view.readLater || view.labelId || view.highlight,
+  );
   const [items, setItems] = useState<ReaderItem[]>(initialItems);
   const [hasMore, setHasMore] = useState(initialHasMore);
   const [loadingMore, setLoadingMore] = useState(false);
   // Only one article is open at a time — opening another closes the previous.
   // Keyed by kind+id since ids collide across kinds in the Read later view.
-  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [expandedId, setExpandedId] = useState<string | null>(
+    initialExpandedId ?? null,
+  );
   const [focusRequested, setFocusRequested] = useState(false);
   const [scrollMark, setScrollMark] = useState(true);
   const [statusMsg, setStatusMsg] = useState("");
@@ -440,6 +449,10 @@ export function ArticleList({
         return false;
       }
       recordHighlightChange(keyOf(item), result.highlight.id, result.highlight);
+      // The annotation is already painted optimistically; refresh the server
+      // shell so the Highlights sidebar count catches up without waiting for a
+      // navigation.
+      router.refresh();
       return true;
     } catch {
       setStatusMsg("Couldn't save highlight.");
@@ -477,6 +490,7 @@ export function ArticleList({
         return;
       }
       if (target) recordHighlightChange(target, highlightId, null);
+      router.refresh();
     } catch {
       setStatusMsg("Couldn't delete highlight.");
     }
@@ -827,6 +841,7 @@ export function ArticleList({
                           html={contentHtml}
                           embedLoading={embedLoading}
                           highlights={highlights}
+                          focusHighlightId={focusHighlightId}
                           onCreateHighlight={(anchor, note) =>
                             createHighlightForItem(item, anchor, note)
                           }

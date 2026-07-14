@@ -30,7 +30,9 @@ Follow the NetNewsWire timeline recipe (the best-documented design reasoning in 
   shared text has a stronger treatment and opens a chooser with each passage,
   so a paragraph and a sentence within it remain independently reachable. The
   stored quote must match its character range before it is rendered, avoiding
-  misleading highlights if a feed later changes its text.
+  misleading highlights if a feed later changes its text. The Highlights
+  sidebar view is the durable return path: it groups annotations by recency,
+  can narrow to notes, and opens the source directly at the saved passage.
 - **Controls use the shared hierarchy** — a commit action uses the standard
   primary `Button`; secondary actions use an existing secondary/outline
   variant; low-emphasis dismissals use a ghost or icon button. New one-off
