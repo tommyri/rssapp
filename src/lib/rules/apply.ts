@@ -24,6 +24,8 @@ import {
 } from "./preview";
 
 const RULE_PREVIEW_SAMPLE_SIZE = 50;
+export const RULE_EXISTING_APPLY_LIMIT = 500;
+const ruleItemSort = sql`coalesce(${items.publishedAt}, ${items.createdAt})`;
 
 export interface RuleRow {
   userId: number;
@@ -43,6 +45,13 @@ interface RuleApplication {
   itemId: number;
   flags: ActionFlags;
   labelIds: number[];
+}
+
+export interface ExistingRuleApplicationResult {
+  scanned: number;
+  matched: number;
+  /** More matching candidates may exist beyond the newest bounded batch. */
+  hasMore: boolean;
 }
 
 /** Apply matched state flags and labels without removing existing choices. */
@@ -171,13 +180,14 @@ export async function applyRulesToNewItems(
 
 /**
  * Apply one rule to the user's existing items (its feed, or all subscribed
- * feeds). Used when a rule is created. Returns how many items matched.
+ * feeds). The newest batch is deliberately bounded: a broad rule must never
+ * turn a routine UI action into an unbounded mutation.
  */
 export async function applyRuleToExistingItems(
   userId: number,
   rule: Omit<RuleRow, "userId"> & { feedId: number | null },
-): Promise<number> {
-  const candidates = (await db
+): Promise<ExistingRuleApplicationResult> {
+  const rows = (await db
     .select({
       id: items.id,
       title: items.title,
@@ -192,13 +202,18 @@ export async function applyRuleToExistingItems(
         eq(subscriptions.userId, userId),
       ),
     )
-    .where(
-      rule.feedId ? eq(items.feedId, rule.feedId) : undefined,
-    )) as IngestedItem[];
+    .where(rule.feedId ? eq(items.feedId, rule.feedId) : undefined)
+    .orderBy(desc(ruleItemSort), desc(items.id))
+    .limit(RULE_EXISTING_APPLY_LIMIT + 1)) as IngestedItem[];
+  const candidates = rows.slice(0, RULE_EXISTING_APPLY_LIMIT);
 
   const entries = evaluate([{ ...rule, userId }], candidates);
   await applyEffects(entries);
-  return entries.length;
+  return {
+    scanned: candidates.length,
+    matched: entries.length,
+    hasMore: rows.length > RULE_EXISTING_APPLY_LIMIT,
+  };
 }
 
 /** Test a draft against a bounded, user-scoped recent sample without mutation. */
@@ -225,7 +240,7 @@ export async function previewRuleAgainstRecentItems(
     )
     .innerJoin(feeds, eq(feeds.id, items.feedId))
     .where(rule.feedId ? eq(items.feedId, rule.feedId) : undefined)
-    .orderBy(desc(items.publishedAt), desc(items.id))
+    .orderBy(desc(ruleItemSort), desc(items.id))
     .limit(RULE_PREVIEW_SAMPLE_SIZE)) as RulePreviewCandidate[];
 
   return {

@@ -1,3 +1,4 @@
+import { ApplyRuleButton } from "@/components/apply-rule-button";
 import { BackLink } from "@/components/back-link";
 import { ConfirmButton } from "@/components/confirm-button";
 import { RuleForm } from "@/components/rule-form";
@@ -79,6 +80,8 @@ export default async function RulesPage() {
                   </Button>
                 </form>
 
+                <ApplyRuleButton ruleId={rule.id} disabled={!rule.enabled} />
+
                 <form action={deleteRuleAction}>
                   <input type="hidden" name="ruleId" value={rule.id} />
                   <ConfirmButton
@@ -93,9 +96,10 @@ export default async function RulesPage() {
         )}
 
         <p className="text-xs text-muted-foreground">
-          Rules apply to new articles as they arrive, and optionally to existing
-          ones when created. Deleting or disabling a rule doesn't undo what it
-          already did.
+          Rules apply to new articles as they arrive. Applying a saved rule to
+          existing articles is confirmed and limited to its newest 500 scoped
+          articles. Deleting or disabling a rule doesn't undo what it already
+          did.
         </p>
       </div>
     </div>

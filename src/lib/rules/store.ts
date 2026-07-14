@@ -38,6 +38,31 @@ export async function listRules(userId: number): Promise<RuleListEntry[]> {
   return rows as RuleListEntry[];
 }
 
+/** One current rule, scoped to its owner for explicit batch application. */
+export async function getRule(
+  userId: number,
+  ruleId: number,
+): Promise<RuleListEntry | null> {
+  const [row] = await db
+    .select({
+      id: rules.id,
+      feedId: rules.feedId,
+      feedTitle: feeds.title,
+      field: rules.field,
+      matchType: rules.matchType,
+      pattern: rules.pattern,
+      action: rules.action,
+      labelId: rules.labelId,
+      labelName: labels.name,
+      enabled: rules.enabled,
+    })
+    .from(rules)
+    .leftJoin(feeds, eq(feeds.id, rules.feedId))
+    .leftJoin(labels, eq(labels.id, rules.labelId))
+    .where(and(eq(rules.userId, userId), eq(rules.id, ruleId)));
+  return (row as RuleListEntry | undefined) ?? null;
+}
+
 export interface NewRule {
   feedId: number | null;
   field: RuleField;

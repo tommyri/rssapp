@@ -1,6 +1,7 @@
 export {
   applyRulesToNewItems,
   applyRuleToExistingItems,
+  type ExistingRuleApplicationResult,
   type IngestedItem,
   previewRuleAgainstRecentItems,
   type RuleRow,
@@ -25,6 +26,7 @@ export {
 export {
   createRule,
   deleteRule,
+  getRule,
   listRules,
   type NewRule,
   type RuleListEntry,

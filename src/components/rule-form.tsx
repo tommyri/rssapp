@@ -117,10 +117,6 @@ export function RuleForm({
       </div>
 
       <div className="flex flex-wrap items-center gap-4">
-        <label className="flex items-center gap-2 text-sm text-muted-foreground">
-          <input type="checkbox" name="applyExisting" defaultChecked />
-          Apply to existing articles
-        </label>
         <Button
           type="submit"
           formAction={previewAction}
@@ -142,6 +138,11 @@ export function RuleForm({
           </span>
         ) : null}
       </div>
+
+      <p className="text-xs text-muted-foreground">
+        New rules affect articles as they arrive. Save the rule first to apply
+        it to a confirmed, bounded batch of existing articles.
+      </p>
 
       {preview.message ? (
         <section

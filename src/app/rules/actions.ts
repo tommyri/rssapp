@@ -8,6 +8,7 @@ import {
   applyRuleToExistingItems,
   createRule,
   deleteRule,
+  getRule,
   previewRuleAgainstRecentItems,
   RULE_ACTIONS,
   RULE_FIELDS,
@@ -29,6 +30,12 @@ export interface RulePreviewState extends RuleActionState {
   matches?: RulePreviewMatch[];
 }
 
+export interface RuleApplyState extends RuleActionState {
+  matched?: number;
+  scanned?: number;
+  hasMore?: boolean;
+}
+
 const newRuleSchema = z.object({
   feedId: z.coerce.number().int().positive().nullable(),
   field: z.enum(RULE_FIELDS),
@@ -36,7 +43,6 @@ const newRuleSchema = z.object({
   pattern: z.string(),
   action: z.enum(RULE_ACTIONS),
   labelId: z.coerce.number().int().positive().nullable(),
-  applyExisting: z.boolean(),
 });
 
 function parseNewRule(formData: FormData) {
@@ -49,13 +55,12 @@ function parseNewRule(formData: FormData) {
     pattern: String(formData.get("pattern") ?? "").trim(),
     action: formData.get("action"),
     labelId: rawLabelId === "" ? null : rawLabelId,
-    applyExisting: formData.get("applyExisting") === "on",
   });
 }
 
 async function validateRule(
   userId: number,
-  rule: Omit<z.infer<typeof newRuleSchema>, "applyExisting">,
+  rule: z.infer<typeof newRuleSchema>,
 ): Promise<string | null> {
   const patternError = validatePattern(rule.matchType, rule.pattern);
   if (patternError) return patternError;
@@ -75,21 +80,41 @@ export async function createRuleAction(
   const parsed = parseNewRule(formData);
   if (!parsed.success) return { ok: false, message: "Invalid rule input." };
 
-  const { applyExisting, ...rule } = parsed.data;
   const userId = await getCurrentUserId();
-  const validationError = await validateRule(userId, rule);
+  const validationError = await validateRule(userId, parsed.data);
   if (validationError) return { ok: false, message: validationError };
-  await createRule(userId, rule);
-
-  let suffix = "";
-  if (applyExisting) {
-    const matched = await applyRuleToExistingItems(userId, rule);
-    suffix = ` Applied to ${matched} existing article${matched === 1 ? "" : "s"}.`;
-  }
+  await createRule(userId, parsed.data);
 
   revalidatePath("/rules");
   revalidatePath("/");
-  return { ok: true, message: `Rule created.${suffix}` };
+  return { ok: true, message: "Rule created." };
+}
+
+const ruleIdSchema = z.coerce.number().int().positive();
+
+/** Apply an already-saved, still-enabled rule after an explicit user confirm. */
+export async function applyRuleToExistingAction(
+  _prev: RuleApplyState,
+  formData: FormData,
+): Promise<RuleApplyState> {
+  const ruleId = ruleIdSchema.safeParse(formData.get("ruleId"));
+  if (!ruleId.success) return { ok: false, message: "Invalid rule." };
+
+  const userId = await getCurrentUserId();
+  const rule = await getRule(userId, ruleId.data);
+  if (!rule) return { ok: false, message: "That rule is no longer available." };
+  if (!rule.enabled) {
+    return { ok: false, message: "Enable the rule before applying it." };
+  }
+
+  const result = await applyRuleToExistingItems(userId, rule);
+  revalidatePath("/rules");
+  revalidatePath("/");
+  return {
+    ok: true,
+    message: `Applied to ${result.matched} matching article${result.matched === 1 ? "" : "s"} from ${result.scanned} scanned.`,
+    ...result,
+  };
 }
 
 export async function previewRuleAction(
@@ -99,17 +124,16 @@ export async function previewRuleAction(
   const parsed = parseNewRule(formData);
   if (!parsed.success) return { ok: false, message: "Invalid rule input." };
 
-  const { applyExisting: _applyExisting, ...rule } = parsed.data;
   const userId = await getCurrentUserId();
-  const validationError = await validateRule(userId, rule);
+  const validationError = await validateRule(userId, parsed.data);
   if (validationError) return { ok: false, message: validationError };
-  const preview = await previewRuleAgainstRecentItems(userId, rule);
+  const preview = await previewRuleAgainstRecentItems(userId, parsed.data);
   const matched = preview.matches.length;
   const message =
     preview.sampleSize === 0
       ? "No recent articles are available to test."
       : `${matched} of ${preview.sampleSize} recent article${preview.sampleSize === 1 ? "" : "s"} would match.`;
-  return { ok: true, message, action: rule.action, ...preview };
+  return { ok: true, message, action: parsed.data.action, ...preview };
 }
 
 export async function deleteRuleAction(formData: FormData): Promise<void> {
