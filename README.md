@@ -149,9 +149,12 @@ docker compose up -d --build    # app on http://<host>:3000 + Postgres
 - First visit shows the one-time create-account form; after that it's sign-in only.
 - **Settings → Subscriptions & data** can download a complete, portable JSON backup
   (account data, subscriptions, articles, states, saved pages, labels, rules, and
-  highlights; never passwords). Compose also writes daily snapshots to the
-  `backup-data` volume, retaining 14 by default. Tune `BACKUP_INTERVAL_HOURS` and
-  `BACKUP_RETENTION` in `.env`, and copy snapshots out with
-  `docker compose cp app:/backups ./backups`.
+  highlights; never passwords). A restore assistant validates a backup, compares it with
+  the account&apos;s current reader data, then requires explicit confirmation before
+  transactionally replacing that reader data. It never merges records and leaves the
+  account login alone.
+  Compose also writes daily snapshots to the `backup-data` volume, retaining 14 by
+  default. Tune `BACKUP_INTERVAL_HOURS` and `BACKUP_RETENTION` in `.env`, and copy
+  snapshots out with `docker compose cp app:/backups ./backups`.
 - Back up the `db-data` volume (or `pg_dump`) as well; it remains the canonical
   database and is the recovery path for any data not yet supported by JSON restore.

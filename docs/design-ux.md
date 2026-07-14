@@ -122,11 +122,15 @@ ceremony for no gain; `?section=` gives the same addressability) and client-side
 localStorage, and "will this follow me to my phone?" deserves a structural answer. The
 section list lives once in `src/lib/settings-sections.ts`.
 
-**Subscriptions & data** pairs interoperable OPML with one clear recovery control:
-**Download JSON backup**. The download is deliberately complete for reader-owned data
-but never contains credentials. Server-side scheduled snapshots are informative rather
-than configurable in the browser: retention and cadence are deployment concerns, so the
-card reports their availability without exposing a filesystem setting in a web form.
+**Subscriptions & data** pairs interoperable OPML with a clear recovery path:
+**Download JSON backup** and **Restore a backup**. The download is deliberately complete
+for reader-owned data but never contains credentials. Restore uploads a JSON document,
+shows a server-validated comparison with the current account, then requires explicit
+confirmation before transactionally replacing the account&apos;s reader data. It never has an
+ambiguous merge mode, clears this device&apos;s offline cache so queued state cannot return,
+and leaves the current account login alone. Server-side scheduled snapshots are informative
+rather than configurable in the browser: retention and cadence are deployment concerns, so
+the card reports their availability without exposing a filesystem setting in a web form.
 
 ## Theming
 

@@ -125,7 +125,7 @@ export default async function SettingsPage({
           </p>
           <OpmlControls />
         </section>
-        <BackupControls />
+        <BackupControls userId={userId} />
       </>
     ),
     account: (
