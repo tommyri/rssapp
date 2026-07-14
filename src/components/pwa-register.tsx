@@ -49,6 +49,23 @@ export function PwaRegister({ userId }: { userId: number }) {
         );
     }
 
+    // Turbopack's dev module URLs change independently while the app is open.
+    // A production offline cache must never serve an old module into `next dev`.
+    if (process.env.NODE_ENV !== "production") {
+      void navigator.serviceWorker
+        .getRegistrations()
+        .then((registrations) =>
+          Promise.all(
+            registrations.map((registration) => registration.unregister()),
+          ),
+        );
+      return () =>
+        window.removeEventListener(
+          OFFLINE_MUTATIONS_QUEUED_EVENT,
+          requestBackgroundSync,
+        );
+    }
+
     const register = () => {
       void navigator.serviceWorker.register("/service-worker.js", {
         scope: "/",

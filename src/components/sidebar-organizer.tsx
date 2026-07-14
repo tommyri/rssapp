@@ -461,6 +461,7 @@ export function SidebarOrganizer({
 
   return (
     <DndContext
+      id="sidebar-organizer"
       sensors={sensors}
       collisionDetection={sameListCollision}
       onDragStart={handleDragStart}

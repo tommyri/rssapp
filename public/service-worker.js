@@ -1,4 +1,4 @@
-const SHELL_CACHE = "rssapp-offline-shell-v4";
+const SHELL_CACHE = "rssapp-offline-shell-v5";
 const OFFLINE_PAGE = "/offline";
 const OFFLINE_DATABASE = "rssapp-offline-library";
 const OFFLINE_DATABASE_VERSION = 3;
@@ -261,15 +261,21 @@ self.addEventListener("fetch", (event) => {
 
   if (url.pathname.startsWith("/_next/static/")) {
     event.respondWith(
-      caches.match(request).then(async (cached) => {
-        if (cached) return cached;
-        const response = await fetch(request);
-        if (response.ok && response.type === "basic") {
-          const cache = await caches.open(SHELL_CACHE);
-          cache.put(request, response.clone());
-        }
-        return response;
-      }),
+      fetch(request)
+        .then(async (response) => {
+          if (response.ok && response.type === "basic") {
+            try {
+              const cache = await caches.open(SHELL_CACHE);
+              await cache.put(request, response.clone());
+            } catch {
+              // Storage failures must not replace a fresh application module.
+            }
+          }
+          return response;
+        })
+        .catch(async () => {
+          return (await caches.match(request)) ?? Response.error();
+        }),
     );
   }
 });

@@ -30,6 +30,12 @@ import {
   setSavedPageReadAction,
   setSavedPageReadingProgressAction,
 } from "@/app/actions";
+import {
+  createHighlightAction,
+  deleteHighlightAction,
+  listHighlightsAction,
+  updateHighlightNoteAction,
+} from "@/app/highlights/actions";
 import { ArticleContent } from "@/components/article-content";
 import { ArticleLabelPicker } from "@/components/article-label-picker";
 import { ArticleListHeader } from "@/components/article-list-header";
@@ -48,6 +54,11 @@ import {
 import { alsoInLabel } from "@/lib/duplicates";
 import type { EmbedLoadingPreferences } from "@/lib/embed-loading";
 import { relativeTime } from "@/lib/format";
+import {
+  type ArticleHighlight,
+  type HighlightAnchor,
+  reconcileHighlightSnapshot,
+} from "@/lib/highlight-selection";
 import type { ReaderLabel } from "@/lib/labels";
 import {
   offlineArticleFromReaderItem,
@@ -134,6 +145,7 @@ export function ArticleList({
     Map<number, string>
   >(new Map());
   const [loadingContent, setLoadingContent] = useState<Set<number>>(new Set());
+  const [highlights, setHighlights] = useState<ArticleHighlight[]>([]);
 
   // Items the user explicitly marked unread — scroll-marking leaves them alone.
   const manuallyUnread = useRef<Set<number>>(new Set());
@@ -149,6 +161,10 @@ export function ArticleList({
   focusRequestedRef.current = focusRequested;
   const loadingContentRef = useRef(loadingContent);
   loadingContentRef.current = loadingContent;
+  const activeHighlightTargetRef = useRef<string | null>(null);
+  const pendingHighlightChangesRef = useRef<
+    Map<number, ArticleHighlight | null>
+  >(new Map());
 
   useEffect(() => {
     setScrollMark(localStorage.getItem(SCROLL_MARK_KEY) !== "off");
@@ -167,6 +183,9 @@ export function ArticleList({
   );
 
   const expandedItem = items.find((item) => keyOf(item) === expandedId) ?? null;
+  const expandedHighlightKind = expandedItem?.kind ?? null;
+  const expandedHighlightId = expandedItem?.id ?? null;
+  const expandedHighlightTarget = expandedItem ? keyOf(expandedItem) : null;
   const focusMode = readerFocusActive(focusRequested, expandedItem !== null);
   const { articleRef, progress: readingProgress } = useReadingProgress({
     item: expandedItem,
@@ -188,6 +207,53 @@ export function ArticleList({
   useEffect(() => {
     if (expandedItem === null) setFocusRequested(false);
   }, [expandedItem]);
+
+  useEffect(() => {
+    if (
+      expandedHighlightKind === null ||
+      expandedHighlightId === null ||
+      expandedHighlightTarget === null
+    ) {
+      activeHighlightTargetRef.current = null;
+      pendingHighlightChangesRef.current = new Map();
+      setHighlights([]);
+      return;
+    }
+    let cancelled = false;
+    const localChanges = new Map<number, ArticleHighlight | null>();
+    activeHighlightTargetRef.current = expandedHighlightTarget;
+    pendingHighlightChangesRef.current = localChanges;
+    setHighlights([]);
+    void listHighlightsAction(expandedHighlightKind, expandedHighlightId)
+      .then((next) => {
+        if (
+          !cancelled &&
+          activeHighlightTargetRef.current === expandedHighlightTarget
+        ) {
+          const changesAtResolution = new Map(localChanges);
+          setHighlights(reconcileHighlightSnapshot(next, changesAtResolution));
+          localChanges.clear();
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setStatusMsg("Couldn't load highlights.");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [expandedHighlightId, expandedHighlightKind, expandedHighlightTarget]);
+
+  function recordHighlightChange(
+    target: string,
+    highlightId: number,
+    highlight: ArticleHighlight | null,
+  ) {
+    if (activeHighlightTargetRef.current !== target) return;
+    pendingHighlightChangesRef.current.set(highlightId, highlight);
+    setHighlights((current) =>
+      reconcileHighlightSnapshot(current, new Map([[highlightId, highlight]])),
+    );
+  }
 
   const flushScrollMarks = useCallback(() => {
     const ids = [...pendingScrollIds.current];
@@ -354,6 +420,65 @@ export function ArticleList({
       setStatusMsg("Available offline.");
     } catch {
       setStatusMsg("Couldn't save for offline reading.");
+    }
+  }
+
+  async function createHighlightForItem(
+    item: ReaderItem,
+    anchor: HighlightAnchor,
+    note: string,
+  ): Promise<boolean> {
+    try {
+      const result = await createHighlightAction(
+        item.kind,
+        item.id,
+        anchor,
+        note,
+      );
+      if (!result.ok) {
+        setStatusMsg(result.error);
+        return false;
+      }
+      recordHighlightChange(keyOf(item), result.highlight.id, result.highlight);
+      return true;
+    } catch {
+      setStatusMsg("Couldn't save highlight.");
+      return false;
+    }
+  }
+
+  async function updateHighlightNote(
+    highlightId: number,
+    note: string,
+  ): Promise<boolean> {
+    const target = activeHighlightTargetRef.current;
+    try {
+      const result = await updateHighlightNoteAction(highlightId, note);
+      if (!result.ok) {
+        setStatusMsg(result.error);
+        return false;
+      }
+      if (target) {
+        recordHighlightChange(target, result.highlight.id, result.highlight);
+      }
+      return true;
+    } catch {
+      setStatusMsg("Couldn't save note.");
+      return false;
+    }
+  }
+
+  async function removeHighlight(highlightId: number) {
+    const target = activeHighlightTargetRef.current;
+    try {
+      const removed = await deleteHighlightAction(highlightId);
+      if (!removed) {
+        setStatusMsg("That highlight is no longer available.");
+        return;
+      }
+      if (target) recordHighlightChange(target, highlightId, null);
+    } catch {
+      setStatusMsg("Couldn't delete highlight.");
     }
   }
 
@@ -701,6 +826,12 @@ export function ArticleList({
                         <ArticleContent
                           html={contentHtml}
                           embedLoading={embedLoading}
+                          highlights={highlights}
+                          onCreateHighlight={(anchor, note) =>
+                            createHighlightForItem(item, anchor, note)
+                          }
+                          onUpdateHighlightNote={updateHighlightNote}
+                          onDeleteHighlight={removeHighlight}
                         />
                       </div>
                     ) : (

@@ -67,7 +67,14 @@ Phased plan. Each phase should ship as a usable app — MVP alone should be good
 - **In-article rendering polish** *(shipped July 2026)* — **code-block syntax highlighting** (highlight.js common build, auto-detected — the sanitizer strips class attributes so language hints don't survive ingest; dynamically imported only when an expanded article contains a `<pre>`, so prose never pays for it; a restrained three-hue theme in globals.css rather than a stock theme), a **click-to-zoom lightbox** for images (portal-rendered — the row entrance animation's lingering transform would otherwise trap `position: fixed` inside the row), and **deferred embeds** (YouTube, Vimeo, and X posts render as light placeholders by default; Settings → Reading offers a global auto-load preference and per-platform overrides, including for previously stored article HTML). Reading preferences autosave after a brief pause, while account and data operations retain explicit confirmation. **Lazy-load images turned out to be already shipped**: the sanitizer stamps `loading="lazy"` on every `<img>` at ingest (verified 305/305 stored items). All rendering lives in `ArticleContent`, shared by feed items, extracted full content, and saved pages.
 - **Distraction-free reading mode** *(shipped July 2026)* — collapse the sidebar/chrome for a full-focus single column. Exit from the reader header or with Escape.
 - **Reading progress + resume** *(shipped July 2026)* — a thin progress bar and remembered scroll position so long articles resume where you left off.
-- **Highlights & notes** (stretch) — highlight passages and jot notes on articles and saved pages; a natural companion to save-any-link.
+- **Highlights with optional notes** *(shipped July 2026)* — select prose in an
+  expanded feed article or saved page, optionally add a note, then save one
+  highlight. The saved passage is always visibly painted; a subtle underline
+  distinguishes highlights with a note, and clicking the passage opens that
+  note in place for adding, editing, or deletion. Overlapping passages are
+  deliberately supported: the shared text gains a stronger treatment and a
+  chooser lets readers open either annotation. Anchors store both quote and
+  character range, so changed content is never highlighted incorrectly.
 - **Article-list density** *(shipped July 2026)* — comfortable (the original
   two-line previews) or compact (tighter, one-line-preview rows), saved with
   reading preferences and applied everywhere in the reader.

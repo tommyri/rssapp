@@ -313,6 +313,46 @@ export const savedPageLabels = pgTable(
   ],
 );
 
+// Per-user annotations on reader-visible text. Anchors use character offsets
+// plus the selected quote so changed article text can never be highlighted by
+// accident (src/lib/highlight-selection.ts).
+export const highlights = pgTable(
+  "highlights",
+  {
+    id: id(),
+    userId: bigint("user_id", { mode: "number" })
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    itemId: bigint("item_id", { mode: "number" }).references(() => items.id, {
+      onDelete: "cascade",
+    }),
+    savedPageId: bigint("saved_page_id", { mode: "number" }).references(
+      () => savedPages.id,
+      { onDelete: "cascade" },
+    ),
+    quote: text("quote").notNull(),
+    startOffset: integer("start_offset").notNull(),
+    endOffset: integer("end_offset").notNull(),
+    note: text("note"),
+    createdAt: createdAt(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    index("highlights_user_item_created_idx").on(
+      t.userId,
+      t.itemId,
+      t.createdAt,
+    ),
+    index("highlights_user_page_created_idx").on(
+      t.userId,
+      t.savedPageId,
+      t.createdAt,
+    ),
+  ],
+);
+
 // One row per fetch attempt; powers the feed health view (docs/features.md v1).
 export const fetchLog = pgTable(
   "fetch_log",

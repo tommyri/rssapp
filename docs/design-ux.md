@@ -21,6 +21,20 @@ Follow the NetNewsWire timeline recipe (the best-documented design reasoning in 
   preview rows; Compact tightens rows and uses one-line previews for faster
   scanning. This is an account preference in Reading settings; opening an
   article always keeps the comfortable reading layout.
+- **Highlights are one annotation, with an optional note** — selecting prose
+  opens one compact composer: save the highlight immediately or add a note
+  before saving. A note is not a second object or competing action. Every saved
+  highlight stays visibly painted in the article; highlights with a note receive
+  a subtle underline, and clicking any highlighted passage opens its note in
+  place to add, edit, or delete it. Overlapping highlights are allowed: their
+  shared text has a stronger treatment and opens a chooser with each passage,
+  so a paragraph and a sentence within it remain independently reachable. The
+  stored quote must match its character range before it is rendered, avoiding
+  misleading highlights if a feed later changes its text.
+- **Controls use the shared hierarchy** — a commit action uses the standard
+  primary `Button`; secondary actions use an existing secondary/outline
+  variant; low-emphasis dismissals use a ghost or icon button. New one-off
+  button styling needs a specific interaction reason, not merely local layout.
 - **Per-feed settings** live on the `subscriptions.settings` column. Shipped: full-content default, auto-read-days override, **sort order** (newest vs oldest first), and **unread-only by default** (feeds can open on all articles instead).
 
 Sorting: newest-first globally and for folder/all views. A feed can opt into oldest-first so nothing gets buried; pagination follows the chosen order.
