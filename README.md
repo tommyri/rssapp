@@ -76,8 +76,9 @@ scaling/business question — see docs/business-option.md.
 
 Per-user automation on `/rules`: match articles by keyword or regex on
 title/content/author — scoped to one feed or all — and mute, mark read, or star them.
-Rules run at ingest (new items arrive with state already applied) and optionally
-retroactively on creation. Muted items vanish from lists and unread counts entirely.
+Rules run at ingest (new items arrive with state already applied). A saved rule can
+also be explicitly confirmed against a bounded batch of existing articles; creating a
+rule never mutates older items. Muted items vanish from lists and unread counts entirely.
 The pure matching engine lives in `src/lib/rules/engine.ts` with unit tests alongside.
 
 ### Full-content extraction
@@ -146,4 +147,11 @@ docker compose up -d --build    # app on http://<host>:3000 + Postgres
 - `APP_PORT=8080` in `.env` changes the published port.
 - Upgrades: `git pull && docker compose up -d --build` — migrations run on boot.
 - First visit shows the one-time create-account form; after that it's sign-in only.
-- Back up the `db-data` volume (or `pg_dump`); that's where everything lives.
+- **Settings → Subscriptions & data** can download a complete, portable JSON backup
+  (account data, subscriptions, articles, states, saved pages, labels, rules, and
+  highlights; never passwords). Compose also writes daily snapshots to the
+  `backup-data` volume, retaining 14 by default. Tune `BACKUP_INTERVAL_HOURS` and
+  `BACKUP_RETENTION` in `.env`, and copy snapshots out with
+  `docker compose cp app:/backups ./backups`.
+- Back up the `db-data` volume (or `pg_dump`) as well; it remains the canonical
+  database and is the recovery path for any data not yet supported by JSON restore.

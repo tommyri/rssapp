@@ -157,6 +157,10 @@ export function ArticleList({
   const [highlights, setHighlights] = useState<ArticleHighlight[]>([]);
 
   // Items the user explicitly marked unread — scroll-marking leaves them alone.
+  const hasMoreRef = useRef(hasMore);
+  hasMoreRef.current = hasMore;
+  const loadingMoreRef = useRef(false);
+  const pendingKeyboardScrollKeyRef = useRef<string | null>(null);
   const manuallyUnread = useRef<Set<number>>(new Set());
   const pendingScrollIds = useRef<Set<number>>(new Set());
   const flushTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -496,9 +500,10 @@ export function ArticleList({
     }
   }
 
-  async function loadOlder() {
-    const last = items.at(-1);
-    if (!last || loadingMore) return;
+  const loadOlder = useCallback(async (): Promise<ReaderItem[]> => {
+    const last = itemsRef.current.at(-1);
+    if (!last || loadingMoreRef.current) return [];
+    loadingMoreRef.current = true;
     setLoadingMore(true);
     try {
       const page = await fetchItemsAction(
@@ -506,16 +511,25 @@ export function ArticleList({
         { ts: new Date(last.sortTs).toISOString(), id: last.id },
         collapse,
       );
-      const known = new Set(items.map((i) => keyOf(i)));
+      const known = new Set(itemsRef.current.map((item) => keyOf(item)));
+      const additions = page.items.filter((item) => !known.has(keyOf(item)));
       setItems((prev) => [
         ...prev,
-        ...page.items.filter((i) => !known.has(keyOf(i))),
+        ...additions.filter(
+          (item) => !prev.some((existing) => keyOf(existing) === keyOf(item)),
+        ),
       ]);
+      hasMoreRef.current = page.hasMore;
       setHasMore(page.hasMore);
+      return additions;
+    } catch {
+      setStatusMsg("Couldn't load older articles.");
+      return [];
     } finally {
+      loadingMoreRef.current = false;
       setLoadingMore(false);
     }
-  }
+  }, [collapse, view]);
 
   async function markAll(olderThanDays: number | null) {
     const { marked } = await markAllReadAction(view, olderThanDays);
@@ -552,19 +566,32 @@ export function ArticleList({
     [setEntryState],
   );
 
-  const moveBy = useCallback(
-    (delta: number) => {
-      const list = itemsRef.current;
-      if (list.length === 0) return;
-      let idx = list.findIndex((it) => keyOf(it) === expandedIdRef.current);
-      if (idx < 0) idx = delta > 0 ? -1 : list.length;
-      const next = Math.max(0, Math.min(list.length - 1, idx + delta));
-      openItem(list[next]);
+  const openKeyboardItem = useCallback(
+    (item: ReaderItem) => {
+      pendingKeyboardScrollKeyRef.current = keyOf(item);
+      openItem(item);
     },
     [openItem],
   );
 
-  const smartAdvance = useCallback(() => {
+  const moveBy = useCallback(
+    async (delta: number) => {
+      const list = itemsRef.current;
+      if (list.length === 0) return;
+      let idx = list.findIndex((it) => keyOf(it) === expandedIdRef.current);
+      if (idx < 0) idx = delta > 0 ? -1 : list.length;
+      if (delta > 0 && idx === list.length - 1 && hasMoreRef.current) {
+        const additions = await loadOlder();
+        if (additions[0]) openKeyboardItem(additions[0]);
+        return;
+      }
+      const next = Math.max(0, Math.min(list.length - 1, idx + delta));
+      openItem(list[next]);
+    },
+    [loadOlder, openItem, openKeyboardItem],
+  );
+
+  const smartAdvance = useCallback(async () => {
     if (expandedIdRef.current) {
       const scrollElement = getReaderScrollContainer();
       if (hasRemainingReaderScroll(scrollElement)) {
@@ -583,8 +610,16 @@ export function ArticleList({
         return;
       }
     }
-    if (idx < list.length - 1) openItem(list[idx + 1]);
-  }, [openItem]);
+    if (idx < list.length - 1) {
+      openItem(list[idx + 1]);
+      return;
+    }
+    if (!hasMoreRef.current) return;
+
+    const additions = await loadOlder();
+    const next = additions.find((item) => !item.read) ?? additions[0];
+    if (next) openKeyboardItem(next);
+  }, [loadOlder, openItem, openKeyboardItem]);
 
   async function markOlderThanCurrent() {
     const item = itemsRef.current.find(
@@ -703,8 +738,16 @@ export function ArticleList({
               <li
                 key={key}
                 ref={(el) => {
-                  if (el) itemRowRefs.current.set(key, el);
-                  else itemRowRefs.current.delete(key);
+                  if (el) {
+                    itemRowRefs.current.set(key, el);
+                    // Keyboard pagination can open a newly appended row before
+                    // React mounts it. The row ref is the reliable point to
+                    // bring that destination into view.
+                    if (pendingKeyboardScrollKeyRef.current === key) {
+                      el.scrollIntoView({ block: "nearest" });
+                      pendingKeyboardScrollKeyRef.current = null;
+                    }
+                  } else itemRowRefs.current.delete(key);
                   if (item.kind === "item") registerRow(el, item.id);
                 }}
                 className={`row-enter border-b border-border/60 ${isOpen ? "border-border" : ""}`}
@@ -957,7 +1000,7 @@ export function ArticleList({
             variant="outline"
             size="sm"
             disabled={loadingMore}
-            onClick={loadOlder}
+            onClick={() => void loadOlder()}
           >
             {loadingMore ? "Loading…" : "Load older articles"}
           </Button>

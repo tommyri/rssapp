@@ -122,6 +122,12 @@ ceremony for no gain; `?section=` gives the same addressability) and client-side
 localStorage, and "will this follow me to my phone?" deserves a structural answer. The
 section list lives once in `src/lib/settings-sections.ts`.
 
+**Subscriptions & data** pairs interoperable OPML with one clear recovery control:
+**Download JSON backup**. The download is deliberately complete for reader-owned data
+but never contains credentials. Server-side scheduled snapshots are informative rather
+than configurable in the browser: retention and cadence are deployment concerns, so the
+card reports their availability without exposing a filesystem setting in a web form.
+
 ## Theming
 
 - Dark mode follows system, manual override (shipped; the Auto/Light/Dark picker lives in Settings); dark surfaces at `#121212–#1E1E1E`, not pure black (halation)

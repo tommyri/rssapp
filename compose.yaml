@@ -9,11 +9,17 @@ services:
       # refuses to boot without it (src/instrumentation.ts).
       AUTH_SECRET: ${AUTH_SECRET:-}
       SCHEDULER_TICK_MS: ${SCHEDULER_TICK_MS:-60000}
+      # Daily portable JSON snapshots; tune schedule/retention from .env.
+      BACKUP_DIR: /backups
+      BACKUP_INTERVAL_HOURS: ${BACKUP_INTERVAL_HOURS:-24}
+      BACKUP_RETENTION: ${BACKUP_RETENTION:-14}
     ports:
       - "${APP_PORT:-3000}:3000"
     depends_on:
       db:
         condition: service_healthy
+    volumes:
+      - backup-data:/backups
 
   db:
     image: postgres:17
@@ -36,3 +42,4 @@ services:
 
 volumes:
   db-data:
+  backup-data:

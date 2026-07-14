@@ -26,8 +26,8 @@ interface UseReaderKeyboardOptions {
   loadingContentRef: MutableRefObject<Set<number>>;
   handlersRef: MutableRefObject<ReaderKeyboardHandlers>;
   setFocusRequested: Dispatch<SetStateAction<boolean>>;
-  moveBy: (delta: number) => void;
-  smartAdvance: () => void;
+  moveBy: (delta: number) => Promise<void>;
+  smartAdvance: () => Promise<void>;
   keyOf: (item: Pick<ReaderItem, "kind" | "id">) => string;
 }
 
@@ -77,15 +77,15 @@ export function useReaderKeyboard({
       switch (event.key) {
         case "j":
           event.preventDefault();
-          moveBy(1);
+          void moveBy(1);
           return;
         case "k":
           event.preventDefault();
-          moveBy(-1);
+          void moveBy(-1);
           return;
         case " ":
           event.preventDefault();
-          smartAdvance();
+          void smartAdvance();
           return;
         case "m":
           if (!item) return;

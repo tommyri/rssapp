@@ -7,6 +7,7 @@ import {
   ReadingPrefsForm,
 } from "@/components/account-forms";
 import { BackLink } from "@/components/back-link";
+import { BackupControls } from "@/components/backup-controls";
 import { OpmlControls } from "@/components/opml-controls";
 import { ReaderTypographyForm } from "@/components/reader-typography";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -115,14 +116,17 @@ export default async function SettingsPage({
       </>
     ),
     data: (
-      <section className="space-y-3 rounded-lg border p-4">
-        <h3 className="font-medium">OPML import & export</h3>
-        <p className="text-xs text-muted-foreground">
-          Move your subscriptions in or out as an OPML file — the format every
-          reader speaks.
-        </p>
-        <OpmlControls />
-      </section>
+      <>
+        <section className="space-y-3 rounded-lg border p-4">
+          <h3 className="font-medium">OPML import & export</h3>
+          <p className="text-xs text-muted-foreground">
+            Move your subscriptions in or out as an OPML file — the format every
+            reader speaks.
+          </p>
+          <OpmlControls />
+        </section>
+        <BackupControls />
+      </>
     ),
     account: (
       <>
