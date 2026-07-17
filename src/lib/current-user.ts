@@ -42,9 +42,14 @@ export async function getOptionalCurrentUser() {
  * so a missing session here means something slipped through — send them to login.
  */
 export async function getCurrentUserId(): Promise<number> {
+  return (await getCurrentUser()).id;
+}
+
+/** Resolve the full current account or send the visitor to sign in. */
+export async function getCurrentUser() {
   const user = await getOptionalCurrentUser();
   if (!user) redirect("/login");
-  return user.id;
+  return user;
 }
 
 /**

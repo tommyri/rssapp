@@ -5,6 +5,7 @@ import {
   ChangeEmailForm,
   ChangePasswordForm,
   EmailVerificationForm,
+  ProfileForm,
   ReadingPrefsForm,
 } from "@/components/account-forms";
 import { BackLink } from "@/components/back-link";
@@ -131,6 +132,7 @@ export default async function SettingsPage({
     ),
     account: (
       <>
+        <ProfileForm displayName={user?.displayName ?? ""} />
         <ChangeEmailForm
           currentEmail={user?.email ?? ""}
           emailVerified={Boolean(user?.emailVerifiedAt)}

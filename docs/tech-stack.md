@@ -45,8 +45,9 @@ Auth.js credentials gives us solid session handling while the application owns t
 product-specific lifecycle: verified email, one-time recovery links, suspension, and
 session revocation. `getCurrentUserId()` re-resolves a JWT against the active account on
 every protected request, so a revoked session or suspended account cannot keep reading
-just because its cookie has not expired. Public signup and social identities remain later
-work; the foundation does not assume a single account.
+just because its cookie has not expired. Public signup verifies the email before a first
+sign-in, and onboarding records completion separately so existing readers are never
+surprised by the new-user flow. Social identities remain later work.
 
 ## Architecture sketch
 
@@ -86,6 +87,6 @@ One deliberate detail: primary keys are `bigint` identity columns, not UUIDs. Th
 1. **Deployment target** — assumed Docker Compose on a home server. If you'd rather use a managed platform (Fly.io, Railway, Hetzner + Coolify), the stack holds; only pure-serverless (Vercel) conflicts with the in-process worker.
 2. ~~**shadcn/ui vs. hand-rolled UI**~~ — **Decided:** shadcn-style components built on Radix UI primitives (`src/components/ui/*`), plus `lucide-react` for icons. Fast to ship, fully editable, no runtime lock-in.
 3. ~~**How seriously to take multi-user**~~ — **Decided:** schema and app code are
-   multi-tenant from day one. The account lifecycle foundation is now built; public
-   registration and onboarding are the next product milestone. See business-option.md.
+   multi-tenant from day one. Public registration, verified identity, recovery, and
+   onboarding are now built. See business-option.md.
 4. ~~**Reader-compat API priority**~~ — **Decided:** stays in "later". Tommy reads in Inoreader's own apps (not a native sync client), so there's no personal need; the compat API remains a business-leverage feature only (see business-option.md), and bigint ids keep it cheap whenever we want it.

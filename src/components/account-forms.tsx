@@ -13,6 +13,7 @@ import {
   changeEmailAction,
   changePasswordAction,
   resendVerificationAction,
+  updateProfileAction,
   updateReadingPrefsAction,
 } from "@/app/settings/actions";
 import { Button } from "@/components/ui/button";
@@ -111,6 +112,63 @@ export function ChangeEmailForm({
       </p>
       <SubmitButton label="Send confirmation email" />
       <Message state={state} />
+    </form>
+  );
+}
+
+export function ProfileForm({ displayName }: { displayName: string }) {
+  const [state, formAction, isPending] = useActionState(
+    updateProfileAction,
+    initial,
+  );
+  const formRef = useRef<HTMLFormElement>(null);
+  const didHydrate = useRef(false);
+  const [name, setName] = useState(displayName);
+
+  useEffect(() => {
+    if (!didHydrate.current) {
+      didHydrate.current = true;
+      return;
+    }
+    // Keep the client-side limit in step with the server validation even if a
+    // browser bypasses the input's maxLength attribute.
+    if (name.length > 80) return;
+    const form = formRef.current;
+    if (!form) return;
+    const timer = window.setTimeout(() => {
+      startTransition(() => formAction(new FormData(form)));
+    }, 600);
+    return () => window.clearTimeout(timer);
+  }, [formAction, name]);
+
+  return (
+    <form
+      ref={formRef}
+      onSubmit={(event) => {
+        event.preventDefault();
+        startTransition(() => formAction(new FormData(event.currentTarget)));
+      }}
+      className="space-y-3 rounded-lg border p-4"
+    >
+      <div className="space-y-1">
+        <h3 className="font-medium">Profile</h3>
+        <p className="text-xs text-muted-foreground">
+          A name is optional and stays private to your account.
+        </p>
+      </div>
+      <div className="max-w-sm space-y-2">
+        <Label htmlFor="displayName">Name</Label>
+        <Input
+          id="displayName"
+          name="displayName"
+          value={name}
+          onChange={(event) => setName(event.target.value)}
+          autoComplete="name"
+          maxLength={80}
+          placeholder="Optional"
+        />
+      </div>
+      <AutoSaveStatus state={state} pending={isPending} />
     </form>
   );
 }

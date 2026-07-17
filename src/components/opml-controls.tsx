@@ -13,7 +13,7 @@ function ImportLabel({ fileName }: { fileName: string | null }) {
   return <span>{fileName ? `Import ${fileName}` : "Import OPML…"}</span>;
 }
 
-export function OpmlControls() {
+export function OpmlControls({ showExport = true }: { showExport?: boolean }) {
   const [state, formAction] = useActionState(importOpmlAction, initial);
   const [fileName, setFileName] = useState<string | null>(null);
   const formRef = useRef<HTMLFormElement>(null);
@@ -43,10 +43,12 @@ export function OpmlControls() {
             <ImportLabel fileName={fileName} />
           </label>
         </form>
-        <a href="/api/opml/export" download className={buttonClass}>
-          <DownloadIcon className="size-3.5" />
-          Export OPML
-        </a>
+        {showExport ? (
+          <a href="/api/opml/export" download className={buttonClass}>
+            <DownloadIcon className="size-3.5" />
+            Export OPML
+          </a>
+        ) : null}
       </div>
       {state.message ? (
         <p

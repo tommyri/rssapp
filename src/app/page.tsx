@@ -7,6 +7,7 @@ import {
   TriangleAlertIcon,
 } from "lucide-react";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { AddFeedForm } from "@/components/add-feed-form";
 import { ArticleList } from "@/components/article-list";
 import { HighlightLibrary } from "@/components/highlight-library";
@@ -19,7 +20,7 @@ import { SearchForm } from "@/components/search-form";
 import { SidebarOrganizer } from "@/components/sidebar-organizer";
 import { SignOutButton } from "@/components/sign-out-button";
 import { StarterFeeds } from "@/components/starter-feeds";
-import { getCurrentUserId } from "@/lib/current-user";
+import { getCurrentUser } from "@/lib/current-user";
 import { highlightsCount, listHighlightSummaries } from "@/lib/highlights";
 import { listLabelSummaries } from "@/lib/labels";
 import {
@@ -78,7 +79,9 @@ export default async function Home({
   const labelId = parseId(params.label);
   const isSearch = query.length > 0 && !highlightsView;
 
-  const userId = await getCurrentUserId();
+  const user = await getCurrentUser();
+  if (!user.onboardingCompletedAt) redirect("/onboarding");
+  const userId = user.id;
   const [
     feeds,
     collapse,

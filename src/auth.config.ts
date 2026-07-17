@@ -12,12 +12,13 @@ export const authConfig = {
   pages: { signIn: "/login" },
   providers: [], // real providers live in auth.ts
   callbacks: {
-    // Route protection: everything requires a session except /login and the
+    // Route protection: everything requires a session except public account
     // auth endpoints. Returning false sends the user to the signIn page.
     authorized({ auth, request }) {
       const { pathname } = request.nextUrl;
       if (
         pathname === "/login" ||
+        pathname === "/signup" ||
         pathname === "/forgot-password" ||
         pathname === "/reset-password" ||
         pathname === "/verify-email" ||

@@ -11,6 +11,7 @@ describe("auth route exceptions", () => {
   it("keeps account-recovery pages reachable without a session", () => {
     for (const pathname of [
       "/login",
+      "/signup",
       "/forgot-password",
       "/reset-password",
       "/verify-email",

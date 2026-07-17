@@ -30,9 +30,9 @@ Phased plan. Each phase should ship as a usable app — MVP alone should be good
 - Unread counts per feed/folder in the sidebar
 
 ### App basics
-- Account authentication foundation — email/password credentials, verified-email state,
-  password recovery, account suspension support, and server-side session revocation. The
-  temporary first-account bootstrap remains until public signup/onboarding ships.
+- Account lifecycle — public email/password sign-up, verified-email state, password
+  recovery, account suspension support, server-side session revocation, and a short
+  first-run setup flow.
 - Responsive layout that works on a phone browser
 - Fast: article list paginates (load-older), no fetch-on-render for content we already have
 
@@ -43,14 +43,16 @@ Phased plan. Each phase should ship as a usable app — MVP alone should be good
 - **Rules & filters** — auto-mark-read, auto-star, auto-label, or mute by keyword/author/feed. Promoted from "later" after the competitive analysis: it's the #1 feature Inoreader power users pay for, the only real answer to unread overload, and the core of our "clean UI, powerful underneath" position (see competitive-analysis.md)
 - **Full-content extraction** — for truncated feeds, fetch the article page and extract readable content (Readability); per-feed toggle
 - **Search** — full-text search across titles and content (Postgres FTS)
-- **Account settings** — change email through a confirmation link, resend verification,
-  and change a password in the app
+- **Account settings** — edit a private profile name, change email through a confirmation
+  link, resend verification, and change a password in the app
 - **Overload valves** — displayed unread counts cap at "1k+"; mark-all-read with "older than a day/week"; mark-read-on-scroll (on by default, toggleable); auto-mark-read after N days (defaults to 30, overridable globally and per-feed)
 - **Dark mode** — follow system, manual override
 - **Feed health** — the Manage feeds page shows each feed's article/unread counts, last-fetched time, and failing feeds with their error and consecutive-failure count (silent/redirected detection is a later refinement)
 - **Favicons** per feed in the sidebar
 - **YouTube channels as feeds** — paste a channel URL and we resolve its native RSS feed; nearly free to build, disproportionately appreciated
-- **First-run onboarding** — OPML import front and center, plus a small curated starter list so the empty state is never blank
+- **First-run onboarding** — after verified sign-up, OPML import is front and center,
+  alongside a one-feed field, a small curated starter list, and an explicit empty-reader
+  path
 
 ## v0.2 — planned (next up)
 
@@ -107,9 +109,10 @@ Phased plan. Each phase should ship as a usable app — MVP alone should be good
   (or `docker compose exec app node scripts/reset-password.mjs`) remains the break-glass
   path and also invalidates active sessions. Plain Node keeps it available in the
   standalone image; hash compatibility with the app is unit-tested.
-- **Public registration + onboarding** — the next product phase: staged registration
-  modes, email verification before first sign-in, OPML/topic-first setup, and activation
-  metrics. The current one-time bootstrap is not public signup.
+- **Public registration + onboarding** *(shipped July 2026)* — anyone can create an
+  account, verify their email before the first sign-in, then import OPML, add a source,
+  pick curated starter feeds, or continue with an empty reader. The migration marks
+  existing accounts complete, so they keep their current path into the reader.
 
 ### Platform & sync (bigger bets)
 - **PWA + offline reading** *(foundation + Read later download shipped July 2026)* — installable app shell and a device-local offline library. Choose **Keep offline** on an article or saved page, manually download the newest 50 readable **Read later** entries from `/offline`, or select an automatic device-local set of 25, 50, or 100 entries that refreshes when the library opens or reconnects. Automatic entries are reconciled to the selected bound while manually kept copies are retained. Where supported, a selected automatic set also refreshes after the next connection and on the browser's periodic background schedule; opening or reconnecting the library remains the reliable cross-browser fallback. The online reader also supports mobile pull-to-refresh, reusing the normal all-feeds refresh. While offline, locally saved articles can be marked read/unread, starred/unstarred, added/removed from Read later, or pasted into Read later as a web link; those queued changes replay after reconnecting, and browsers that support Background Sync can replay them without an open app. Then read their sanitized text without a connection. Deliberately not cached: dynamic authenticated reader pages, arbitrary images, and third-party embeds. Feed and account configuration remain online-only because their conflicts and destructive changes need immediate server confirmation.

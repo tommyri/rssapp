@@ -14,9 +14,10 @@ npm run db:migrate        # apply migrations
 npm run dev               # http://localhost:3000
 ```
 
-On first visit a fresh local install shows a one-time **create account** form. This is
-temporary bootstrap behavior while public signup is built; it is not a product
-registration flow. Existing reader data is already scoped to the signed-in account.
+Anyone can create an account at **/signup**. New accounts verify their email before
+their first sign-in, then get a short setup flow for importing OPML, adding a source,
+choosing a starter feed, or starting empty. Existing reader data remains scoped to the
+signed-in account.
 
 The dev database URL defaults to the compose credentials (see `src/db/config.ts`); set
 `DATABASE_URL` in a `.env` file to override.
@@ -161,9 +162,9 @@ docker compose up -d --build    # app on http://<host>:3000 + Postgres
 - The app **refuses to boot without `AUTH_SECRET`** (it signs the session cookies).
 - `APP_PORT=8080` in `.env` changes the published port.
 - Upgrades: `git pull && docker compose up -d --build` — migrations run on boot.
-- On a fresh local install, first visit shows the temporary one-time bootstrap form;
-  it is not public product signup. Public signup and onboarding arrive in the next
-  account phase.
+- Sign-up is public at `/signup`. New accounts verify their email before signing in, then
+  complete a short onboarding flow. Existing accounts are automatically marked complete
+  when the onboarding migration runs.
 - **Settings → Subscriptions & data** can download a complete, portable JSON backup
   (account data, subscriptions, articles, states, saved pages, labels, rules, and
   highlights; never passwords). A restore assistant validates a backup, compares it with

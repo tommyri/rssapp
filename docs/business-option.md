@@ -1,6 +1,6 @@
 # Keeping the Business Option Open
 
-Position: build v1 as a simple personal product, but treat "hosted service with paying users" as a plausible future. The filter for every early decision is: **make it now only if it's cheap today and expensive to retrofit.** Everything else waits until the business is real. In July 2026 that threshold was crossed for account lifecycle: a product cannot safely add strangers later without verified identity, recovery, and revocation, so those foundations now exist before public signup.
+Position: build v1 as a simple personal product, but treat "hosted service with paying users" as a plausible future. The filter for every early decision is: **make it now only if it's cheap today and expensive to retrofit.** Everything else waits until the business is real. In July 2026 that threshold was crossed for account lifecycle: a product cannot safely add strangers without verified identity, recovery, and revocation. Public registration and guided first-run setup now sit on those foundations.
 
 ## Decisions locked in now (cheap today, painful to retrofit)
 

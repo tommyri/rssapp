@@ -13,6 +13,49 @@ import {
   sendVerificationEmail,
 } from "@/lib/transactional-email";
 
+export type StartRegistrationResult =
+  | "created"
+  | "verification_resent"
+  | "already_verified";
+
+/**
+ * Create a public account in its safely locked state, then deliver the proof
+ * of address. Re-submitting an unverified address is intentional: it gives a
+ * person a way to recover a lost or expired verification email without a
+ * separate unauthenticated resend surface.
+ */
+export async function startRegistration({
+  rawEmail,
+  passwordHash,
+}: {
+  rawEmail: string;
+  passwordHash: string;
+}): Promise<StartRegistrationResult> {
+  const email = normalizeAccountEmail(rawEmail);
+  const existing = await db.query.users.findFirst({
+    where: eq(users.email, email),
+  });
+
+  if (existing) {
+    if (existing.emailVerifiedAt) return "already_verified";
+    await sendEmailVerification(existing.id);
+    return "verification_resent";
+  }
+
+  const [user] = await db
+    .insert(users)
+    .values({ email, passwordHash })
+    .onConflictDoNothing()
+    .returning({ id: users.id, emailVerifiedAt: users.emailVerifiedAt });
+
+  // Another request can win the unique-email race between the lookup and the
+  // insert. Treat it exactly like a normal repeat submission.
+  if (!user) return startRegistration({ rawEmail: email, passwordHash });
+
+  await sendEmailVerification(user.id);
+  return "created";
+}
+
 export async function sendEmailVerification(userId: number): Promise<boolean> {
   const user = await activeUserForAccountToken(userId);
   if (!user || user.emailVerifiedAt) return false;

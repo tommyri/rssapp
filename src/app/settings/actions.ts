@@ -23,6 +23,27 @@ export interface AccountActionState {
   message: string;
 }
 
+const displayNameSchema = z.string().trim().max(80);
+
+export async function updateProfileAction(
+  _prev: AccountActionState,
+  formData: FormData,
+): Promise<AccountActionState> {
+  const displayName = displayNameSchema.safeParse(
+    String(formData.get("displayName") ?? ""),
+  );
+  if (!displayName.success) {
+    return { ok: false, message: "Your name can be at most 80 characters." };
+  }
+
+  const userId = await getCurrentUserId();
+  await db
+    .update(users)
+    .set({ displayName: displayName.data || null })
+    .where(eq(users.id, userId));
+  return { ok: true, message: "Saved." };
+}
+
 /** Load the user and check their current password — required for any credential change. */
 async function verifyCurrentPassword(
   userId: number,

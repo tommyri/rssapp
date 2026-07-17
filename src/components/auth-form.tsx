@@ -3,16 +3,13 @@
 import Link from "next/link";
 import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
-import {
-  type AuthActionState,
-  loginAction,
-  registerAction,
-} from "@/app/login/actions";
+import { type AuthActionState, loginAction } from "@/app/login/actions";
+import { signUpAction } from "@/app/signup/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
-const initial: AuthActionState = { error: "" };
+const initial: AuthActionState = { error: "", message: "" };
 
 function SubmitButton({ label }: { label: string }) {
   const { pending } = useFormStatus();
@@ -23,10 +20,10 @@ function SubmitButton({ label }: { label: string }) {
   );
 }
 
-export function AuthForm({ mode }: { mode: "login" | "register" }) {
-  const isRegister = mode === "register";
+export function AuthForm({ mode }: { mode: "login" | "signup" }) {
+  const isSignup = mode === "signup";
   const [state, formAction] = useActionState(
-    isRegister ? registerAction : loginAction,
+    isSignup ? signUpAction : loginAction,
     initial,
   );
 
@@ -37,7 +34,7 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
           rssapp<span className="text-primary">.</span>
         </h1>
         <p className="text-sm text-muted-foreground">
-          {isRegister
+          {isSignup
             ? "Create your account to get started."
             : "Sign in to your reader."}
         </p>
@@ -60,22 +57,40 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
             id="password"
             name="password"
             type="password"
-            autoComplete={isRegister ? "new-password" : "current-password"}
+            autoComplete={isSignup ? "new-password" : "current-password"}
             required
           />
         </div>
         {state.error ? (
           <p className="text-sm text-destructive">{state.error}</p>
         ) : null}
-        <SubmitButton label={isRegister ? "Create account" : "Sign in"} />
-        {!isRegister ? (
+        {state.message ? (
+          <p className="text-sm text-muted-foreground">{state.message}</p>
+        ) : null}
+        <SubmitButton label={isSignup ? "Create account" : "Sign in"} />
+        {!isSignup ? (
+          <>
+            <Link
+              href="/forgot-password"
+              className="block text-center text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+            >
+              Forgot your password?
+            </Link>
+            <Link
+              href="/signup"
+              className="block text-center text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+            >
+              Create an account
+            </Link>
+          </>
+        ) : (
           <Link
-            href="/forgot-password"
+            href="/login"
             className="block text-center text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
           >
-            Forgot your password?
+            Already have an account? Sign in
           </Link>
-        ) : null}
+        )}
       </form>
     </div>
   );

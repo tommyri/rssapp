@@ -39,6 +39,10 @@ export const users = pgTable(
     emailVerifiedAt: timestamp("email_verified_at", { withTimezone: true }),
     /** Reserved for the account profile introduced with onboarding. */
     displayName: text("display_name"),
+    /** New accounts complete the guided setup before entering the reader. */
+    onboardingCompletedAt: timestamp("onboarding_completed_at", {
+      withTimezone: true,
+    }),
     /**
      * This is an account-lifecycle state, not a product plan. Server-side
      * current-user resolution enforces it on every protected request.
