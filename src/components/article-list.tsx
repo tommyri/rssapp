@@ -36,6 +36,7 @@ import {
   listHighlightsAction,
   updateHighlightNoteAction,
 } from "@/app/highlights/actions";
+import { ArticleAudioPlayer } from "@/components/article-audio-player";
 import { ArticleContent } from "@/components/article-content";
 import { ArticleLabelPicker } from "@/components/article-label-picker";
 import { ArticleListHeader } from "@/components/article-list-header";
@@ -880,6 +881,12 @@ export function ArticleList({
                       </p>
                     ) : contentHtml ? (
                       <div ref={articleRef}>
+                        {item.audioUrl ? (
+                          <ArticleAudioPlayer
+                            url={item.audioUrl}
+                            type={item.audioType}
+                          />
+                        ) : null}
                         <ArticleContent
                           html={contentHtml}
                           embedLoading={embedLoading}

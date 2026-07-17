@@ -102,6 +102,8 @@ async function upsertItems(
     title: item.title,
     author: item.author,
     contentHtml: item.contentHtml,
+    audioUrl: item.audioUrl,
+    audioType: item.audioType,
     publishedAt: item.publishedAt,
   }));
 
@@ -116,6 +118,33 @@ async function upsertItems(
       contentHtml: itemsTable.contentHtml,
       url: itemsTable.url,
     });
+
+  // Enclosures are metadata that feeds can add after an item was first
+  // published. Preserve the normal "new items only" behavior above (rules and
+  // full-content extraction must not rerun for old entries), while filling an
+  // audio URL for existing entries that do not have one yet. The VALUES table
+  // keeps this to one parameterized query per refreshed feed rather than a
+  // query for every episode.
+  const audioItems = candidates.filter((item) => item.audioUrl !== null);
+  if (audioItems.length > 0) {
+    const audioValues = sql.join(
+      audioItems.map(
+        (item) => sql`(${item.guid}, ${item.audioUrl}, ${item.audioType})`,
+      ),
+      sql`, `,
+    );
+
+    await db.execute(sql`
+      update ${itemsTable} as stored
+      set
+        audio_url = coalesce(incoming.audio_url, stored.audio_url),
+        audio_type = coalesce(incoming.audio_type, stored.audio_type)
+      from (values ${audioValues}) as incoming(guid, audio_url, audio_type)
+      where stored.feed_id = ${feedId}
+        and stored.guid = incoming.guid
+        and stored.audio_url is null
+    `);
+  }
 
   await applyRulesToNewItems(feedId, inserted);
   await autoExtractForFeed(feedId, inserted);

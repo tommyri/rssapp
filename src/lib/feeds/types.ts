@@ -9,6 +9,10 @@ export interface ParsedItem {
   author: string | null;
   /** Already sanitized HTML, safe to render. */
   contentHtml: string | null;
+  /** A playable audio enclosure, when this is a podcast episode. */
+  audioUrl: string | null;
+  /** The feed-provided MIME type, used as a hint to the native player. */
+  audioType: string | null;
   publishedAt: Date | null;
 }
 

@@ -57,6 +57,9 @@ const itemSchema = z.object({
   author: nullableText,
   contentHtml: nullableHtml,
   fullContentHtml: nullableHtml,
+  // Backups produced before audio enclosures existed remain valid.
+  audioUrl: httpUrl.nullable().optional().default(null),
+  audioType: nullableText.optional().default(null),
   publishedAt: nullableTimestamp,
   createdAt: timestamp,
 });
@@ -578,6 +581,8 @@ export async function restoreBackup(
               fullContentHtml: item.fullContentHtml
                 ? sanitizeArticleHtml(item.fullContentHtml)
                 : null,
+              audioUrl: safeHttpUrl(item.audioUrl),
+              audioType: item.audioType,
               publishedAt: date(item.publishedAt),
               createdAt: new Date(item.createdAt),
             };

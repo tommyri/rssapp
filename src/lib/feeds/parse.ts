@@ -12,6 +12,33 @@ const parser = new Parser({
   },
 });
 
+const AUDIO_EXTENSION = /\.(aac|flac|m4a|mp3|oga|ogg|opus|wav)(?:$|[?#])/i;
+
+function audioEnclosure(
+  rawUrl: string | undefined | null,
+  rawType: string | undefined | null,
+): Pick<ParsedItem, "audioUrl" | "audioType"> {
+  if (!rawUrl) return { audioUrl: null, audioType: null };
+  let url: URL;
+  try {
+    url = new URL(rawUrl);
+  } catch {
+    return { audioUrl: null, audioType: null };
+  }
+  if (url.protocol !== "http:" && url.protocol !== "https:") {
+    return { audioUrl: null, audioType: null };
+  }
+
+  const audioType = rawType?.trim().toLowerCase() || null;
+  if (
+    (audioType && !audioType.startsWith("audio/")) ||
+    (!audioType && !AUDIO_EXTENSION.test(url.pathname))
+  ) {
+    return { audioUrl: null, audioType: null };
+  }
+  return { audioUrl: url.href, audioType };
+}
+
 function toDate(value: string | undefined | null): Date | null {
   if (!value) return null;
   const d = new Date(value);
@@ -31,14 +58,17 @@ async function parseXml(xml: string): Promise<ParsedFeed> {
     const raw = item as typeof item & {
       contentEncoded?: string;
       dcCreator?: string;
+      enclosure?: { url?: string; type?: string };
     };
     const html = raw.contentEncoded ?? raw.content ?? null;
+    const audio = audioEnclosure(raw.enclosure?.url, raw.enclosure?.type);
     return {
       guid: item.guid ?? item.link ?? hashGuid(item.title, item.isoDate, html),
       url: item.link ?? null,
       title: item.title ?? null,
       author: raw.dcCreator ?? item.creator ?? null,
       contentHtml: html ? sanitizeArticleHtml(html) : null,
+      ...audio,
       publishedAt: toDate(item.isoDate ?? item.pubDate),
     };
   });
@@ -61,6 +91,7 @@ interface JsonFeedItem {
   date_published?: string;
   author?: { name?: string };
   authors?: { name?: string }[];
+  attachments?: { url?: string; mime_type?: string }[];
 }
 interface JsonFeedDoc {
   title?: string;
@@ -82,6 +113,14 @@ function parseJsonFeed(body: string): ParsedFeed {
     const html =
       item.content_html ??
       (item.content_text ? `<p>${escapeHtml(item.content_text)}</p>` : null);
+    const audio = item.attachments
+      ?.map((attachment) =>
+        audioEnclosure(attachment.url, attachment.mime_type),
+      )
+      .find(({ audioUrl }) => audioUrl !== null) ?? {
+      audioUrl: null,
+      audioType: null,
+    };
     return {
       guid:
         item.id ?? item.url ?? hashGuid(item.title, item.date_published, html),
@@ -89,6 +128,7 @@ function parseJsonFeed(body: string): ParsedFeed {
       title: item.title ?? null,
       author: item.author?.name ?? item.authors?.[0]?.name ?? null,
       contentHtml: html ? sanitizeArticleHtml(html) : null,
+      ...audio,
       publishedAt: toDate(item.date_published),
     };
   });

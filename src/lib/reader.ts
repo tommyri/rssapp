@@ -220,6 +220,8 @@ export interface ReaderItem {
   author: string | null;
   contentHtml: string | null;
   fullContentHtml: string | null;
+  audioUrl: string | null;
+  audioType: string | null;
   publishedAt: Date | null;
   /** Stable sort key (published_at falling back to created_at); cursor basis. */
   sortTs: Date;
@@ -366,6 +368,8 @@ export async function listItems(
       author: itemsTable.author,
       contentHtml: itemsTable.contentHtml,
       fullContentHtml: itemsTable.fullContentHtml,
+      audioUrl: itemsTable.audioUrl,
+      audioType: itemsTable.audioType,
       publishedAt: itemsTable.publishedAt,
       sortTs: sql<Date>`${sortKey}`.mapWith((v) => new Date(v)),
       feedId: feeds.id,
@@ -440,6 +444,8 @@ async function listItemsCollapsed(
       author: itemsTable.author,
       contentHtml: itemsTable.contentHtml,
       fullContentHtml: itemsTable.fullContentHtml,
+      audioUrl: itemsTable.audioUrl,
+      audioType: itemsTable.audioType,
       publishedAt: itemsTable.publishedAt,
       sortTs: sql`${sortKey}`.as("sort_ts"),
       // Source from items.feed_id (same value as feeds.id via the join) so this
@@ -505,6 +511,8 @@ async function listItemsCollapsed(
       author: grouped.author,
       contentHtml: grouped.contentHtml,
       fullContentHtml: grouped.fullContentHtml,
+      audioUrl: grouped.audioUrl,
+      audioType: grouped.audioType,
       publishedAt: grouped.publishedAt,
       sortTs: sql<Date>`${grouped.sortTs}`.mapWith((v) => new Date(v)),
       feedId: grouped.feedId,
@@ -557,6 +565,8 @@ export async function searchItems(
       author: itemsTable.author,
       contentHtml: itemsTable.contentHtml,
       fullContentHtml: itemsTable.fullContentHtml,
+      audioUrl: itemsTable.audioUrl,
+      audioType: itemsTable.audioType,
       publishedAt: itemsTable.publishedAt,
       sortTs: sql<Date>`${sortKey}`.mapWith((v) => new Date(v)),
       feedId: feeds.id,
@@ -613,6 +623,8 @@ function savedPageToItem(p: SavedPage): ReaderItem {
     author: p.byline,
     contentHtml: p.contentHtml,
     fullContentHtml: null,
+    audioUrl: null,
+    audioType: null,
     publishedAt: null,
     sortTs: p.savedAt,
     feedId: 0,

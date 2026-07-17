@@ -426,6 +426,9 @@ export const items = pgTable(
     contentHtml: text("content_html"),
     // Readability-extracted article body (sanitized), cached once per item.
     fullContentHtml: text("full_content_html"),
+    /** Podcast/audio enclosure discovered in the source feed. */
+    audioUrl: text("audio_url"),
+    audioType: text("audio_type"),
     publishedAt: timestamp("published_at", { withTimezone: true }),
     createdAt: createdAt(),
     // Weighted FTS document: title > author > body (extracted content when

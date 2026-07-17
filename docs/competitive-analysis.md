@@ -43,7 +43,7 @@ What paying users actually praise: rules/filters taming high-volume feeds, monit
 | Keyboard shortcuts | ⏳ deferred to "later" — nice-to-have for a single user, non-negotiable only if courting migrating power users |
 | Mobile: apps, great PWA, or GReader API for third-party clients | ⚠️ responsive web shipped; PWA "later" — acceptable for personal use, gating for business |
 | YouTube channels as feeds | ✅ shipped (paste a channel URL → resolves its native RSS) |
-| Podcasts as feeds | "later" — fine |
+| Podcasts as feeds | ✅ audio enclosures play inline; richer podcast management remains later work |
 | Newsletter-to-feed | "later" — fine personally; near-expected on paid tiers commercially |
 | Longevity signaling | Post-Pocket/Omnivore, "will this exist in 3 years" is an explicit purchase criterion — self-hosting answers it for us personally |
 
