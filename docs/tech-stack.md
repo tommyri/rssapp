@@ -49,7 +49,9 @@ just because its cookie has not expired. Public signup verifies the email before
 sign-in, and onboarding records completion separately so existing readers are never
 surprised by the new-user flow. The single deployment owner is selected safely (the first
 signup on an empty install, or an explicit operator transfer for a multi-account upgrade)
-and has an owner-only account console; social identities and staff roles remain later work.
+  and has an owner-only account console. The owner can choose open, invitation-only, or
+  closed registration without baking a public-access decision into a deployment; social
+  identities and staff roles remain later work.
 
 ## Architecture sketch
 
@@ -71,6 +73,8 @@ and has an owner-only account console; social identities and staff roles remain 
   hangs off it.
 - `account_tokens` — hashed, one-time, expiring email-verification, email-change, and
   password-reset secrets. Raw tokens exist only in a delivered link.
+- `instance_settings` + `account_invites` — the singleton registration policy and
+  short-lived, hashed owner-issued signup invitations.
 - `feeds` — url, title, site_url, etag, last_modified, next_fetch_at, fetch_interval_minutes, error state (shared across users)
 - `subscriptions` — user ↔ feed, custom title, folder_id, per-feed `settings` (`fullContent`, `autoReadDays`, `sortOrder`, `defaultUnreadOnly`)
 - `folders` — per user

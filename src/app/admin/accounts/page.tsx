@@ -1,6 +1,12 @@
+import { AccountAccessControls } from "@/components/account-access-controls";
+import { AccountInviteRevokeControl } from "@/components/account-invite-revoke-control";
 import { AccountStatusControl } from "@/components/account-status-control";
 import { BackLink } from "@/components/back-link";
 import { OwnershipTransferControl } from "@/components/ownership-transfer-control";
+import {
+  getRegistrationMode,
+  listPendingAccountInvites,
+} from "@/lib/account-invitations";
 import { listManagedAccounts } from "@/lib/admin-accounts";
 import { getCurrentOwner } from "@/lib/current-user";
 import { canReceiveOwnership } from "@/lib/owner-transfer";
@@ -11,7 +17,11 @@ function dateLabel(value: Date | null) {
 
 export default async function AccountManagementPage() {
   await getCurrentOwner();
-  const accounts = await listManagedAccounts();
+  const [accounts, registrationMode, invitations] = await Promise.all([
+    listManagedAccounts(),
+    getRegistrationMode(),
+    listPendingAccountInvites(),
+  ]);
 
   return (
     <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-6 md:px-8">
@@ -28,6 +38,49 @@ export default async function AccountManagementPage() {
         </div>
         <BackLink />
       </div>
+
+      <section className="mb-6 rounded-lg border p-4">
+        <div className="mb-4">
+          <h2 className="font-serif text-lg font-semibold">Registration</h2>
+          <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
+            Choose how new people join this reader. Public signup remains the
+            default; invitation-only is useful for a private beta.
+          </p>
+        </div>
+        <AccountAccessControls registrationMode={registrationMode} />
+
+        {invitations.length ? (
+          <div className="mt-5 border-t pt-4">
+            <h3 className="text-sm font-medium">Pending invitations</h3>
+            <div className="mt-2 overflow-x-auto rounded-md border">
+              <table className="w-full min-w-[480px] text-sm">
+                <thead className="border-b bg-muted/30 text-left text-xs text-muted-foreground">
+                  <tr>
+                    <th className="px-3 py-2 font-medium">Email</th>
+                    <th className="px-3 py-2 font-medium">Expires</th>
+                    <th className="px-3 py-2 text-right font-medium">Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {invitations.map((invitation) => (
+                    <tr key={invitation.id} className="border-b last:border-0">
+                      <td className="px-3 py-2">{invitation.email}</td>
+                      <td className="px-3 py-2 text-muted-foreground">
+                        {dateLabel(invitation.expiresAt)}
+                      </td>
+                      <td className="px-3 py-2">
+                        <AccountInviteRevokeControl
+                          invitationId={invitation.id}
+                        />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        ) : null}
+      </section>
 
       <div className="overflow-x-auto rounded-lg border">
         <table className="w-full min-w-[760px] text-sm">

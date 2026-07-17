@@ -89,6 +89,58 @@ export const accountTokenKinds = [
 ] as const;
 export type AccountTokenKind = (typeof accountTokenKinds)[number];
 
+/** Controls whether a deployment accepts public, invited, or no new accounts. */
+export const registrationModes = ["open", "invite_only", "closed"] as const;
+export type RegistrationMode = (typeof registrationModes)[number];
+
+/** One global row: product-wide configuration must not live on an owner profile. */
+export const instanceSettings = pgTable(
+  "instance_settings",
+  {
+    id: integer("id").primaryKey().default(1),
+    registrationMode: text("registration_mode")
+      .notNull()
+      .default("open")
+      .$type<RegistrationMode>(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    check("instance_settings_singleton_check", sql`${t.id} = 1`),
+    check(
+      "instance_settings_registration_mode_check",
+      sql`${t.registrationMode} in ('open', 'invite_only', 'closed')`,
+    ),
+  ],
+);
+
+/** Owner-issued admission links. Only their one-time secret hashes are stored. */
+export const accountInvites = pgTable(
+  "account_invites",
+  {
+    id: id(),
+    email: text("email").notNull(),
+    tokenHash: text("token_hash").notNull(),
+    invitedByUserId: bigint("invited_by_user_id", { mode: "number" })
+      .notNull()
+      .references(() => users.id, { onDelete: "restrict" }),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    acceptedAt: timestamp("accepted_at", { withTimezone: true }),
+    revokedAt: timestamp("revoked_at", { withTimezone: true }),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    uniqueIndex("account_invites_hash_idx").on(t.tokenHash),
+    index("account_invites_email_idx").on(t.email),
+    // Each new invitation replaces an outstanding one for the address. This
+    // gives recipients a single current link even across repeated sends.
+    uniqueIndex("account_invites_pending_email_idx")
+      .on(t.email)
+      .where(sql`${t.acceptedAt} is null and ${t.revokedAt} is null`),
+  ],
+);
+
 /**
  * One-time, hashed secrets for account lifecycle links. The raw token is
  * delivered by email and is deliberately never written to Postgres.

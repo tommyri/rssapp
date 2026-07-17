@@ -116,6 +116,10 @@ Phased plan. Each phase should ship as a usable app — MVP alone should be good
   account, verify their email before the first sign-in, then import OPML, add a source,
   pick curated starter feeds, or continue with an empty reader. The migration marks
   existing accounts complete, so they keep their current path into the reader.
+- **Registration policy + invitations** *(shipped July 2026)* — the deployment owner
+  can keep the public-signup default, admit only people who receive an email-bound,
+  seven-day invitation, or close registration temporarily. One outstanding invitation
+  per address keeps resends unambiguous; owners can revoke it before use.
 
 ### Platform & sync (bigger bets)
 - **PWA + offline reading** *(foundation + Read later download shipped July 2026)* — installable app shell and a device-local offline library. Choose **Keep offline** on an article or saved page, manually download the newest 50 readable **Read later** entries from `/offline`, or select an automatic device-local set of 25, 50, or 100 entries that refreshes when the library opens or reconnects. Automatic entries are reconciled to the selected bound while manually kept copies are retained. Where supported, a selected automatic set also refreshes after the next connection and on the browser's periodic background schedule; opening or reconnecting the library remains the reliable cross-browser fallback. The online reader also supports mobile pull-to-refresh, reusing the normal all-feeds refresh. While offline, locally saved articles can be marked read/unread, starred/unstarred, added/removed from Read later, or pasted into Read later as a web link; those queued changes replay after reconnecting, and browsers that support Background Sync can replay them without an open app. Then read their sanitized text without a connection. Deliberately not cached: dynamic authenticated reader pages, arbitrary images, and third-party embeds. Feed and account configuration remain online-only because their conflicts and destructive changes need immediate server confirmation.

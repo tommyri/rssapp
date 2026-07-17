@@ -3,10 +3,19 @@
 import { and, eq, isNotNull, ne, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { z } from "zod";
 import { db } from "@/db";
 import { type AccountStatus, accountStatuses, users } from "@/db/schema";
+import {
+  isRegistrationMode,
+  issueAccountInvitation,
+  registrationModeDescription,
+  revokeAccountInvitation,
+  setRegistrationMode,
+} from "@/lib/account-invitations";
 import { getCurrentOwner } from "@/lib/current-user";
 import { canReceiveOwnership } from "@/lib/owner-transfer";
+import { EmailDeliveryError } from "@/lib/transactional-email";
 
 export interface AccountStatusActionState {
   ok: boolean;
@@ -14,6 +23,16 @@ export interface AccountStatusActionState {
 }
 
 export interface OwnershipTransferActionState {
+  ok: boolean;
+  message: string;
+}
+
+export interface RegistrationPolicyActionState {
+  ok: boolean;
+  message: string;
+}
+
+export interface AccountInviteActionState {
   ok: boolean;
   message: string;
 }
@@ -150,4 +169,87 @@ export async function transferOwnershipAction(
   redirect(
     `/login?notice=ownership-transferred&owner=${encodeURIComponent(result)}`,
   );
+}
+
+export async function setRegistrationModeAction(
+  _prev: RegistrationPolicyActionState,
+  formData: FormData,
+): Promise<RegistrationPolicyActionState> {
+  await getCurrentOwner();
+  const mode = String(formData.get("registrationMode") ?? "");
+  if (!isRegistrationMode(mode)) {
+    return { ok: false, message: "Choose a valid registration policy." };
+  }
+
+  await setRegistrationMode(mode);
+  revalidatePath("/admin/accounts");
+  revalidatePath("/signup");
+  return { ok: true, message: registrationModeDescription(mode) };
+}
+
+export async function issueAccountInviteAction(
+  _prev: AccountInviteActionState,
+  formData: FormData,
+): Promise<AccountInviteActionState> {
+  const owner = await getCurrentOwner();
+  const email = z
+    .string()
+    .email()
+    .safeParse(
+      String(formData.get("email") ?? "")
+        .toLowerCase()
+        .trim(),
+    );
+  if (!email.success) return { ok: false, message: "Enter a valid email." };
+  const existing = await db.query.users.findFirst({
+    where: eq(users.email, email.data),
+  });
+  if (existing) {
+    return {
+      ok: false,
+      message: "That email already belongs to an account.",
+    };
+  }
+
+  try {
+    await issueAccountInvitation({
+      rawEmail: email.data,
+      invitedByUserId: owner.id,
+    });
+  } catch (error) {
+    if (error instanceof EmailDeliveryError) {
+      console.error("[account] invitation email unavailable:", error);
+      return {
+        ok: false,
+        message:
+          "We could not send an invitation right now. Try again shortly.",
+      };
+    }
+    console.error("[account] invitation failed:", error);
+    return { ok: false, message: "We could not create that invitation." };
+  }
+
+  revalidatePath("/admin/accounts");
+  return {
+    ok: true,
+    message: `Invitation sent to ${email.data}. It expires in 7 days.`,
+  };
+}
+
+export async function revokeAccountInviteAction(
+  _prev: AccountInviteActionState,
+  formData: FormData,
+): Promise<AccountInviteActionState> {
+  const owner = await getCurrentOwner();
+  const invitationId = Number(formData.get("invitationId"));
+  if (!Number.isSafeInteger(invitationId) || invitationId < 1) {
+    return { ok: false, message: "Choose a valid invitation." };
+  }
+
+  const revoked = await revokeAccountInvitation(invitationId, owner.id);
+  if (!revoked) {
+    return { ok: false, message: "That invitation is no longer available." };
+  }
+  revalidatePath("/admin/accounts");
+  return { ok: true, message: "Invitation revoked." };
 }

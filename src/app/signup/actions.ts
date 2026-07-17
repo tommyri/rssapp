@@ -30,10 +30,22 @@ export async function signUpAction(
     const result = await startRegistration({
       rawEmail: parsed.data.email,
       passwordHash: hashPassword(parsed.data.password),
+      inviteToken: String(formData.get("invite") ?? ""),
     });
     if (result === "already_verified") {
       return {
         error: "An account with this email already exists. Please sign in.",
+      };
+    }
+    if (result === "registration_closed") {
+      return {
+        error: "This reader is not accepting new accounts right now.",
+      };
+    }
+    if (result === "invite_required") {
+      return {
+        error:
+          "An active invitation for this email address is required to create an account.",
       };
     }
     return {

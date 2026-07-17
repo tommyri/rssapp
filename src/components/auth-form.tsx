@@ -23,9 +23,11 @@ function SubmitButton({ label }: { label: string }) {
 export function AuthForm({
   mode,
   notice,
+  inviteToken,
 }: {
   mode: "login" | "signup";
   notice?: string;
+  inviteToken?: string;
 }) {
   const isSignup = mode === "signup";
   const [state, formAction] = useActionState(
@@ -47,6 +49,9 @@ export function AuthForm({
       </div>
 
       <form action={formAction} className="space-y-4">
+        {isSignup && inviteToken ? (
+          <input type="hidden" name="invite" value={inviteToken} />
+        ) : null}
         <div className="space-y-2">
           <Label htmlFor="email">Email</Label>
           <Input

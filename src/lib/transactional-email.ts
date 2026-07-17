@@ -123,3 +123,19 @@ export async function sendEmailChangeVerification({
     text: `Confirm this email address for your rssapp account:\n\n${link}\n\nYour current address stays active until you use this link. It expires in 1 hour.`,
   });
 }
+
+export async function sendAccountInvitationEmail({
+  to,
+  token,
+}: {
+  to: string;
+  token: string;
+}): Promise<void> {
+  const url = new URL("/signup", `${appOrigin()}/`);
+  url.searchParams.set("invite", token);
+  await sendEmail({
+    to,
+    subject: "You’re invited to rssapp",
+    text: `You have been invited to join an rssapp reader:\n\n${url}\n\nThis invitation expires in 7 days. If you were not expecting it, you can ignore this email.`,
+  });
+}

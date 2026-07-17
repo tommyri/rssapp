@@ -18,8 +18,8 @@ Position: build v1 as a simple personal product, but treat "hosted service with 
    suspend or restore them; either transition revokes that member's existing JWTs.
    The first signup owns a fresh deployment; a multi-account upgrade uses an explicit
    operator-transfer command rather than guessing from account age.
-   One-time verification/reset/change-email links are stored only as hashes, with bounded
-   expiry, and delivered through transactional email.
+   One-time verification/reset/change-email links and owner-issued invitations are stored
+   only as hashes, with bounded expiry, and delivered through transactional email.
 
 5. **Bigint primary keys, not UUIDs.** The Google Reader–compat API — the feature with the most direct business leverage — expects int64 item ids. Bigint ids now make it a pure API layer later; UUIDs would force an id-mapping retrofit across millions of item rows.
 

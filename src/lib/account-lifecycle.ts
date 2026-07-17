@@ -1,9 +1,12 @@
-import { and, count, eq, sql } from "drizzle-orm";
+import { and, count, eq, gt, isNull, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { users } from "@/db/schema";
+import { accountInvites, instanceSettings, users } from "@/db/schema";
+import { registrationAdmission } from "@/lib/account-invitations";
 import {
   activeUserForAccountToken,
   consumeAccountToken,
+  hashAccountToken,
+  isAccountTokenSecret,
   issueAccountToken,
   normalizeAccountEmail,
   revokeAccountToken,
@@ -17,7 +20,9 @@ import {
 export type StartRegistrationResult =
   | "created"
   | "verification_resent"
-  | "already_verified";
+  | "already_verified"
+  | "registration_closed"
+  | "invite_required";
 
 async function deliverAccountToken({
   userId,
@@ -60,9 +65,11 @@ export function registrationRole(accountCount: number): "owner" | "member" {
 export async function startRegistration({
   rawEmail,
   passwordHash,
+  inviteToken,
 }: {
   rawEmail: string;
   passwordHash: string;
+  inviteToken?: string;
 }): Promise<StartRegistrationResult> {
   const email = normalizeAccountEmail(rawEmail);
   const existing = await db.query.users.findFirst({
@@ -75,35 +82,106 @@ export async function startRegistration({
     return "verification_resent";
   }
 
-  const [{ value: accountCount }] = await db
-    .select({ value: count() })
-    .from(users);
-  const role = registrationRole(accountCount);
-  let user: { id: number } | undefined;
+  const registration = await db.transaction(async (tx) => {
+    // Check again inside the transaction. Another request can create this
+    // address after the initial lookup; it must not consume a second invite.
+    const [racedUser] = await tx
+      .select({ id: users.id, emailVerifiedAt: users.emailVerifiedAt })
+      .from(users)
+      .where(eq(users.email, email))
+      .for("update");
+    if (racedUser) return { kind: "existing" as const, user: racedUser };
 
-  // The very first account owns a fresh deployment. A partial unique index
-  // keeps concurrent first signups safe; every registration into an existing
-  // installation is a member, even if a legacy operator still needs setup.
-  if (role === "owner") {
-    [user] = await db
-      .insert(users)
-      .values({ email, passwordHash, role })
-      .onConflictDoNothing()
-      .returning({ id: users.id });
+    const [settings] = await tx
+      .select({ registrationMode: instanceSettings.registrationMode })
+      .from(instanceSettings)
+      .where(eq(instanceSettings.id, 1))
+      .for("update");
+    const registrationMode = settings?.registrationMode ?? "open";
+
+    let invitation: { id: number } | undefined;
+    if (inviteToken && isAccountTokenSecret(inviteToken)) {
+      [invitation] = await tx
+        .select({ id: accountInvites.id })
+        .from(accountInvites)
+        .where(
+          and(
+            eq(accountInvites.tokenHash, hashAccountToken(inviteToken)),
+            eq(accountInvites.email, email),
+            isNull(accountInvites.acceptedAt),
+            isNull(accountInvites.revokedAt),
+            gt(accountInvites.expiresAt, new Date()),
+          ),
+        )
+        .for("update");
+    }
+    const admission = registrationAdmission(
+      registrationMode,
+      Boolean(invitation),
+    );
+    if (admission === "closed") return { kind: "closed" as const };
+    if (admission === "invite_required") {
+      // Another tab can claim this invite while this request waits on its row.
+      // In that case the account now exists and may safely request another
+      // verification email instead of receiving a misleading invite error.
+      const [claimedByAnotherRequest] = await tx
+        .select({ id: users.id, emailVerifiedAt: users.emailVerifiedAt })
+        .from(users)
+        .where(eq(users.email, email));
+      if (claimedByAnotherRequest) {
+        return { kind: "existing" as const, user: claimedByAnotherRequest };
+      }
+      return { kind: "invite_required" as const };
+    }
+
+    const [{ value: accountCount }] = await tx
+      .select({ value: count() })
+      .from(users);
+    const role = registrationRole(accountCount);
+    let user: { id: number } | undefined;
+
+    // The very first account owns a fresh deployment. A partial unique index
+    // keeps concurrent first signups safe; every registration into an existing
+    // installation is a member, even if a legacy operator still needs setup.
+    if (role === "owner") {
+      [user] = await tx
+        .insert(users)
+        .values({ email, passwordHash, role })
+        .onConflictDoNothing()
+        .returning({ id: users.id });
+    }
+    if (!user) {
+      [user] = await tx
+        .insert(users)
+        .values({ email, passwordHash, role: "member" })
+        .onConflictDoNothing()
+        .returning({ id: users.id });
+    }
+    if (!user) return { kind: "race" as const };
+
+    if (invitation) {
+      await tx
+        .update(accountInvites)
+        .set({ acceptedAt: new Date() })
+        .where(eq(accountInvites.id, invitation.id));
+    }
+    return { kind: "created" as const, user };
+  });
+
+  if (registration.kind === "closed") return "registration_closed";
+  if (registration.kind === "invite_required") return "invite_required";
+  if (registration.kind === "existing") {
+    if (registration.user.emailVerifiedAt) return "already_verified";
+    await sendEmailVerification(registration.user.id);
+    return "verification_resent";
   }
-  if (!user) {
-    [user] = await db
-      .insert(users)
-      .values({ email, passwordHash, role: "member" })
-      .onConflictDoNothing()
-      .returning({ id: users.id });
+  // A competing request can win the unique-email race between the lookup and
+  // insert. It has either created this account or claimed its invite already.
+  if (registration.kind === "race") {
+    return startRegistration({ rawEmail: email, passwordHash });
   }
 
-  // Another request can win the unique-email race between the lookup and the
-  // insert. Treat it exactly like a normal repeat submission.
-  if (!user) return startRegistration({ rawEmail: email, passwordHash });
-
-  await sendEmailVerification(user.id);
+  await sendEmailVerification(registration.user.id);
   return "created";
 }
 

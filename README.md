@@ -14,10 +14,12 @@ npm run db:migrate        # apply migrations
 npm run dev               # http://localhost:3000
 ```
 
-Anyone can create an account at **/signup**. New accounts verify their email before
-their first sign-in, then get a short setup flow for importing OPML, adding a source,
-choosing a starter feed, or starting empty. Existing reader data remains scoped to the
-signed-in account.
+New deployments accept public signups at **/signup** by default. The deployment owner
+can switch registration to invitation-only or temporarily close it from **Accounts**.
+Invitations are one-time, email-bound links that expire after seven days. New accounts
+verify their email before their first sign-in, then get a short setup flow for importing
+OPML, adding a source, choosing a starter feed, or starting empty. Existing reader data
+remains scoped to the signed-in account.
 
 The dev database URL defaults to the compose credentials (see `src/db/config.ts`); set
 `DATABASE_URL` in a `.env` file to override.
