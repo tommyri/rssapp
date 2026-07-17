@@ -21,9 +21,24 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
         const user = await db.query.users.findFirst({
           where: eq(users.email, email),
         });
-        if (!user || !verifyPassword(password, user.passwordHash)) return null;
+        if (
+          !user ||
+          user.status !== "active" ||
+          !user.emailVerifiedAt ||
+          !verifyPassword(password, user.passwordHash)
+        )
+          return null;
 
-        return { id: String(user.id), email: user.email };
+        await db
+          .update(users)
+          .set({ lastSignedInAt: new Date() })
+          .where(eq(users.id, user.id));
+
+        return {
+          id: String(user.id),
+          email: user.email,
+          sessionVersion: user.sessionVersion,
+        };
       },
     }),
   ],

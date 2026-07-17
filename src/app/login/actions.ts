@@ -59,7 +59,14 @@ export async function registerAction(
 
   await db
     .insert(users)
-    .values({ email, passwordHash: hashPassword(password) });
+    // Temporary first-account bootstrap for a local install. Public signup is
+    // intentionally a later phase; it will create an unverified account and
+    // deliver a verification link instead of signing the person straight in.
+    .values({
+      email,
+      passwordHash: hashPassword(password),
+      emailVerifiedAt: new Date(),
+    });
 
   try {
     await signIn("credentials", { email, password, redirectTo: "/" });

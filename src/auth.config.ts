@@ -18,6 +18,9 @@ export const authConfig = {
       const { pathname } = request.nextUrl;
       if (
         pathname === "/login" ||
+        pathname === "/forgot-password" ||
+        pathname === "/reset-password" ||
+        pathname === "/verify-email" ||
         pathname.startsWith("/api/auth") ||
         pathname === "/service-worker.js" ||
         pathname === "/manifest.webmanifest" ||
@@ -28,12 +31,30 @@ export const authConfig = {
       return !!auth?.user;
     },
     jwt({ token, user }) {
-      if (user) (token as { id?: string }).id = user.id;
+      if (user) {
+        const credentialsUser = user as {
+          id?: string;
+          sessionVersion?: number;
+        };
+        (token as { id?: string }).id = credentialsUser.id;
+        (token as { sessionVersion?: number }).sessionVersion =
+          credentialsUser.sessionVersion;
+      }
       return token;
     },
     session({ session, token }) {
-      const id = (token as { id?: string }).id;
-      if (id && session.user) (session.user as { id?: string }).id = id;
+      const credentialsToken = token as {
+        id?: string;
+        sessionVersion?: number;
+      };
+      if (credentialsToken.id && session.user) {
+        const user = session.user as {
+          id?: string;
+          sessionVersion?: number;
+        };
+        user.id = credentialsToken.id;
+        user.sessionVersion = credentialsToken.sessionVersion;
+      }
       return session;
     },
   },

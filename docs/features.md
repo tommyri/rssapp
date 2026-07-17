@@ -30,7 +30,9 @@ Phased plan. Each phase should ship as a usable app — MVP alone should be good
 - Unread counts per feed/folder in the sidebar
 
 ### App basics
-- Single-user login (the app will be reachable on the network, so it needs auth)
+- Account authentication foundation — email/password credentials, verified-email state,
+  password recovery, account suspension support, and server-side session revocation. The
+  temporary first-account bootstrap remains until public signup/onboarding ships.
 - Responsive layout that works on a phone browser
 - Fast: article list paginates (load-older), no fetch-on-render for content we already have
 
@@ -41,7 +43,8 @@ Phased plan. Each phase should ship as a usable app — MVP alone should be good
 - **Rules & filters** — auto-mark-read, auto-star, auto-label, or mute by keyword/author/feed. Promoted from "later" after the competitive analysis: it's the #1 feature Inoreader power users pay for, the only real answer to unread overload, and the core of our "clean UI, powerful underneath" position (see competitive-analysis.md)
 - **Full-content extraction** — for truncated feeds, fetch the article page and extract readable content (Readability); per-feed toggle
 - **Search** — full-text search across titles and content (Postgres FTS)
-- **Account settings** — change email and password in the app (currently only possible via direct database access; single-user means a forgotten password has no reset path)
+- **Account settings** — change email through a confirmation link, resend verification,
+  and change a password in the app
 - **Overload valves** — displayed unread counts cap at "1k+"; mark-all-read with "older than a day/week"; mark-read-on-scroll (on by default, toggleable); auto-mark-read after N days (defaults to 30, overridable globally and per-feed)
 - **Dark mode** — follow system, manual override
 - **Feed health** — the Manage feeds page shows each feed's article/unread counts, last-fetched time, and failing feeds with their error and consecutive-failure count (silent/redirected detection is a later refinement)
@@ -95,7 +98,18 @@ Phased plan. Each phase should ship as a usable app — MVP alone should be good
 - **Feed health: silent & paused feeds** *(shipped July 2026)* — Manage feeds flags **quiet** feeds ("last new article 5 months ago": fetches succeed but the newest stored article is older than 90 days — the site stopped publishing, or the feed moved and the URL is a husk) and adds **Pause/Resume**: pausing keeps the feed and its articles but stops fetching (the gentler alternative to unsubscribing a broken feed); paused feeds show a pause icon in the sidebar. Pause lives on `subscriptions.settings.paused` — per-subscription, so it's multi-tenant correct: the scheduler polls a feed while at least one non-paused subscription wants it, and manual refresh-all skips the user's paused feeds. Resuming marks the feed due so it fetches on the next tick. No migration needed; the Save form can't clobber a pause (pinned by a unit test).
 
 ### Accounts & recovery
-- **Password reset path** — *admin command shipped July 2026*: `npm run reset-password [-- email]` (or `docker compose exec app node scripts/reset-password.mjs` against the production container) generates and prints a fresh password; with one account the email is optional. Plain Node on purpose so the same file runs in the standalone image; hash compatibility with the app is pinned by a unit test. Email-based reset still waits on outbound SMTP.
+- **Verified email + password recovery foundation** *(shipped July 2026)* — one-time,
+  hashed, expiring links verify an address, confirm a change of address, and reset a
+  password. Resets increment the account's session version, immediately invalidating old
+  sessions. In development links go to the server log; production uses Resend with
+  `APP_URL`, `RESEND_API_KEY`, and `EMAIL_FROM` configured.
+- **Operational password reset** *(shipped July 2026)* — `npm run reset-password [-- email]`
+  (or `docker compose exec app node scripts/reset-password.mjs`) remains the break-glass
+  path and also invalidates active sessions. Plain Node keeps it available in the
+  standalone image; hash compatibility with the app is unit-tested.
+- **Public registration + onboarding** — the next product phase: staged registration
+  modes, email verification before first sign-in, OPML/topic-first setup, and activation
+  metrics. The current one-time bootstrap is not public signup.
 
 ### Platform & sync (bigger bets)
 - **PWA + offline reading** *(foundation + Read later download shipped July 2026)* — installable app shell and a device-local offline library. Choose **Keep offline** on an article or saved page, manually download the newest 50 readable **Read later** entries from `/offline`, or select an automatic device-local set of 25, 50, or 100 entries that refreshes when the library opens or reconnects. Automatic entries are reconciled to the selected bound while manually kept copies are retained. Where supported, a selected automatic set also refreshes after the next connection and on the browser's periodic background schedule; opening or reconnecting the library remains the reliable cross-browser fallback. The online reader also supports mobile pull-to-refresh, reusing the normal all-feeds refresh. While offline, locally saved articles can be marked read/unread, starred/unstarred, added/removed from Read later, or pasted into Read later as a web link; those queued changes replay after reconnecting, and browsers that support Background Sync can replay them without an open app. Then read their sanitized text without a connection. Deliberately not cached: dynamic authenticated reader pages, arbitrary images, and third-party embeds. Feed and account configuration remain online-only because their conflicts and destructive changes need immediate server confirmation.
@@ -106,7 +120,7 @@ Phased plan. Each phase should ship as a usable app — MVP alone should be good
 ## Later / ideas (not committed)
 
 - Text-to-speech ("Listen to this article") — deferred deliberately: the browser's built-in `SpeechSynthesis` voices are too robotic to be pleasant. Do it with a high-quality AI TTS provider instead (likely BYO-key, matching the AI stance in business-option.md), so revisit when we take on AI features
-- Multi-user support (the schema is designed to allow this — see tech-stack.md)
+- OAuth identities (Google first) and profile settings
 - Email newsletter → feed bridge (unique inbound address per "feed")
 - AI daily digest / article summaries
 - Snooze / resurface — dismiss an article now and have it resurface to the top of the unread list later (tomorrow/weekend). Deferred: it overlaps our own reading process, where a post is either put in Read later (keep) or read (done, shouldn't come back), so the snooze middle-ground earns little here. Design was scoped (nullable `item_states.snoozed_until`, passive query-time hiding, resurface by sorting on the snooze time) — revisit if the triage/overload pressure ever makes a "not now, ask me later" state worth it.

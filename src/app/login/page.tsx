@@ -1,12 +1,15 @@
 import { redirect } from "next/navigation";
-import { auth } from "@/auth";
 import { AuthForm } from "@/components/auth-form";
+import { getOptionalCurrentUser } from "@/lib/current-user";
 import { hasAnyUser } from "./actions";
 
 export default async function LoginPage() {
   // Already signed in? Go straight to the reader.
-  const session = await auth();
-  if (session?.user) redirect("/");
+  // Use the same database-backed account check as the reader. A pre-lifecycle
+  // JWT can contain a user id but no session version; redirecting that stale
+  // session to / would otherwise bounce forever between / and /login.
+  const user = await getOptionalCurrentUser();
+  if (user) redirect("/");
 
   const mode = (await hasAnyUser()) ? "login" : "register";
 

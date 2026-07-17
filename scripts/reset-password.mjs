@@ -1,13 +1,13 @@
-// Admin password reset (docs/features.md v0.2): the escape hatch when the
-// password is forgotten and there's no email-based reset yet.
+// Admin password reset: an operational escape hatch alongside the normal
+// email recovery flow.
 //
 //   dev:  npm run reset-password [-- email]
 //   prod: docker compose exec app node scripts/reset-password.mjs [email]
 //
 // Plain Node on purpose — no TypeScript tooling — so the same file runs from a
 // dev checkout and inside the standalone production image (Dockerfile copies
-// scripts/; `pg` ships in the pruned runtime node_modules). With one account
-// (the normal case) the email argument is optional. Prints a freshly generated
+// scripts/; `pg` ships in the pruned runtime node_modules). The email argument
+// is optional only when exactly one account exists. Prints a freshly generated
 // password; change it in Settings after logging in.
 
 import { randomBytes, scryptSync } from "node:crypto";
@@ -69,10 +69,10 @@ async function main() {
     }
 
     const password = randomBytes(9).toString("base64url");
-    await pool.query("update users set password_hash = $1 where id = $2", [
-      hashPassword(password),
-      user.id,
-    ]);
+    await pool.query(
+      "update users set password_hash = $1, session_version = session_version + 1 where id = $2",
+      [hashPassword(password), user.id],
+    );
 
     console.log(`Password reset for ${user.email}.`);
     console.log(`\n  New password: ${password}\n`);

@@ -4,6 +4,10 @@ import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
 import { users } from "@/db/schema";
+import {
+  requestEmailChange,
+  sendEmailVerification,
+} from "@/lib/account-lifecycle";
 import { isArticleListDensity } from "@/lib/article-list-density";
 import { getCurrentUserId } from "@/lib/current-user";
 import {
@@ -12,6 +16,7 @@ import {
   isEmbedLoadMode,
 } from "@/lib/embed-loading";
 import { hashPassword, verifyPassword } from "@/lib/password";
+import { EmailDeliveryError } from "@/lib/transactional-email";
 
 export interface AccountActionState {
   ok: boolean;
@@ -50,8 +55,60 @@ export async function changeEmailAction(
   const check = await verifyCurrentPassword(userId, currentPassword);
   if (!check.ok) return { ok: false, message: check.message };
 
-  await db.update(users).set({ email: email.data }).where(eq(users.id, userId));
-  return { ok: true, message: `Email changed to ${email.data}.` };
+  let result: Awaited<ReturnType<typeof requestEmailChange>>;
+  try {
+    result = await requestEmailChange(userId, email.data);
+  } catch (error) {
+    if (error instanceof EmailDeliveryError) {
+      console.error("[account] email change email unavailable:", error);
+      return {
+        ok: false,
+        message:
+          "We could not send a confirmation email right now. Try again shortly.",
+      };
+    }
+    console.error("[account] email change request failed:", error);
+    return { ok: false, message: "We could not send a confirmation email." };
+  }
+  if (result === "same") {
+    return { ok: false, message: "That is already your current email." };
+  }
+  if (result === "taken") {
+    return { ok: false, message: "That email is already in use." };
+  }
+  if (result === "missing") {
+    return { ok: false, message: "Account not found." };
+  }
+  return {
+    ok: true,
+    message: `Check ${email.data} to confirm the change. Your current email stays active until then.`,
+  };
+}
+
+export async function resendVerificationAction(
+  _prev: AccountActionState,
+  _formData: FormData,
+): Promise<AccountActionState> {
+  const userId = await getCurrentUserId();
+  let sent: boolean;
+  try {
+    sent = await sendEmailVerification(userId);
+  } catch (error) {
+    if (error instanceof EmailDeliveryError) {
+      console.error("[account] verification email unavailable:", error);
+      return {
+        ok: false,
+        message:
+          "We could not send a verification email right now. Try again shortly.",
+      };
+    }
+    console.error("[account] verification resend failed:", error);
+    return { ok: false, message: "We could not send a verification email." };
+  }
+  if (!sent) {
+    return { ok: false, message: "This email is already verified." };
+  }
+  return { ok: true, message: "Verification email sent." };
 }
 
 export async function updateReadingPrefsAction(

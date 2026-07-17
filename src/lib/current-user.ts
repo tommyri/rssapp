@@ -1,5 +1,39 @@
+import { and, eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
+import { db } from "@/db";
+import { users } from "@/db/schema";
+
+type SessionIdentity = { id?: string; sessionVersion?: number };
+
+/**
+ * Resolve a session to a current account on every protected server request.
+ * JWT presence alone is not authorization: this rejects suspended accounts and
+ * sessions revoked by a password reset.
+ */
+export async function getOptionalCurrentUser() {
+  const session = await auth();
+  const identity = session?.user as SessionIdentity | undefined;
+  const id = Number(identity?.id);
+  const sessionVersion = identity?.sessionVersion;
+  if (
+    !Number.isSafeInteger(id) ||
+    id < 1 ||
+    typeof sessionVersion !== "number" ||
+    !Number.isInteger(sessionVersion)
+  ) {
+    return null;
+  }
+
+  const user = await db.query.users.findFirst({
+    where: and(
+      eq(users.id, id),
+      eq(users.status, "active"),
+      eq(users.sessionVersion, sessionVersion),
+    ),
+  });
+  return user ?? null;
+}
 
 /**
  * The session user's id. Every user-scoped query in the app goes through here
@@ -8,10 +42,9 @@ import { auth } from "@/auth";
  * so a missing session here means something slipped through — send them to login.
  */
 export async function getCurrentUserId(): Promise<number> {
-  const session = await auth();
-  const id = (session?.user as { id?: string } | undefined)?.id;
-  if (!id) redirect("/login");
-  return Number(id);
+  const user = await getOptionalCurrentUser();
+  if (!user) redirect("/login");
+  return user.id;
 }
 
 /**
@@ -20,7 +53,6 @@ export async function getCurrentUserId(): Promise<number> {
  * command palette) — user-scoped queries keep going through getCurrentUserId.
  */
 export async function getOptionalUserId(): Promise<number | null> {
-  const session = await auth();
-  const id = (session?.user as { id?: string } | undefined)?.id;
-  return id ? Number(id) : null;
+  const user = await getOptionalCurrentUser();
+  return user?.id ?? null;
 }

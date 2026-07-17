@@ -15,7 +15,7 @@ The stack in use, chosen for: one codebase, boring/durable choices, easy self-ho
 | Sanitization | `sanitize-html` | Never render feed HTML unsanitized |
 | Content extraction | `@mozilla/readability` + `linkedom` | For truncated feeds |
 | Styling / UI | Tailwind CSS v4 + Radix UI (shadcn-style) | Fast to build, easy to customize |
-| Auth | Auth.js (credentials, single user) | Multi-user-ready if we ever want it |
+| Auth | Auth.js credentials + account lifecycle | Verified email, recovery, and active-account enforcement |
 | Validation | Zod | Server-action inputs, feed URL forms |
 | Testing | Vitest | Unit/parsing tests (E2E via Playwright is a later addition) |
 | Lint/format | Biome | One tool instead of ESLint+Prettier |
@@ -40,8 +40,13 @@ No Redis, no BullMQ — a `fetch_log` table plus `next_fetch_at` on feeds is our
 
 **Consequence:** we need a long-running Node server. That rules out Vercel/serverless as the primary target and is why Docker on a home server/VPS is the deployment plan.
 
-### Auth.js even though it's single-user
-A hand-rolled password check would do, but Auth.js credentials provider is barely more work, gives us solid session handling, and means "add users" is a schema change, not an auth rewrite.
+### Auth.js for a real account lifecycle
+Auth.js credentials gives us solid session handling while the application owns the
+product-specific lifecycle: verified email, one-time recovery links, suspension, and
+session revocation. `getCurrentUserId()` re-resolves a JWT against the active account on
+every protected request, so a revoked session or suspended account cannot keep reading
+just because its cookie has not expired. Public signup and social identities remain later
+work; the foundation does not assume a single account.
 
 ## Architecture sketch
 
@@ -58,7 +63,11 @@ A hand-rolled password check would do, but Auth.js credentials provider is barel
 
 ### Core data model
 
-- `users` — single row for now; everything user-owned hangs off it. `settings` holds reader prefs (e.g. `autoReadDays`)
+- `users` — product account: email, password hash, verification/status/session lifecycle,
+  profile-ready fields, and reader `settings` (e.g. `autoReadDays`). Everything user-owned
+  hangs off it.
+- `account_tokens` — hashed, one-time, expiring email-verification, email-change, and
+  password-reset secrets. Raw tokens exist only in a delivered link.
 - `feeds` — url, title, site_url, etag, last_modified, next_fetch_at, fetch_interval_minutes, error state (shared across users)
 - `subscriptions` — user ↔ feed, custom title, folder_id, per-feed `settings` (`fullContent`, `autoReadDays`, `sortOrder`, `defaultUnreadOnly`)
 - `folders` — per user
@@ -76,5 +85,7 @@ One deliberate detail: primary keys are `bigint` identity columns, not UUIDs. Th
 
 1. **Deployment target** — assumed Docker Compose on a home server. If you'd rather use a managed platform (Fly.io, Railway, Hetzner + Coolify), the stack holds; only pure-serverless (Vercel) conflicts with the in-process worker.
 2. ~~**shadcn/ui vs. hand-rolled UI**~~ — **Decided:** shadcn-style components built on Radix UI primitives (`src/components/ui/*`), plus `lucide-react` for icons. Fast to ship, fully editable, no runtime lock-in.
-3. ~~**How seriously to take multi-user**~~ — **Decided:** schema and app code are multi-tenant from day one; user-facing multi-user features stay off the roadmap until the business option is exercised. See business-option.md.
+3. ~~**How seriously to take multi-user**~~ — **Decided:** schema and app code are
+   multi-tenant from day one. The account lifecycle foundation is now built; public
+   registration and onboarding are the next product milestone. See business-option.md.
 4. ~~**Reader-compat API priority**~~ — **Decided:** stays in "later". Tommy reads in Inoreader's own apps (not a native sync client), so there's no personal need; the compat API remains a business-leverage feature only (see business-option.md), and bigint ids keep it cheap whenever we want it.

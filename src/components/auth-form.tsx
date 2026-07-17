@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
 import {
@@ -67,6 +68,14 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
           <p className="text-sm text-destructive">{state.error}</p>
         ) : null}
         <SubmitButton label={isRegister ? "Create account" : "Sign in"} />
+        {!isRegister ? (
+          <Link
+            href="/forgot-password"
+            className="block text-center text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+          >
+            Forgot your password?
+          </Link>
+        ) : null}
       </form>
     </div>
   );

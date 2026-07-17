@@ -2,6 +2,7 @@ import { sql } from "drizzle-orm";
 import {
   bigint,
   boolean,
+  check,
   customType,
   index,
   integer,
@@ -28,22 +29,79 @@ const id = () =>
 const createdAt = () =>
   timestamp("created_at", { withTimezone: true }).notNull().defaultNow();
 
-export const users = pgTable("users", {
-  id: id(),
-  email: text("email").notNull().unique(),
-  passwordHash: text("password_hash").notNull(),
-  // Reader preferences; per-feed overrides live in subscriptions.settings.
-  settings: jsonb("settings").notNull().default({}).$type<{
-    autoReadDays?: number;
-    collapseDuplicates?: boolean;
-    articleListDensity?: ArticleListDensity;
-    embedLoading?: EmbedLoadingPreferences;
-    collapsedFolderIds?: number[];
-    sidebarFolderIds?: number[];
-    sidebarFeedIds?: Record<string, number[]>;
-  }>(),
-  createdAt: createdAt(),
-});
+export const users = pgTable(
+  "users",
+  {
+    id: id(),
+    email: text("email").notNull().unique(),
+    passwordHash: text("password_hash").notNull(),
+    /** A user can read only after proving that they control this address. */
+    emailVerifiedAt: timestamp("email_verified_at", { withTimezone: true }),
+    /** Reserved for the account profile introduced with onboarding. */
+    displayName: text("display_name"),
+    /**
+     * This is an account-lifecycle state, not a product plan. Server-side
+     * current-user resolution enforces it on every protected request.
+     */
+    status: text("status").notNull().default("active").$type<AccountStatus>(),
+    /** Increment to revoke every extant JWT after a security-sensitive event. */
+    sessionVersion: integer("session_version").notNull().default(1),
+    lastSignedInAt: timestamp("last_signed_in_at", { withTimezone: true }),
+    // Reader preferences; per-feed overrides live in subscriptions.settings.
+    settings: jsonb("settings").notNull().default({}).$type<{
+      autoReadDays?: number;
+      collapseDuplicates?: boolean;
+      articleListDensity?: ArticleListDensity;
+      embedLoading?: EmbedLoadingPreferences;
+      collapsedFolderIds?: number[];
+      sidebarFolderIds?: number[];
+      sidebarFeedIds?: Record<string, number[]>;
+    }>(),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    check("users_status_check", sql`${t.status} in ('active', 'suspended')`),
+  ],
+);
+
+export const accountStatuses = ["active", "suspended"] as const;
+export type AccountStatus = (typeof accountStatuses)[number];
+
+export const accountTokenKinds = [
+  "email_verification",
+  "password_reset",
+  "email_change",
+] as const;
+export type AccountTokenKind = (typeof accountTokenKinds)[number];
+
+/**
+ * One-time, hashed secrets for account lifecycle links. The raw token is
+ * delivered by email and is deliberately never written to Postgres.
+ */
+export const accountTokens = pgTable(
+  "account_tokens",
+  {
+    id: id(),
+    userId: bigint("user_id", { mode: "number" })
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    kind: text("kind").notNull().$type<AccountTokenKind>(),
+    /** The address being verified or changed to; reset tokens record the current email. */
+    email: text("email").notNull(),
+    tokenHash: text("token_hash").notNull(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    usedAt: timestamp("used_at", { withTimezone: true }),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    uniqueIndex("account_tokens_hash_idx").on(t.tokenHash),
+    index("account_tokens_user_kind_idx").on(t.userId, t.kind),
+    check(
+      "account_tokens_kind_check",
+      sql`${t.kind} in ('email_verification', 'password_reset', 'email_change')`,
+    ),
+  ],
+);
 
 // Global, shared across users: one row per feed URL, fetched once for everyone.
 export const feeds = pgTable(

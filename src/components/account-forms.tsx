@@ -12,6 +12,7 @@ import {
   type AccountActionState,
   changeEmailAction,
   changePasswordAction,
+  resendVerificationAction,
   updateReadingPrefsAction,
 } from "@/app/settings/actions";
 import { Button } from "@/components/ui/button";
@@ -68,11 +69,22 @@ function AutoSaveStatus({
   );
 }
 
-export function ChangeEmailForm({ currentEmail }: { currentEmail: string }) {
+export function ChangeEmailForm({
+  currentEmail,
+  emailVerified,
+}: {
+  currentEmail: string;
+  emailVerified: boolean;
+}) {
   const [state, formAction] = useActionState(changeEmailAction, initial);
   return (
     <form action={formAction} className="space-y-3 rounded-lg border p-4">
       <h3 className="font-medium">Email</h3>
+      <p className="text-xs text-muted-foreground">
+        {emailVerified
+          ? "Verified email address."
+          : "Your email still needs verification."}
+      </p>
       <div className="space-y-2">
         <Label htmlFor="email">New email</Label>
         <Input
@@ -94,7 +106,28 @@ export function ChangeEmailForm({ currentEmail }: { currentEmail: string }) {
           required
         />
       </div>
-      <SubmitButton label="Change email" />
+      <p className="text-xs text-muted-foreground">
+        Your current email stays active until you confirm the new one.
+      </p>
+      <SubmitButton label="Send confirmation email" />
+      <Message state={state} />
+    </form>
+  );
+}
+
+export function EmailVerificationForm({ verified }: { verified: boolean }) {
+  const [state, formAction] = useActionState(resendVerificationAction, initial);
+  if (verified) return null;
+
+  return (
+    <form action={formAction} className="space-y-3 rounded-lg border p-4">
+      <div className="space-y-1">
+        <h3 className="font-medium">Verify your email</h3>
+        <p className="text-xs text-muted-foreground">
+          Confirm your address to protect account recovery and future sign-ins.
+        </p>
+      </div>
+      <SubmitButton label="Resend verification email" />
       <Message state={state} />
     </form>
   );

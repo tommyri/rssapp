@@ -1,6 +1,6 @@
 # Keeping the Business Option Open
 
-Position: build v1 as a simple personal product, but treat "hosted service with paying users" as a plausible future. The filter for every early decision is: **make it now only if it's cheap today and expensive to retrofit.** Everything else waits until the business is real.
+Position: build v1 as a simple personal product, but treat "hosted service with paying users" as a plausible future. The filter for every early decision is: **make it now only if it's cheap today and expensive to retrofit.** Everything else waits until the business is real. In July 2026 that threshold was crossed for account lifecycle: a product cannot safely add strangers later without verified identity, recovery, and revocation, so those foundations now exist before public signup.
 
 ## Decisions locked in now (cheap today, painful to retrofit)
 
@@ -12,6 +12,11 @@ Position: build v1 as a simple personal product, but treat "hosted service with 
 
 4. **Email is the login identity.** Auth.js credentials with email + password, not a username. Email is what password reset, notifications, and billing all need later.
 
+5. **Account lifecycle is server-enforced.** Users have an active/suspended state and a
+   session version. Every protected request rechecks both against Postgres; password
+   resets revoke existing JWTs. One-time verification/reset/change-email links are stored
+   only as hashes, with bounded expiry, and delivered through transactional email.
+
 5. **Bigint primary keys, not UUIDs.** The Google Reader–compat API — the feature with the most direct business leverage — expects int64 item ids. Bigint ids now make it a pure API layer later; UUIDs would force an id-mapping retrofit across millions of item rows.
 
 6. **Stay closed-source until we choose a license deliberately.** If we open the code, the license *is* a business decision: MIT/Apache lets anyone run a competing hosted service on our code; AGPL protects a hosted offering (the Miniflux/FreshRSS route). No action needed now — just don't publish the repo casually before deciding.
@@ -21,7 +26,6 @@ Position: build v1 as a simple personal product, but treat "hosted service with 
 - **Billing** — Stripe, plans, entitlements. A `plan` column and a webhook handler bolt onto the existing `users` table when there's revenue to collect.
 - **Scaling machinery** — job queues (BullMQ/Redis), read replicas, caching layers. The `next_fetch_at` + `fetch_log` design upgrades to a real queue naturally.
 - **Teams/orgs, sharing, SSO** — org-shaped features for an org-shaped business we don't have.
-- **Transactional email** — needed the day strangers can register, not before.
 - **Compliance (GDPR export/delete)** — OPML export already covers the biggest piece; full account export/delete is a v-whenever-there-are-users feature. Keep in mind, don't build.
 - **Observability stack** — structured logs now; metrics/tracing when there's traffic worth measuring.
 

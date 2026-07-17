@@ -14,27 +14,41 @@ npm run db:migrate        # apply migrations
 npm run dev               # http://localhost:3000
 ```
 
-On first visit the app redirects to `/login`; since no account exists yet, it shows a
-one-time **create account** form. After that, `/login` is sign-in only (single-user).
+On first visit a fresh local install shows a one-time **create account** form. This is
+temporary bootstrap behavior while public signup is built; it is not a product
+registration flow. Existing reader data is already scoped to the signed-in account.
 
 The dev database URL defaults to the compose credentials (see `src/db/config.ts`); set
 `DATABASE_URL` in a `.env` file to override.
 
 ### Auth
 
-Auth.js (credentials, single user). Config is split for edge compatibility:
+Auth.js (credentials). Config is split for edge compatibility:
 `src/auth.config.ts` (edge-safe, drives the route-protecting proxy in `src/proxy.ts` —
 Next 16's successor to `middleware.ts`) and `src/auth.ts` (the Credentials provider, which
-reads the DB). `getCurrentUserId()` in `src/lib/current-user.ts` is the single place the
-session becomes a user id.
+reads the DB). `getCurrentUserId()` in `src/lib/current-user.ts` is the single place a
+JWT becomes a current, active account: it also rejects suspended accounts and sessions
+invalidated by a password reset.
 
 Set **`AUTH_SECRET`** in production (used to sign session JWTs). In dev it falls back to an
 insecure constant so the app runs without config — generate a real one with
 `npx auth secret` before deploying.
 
-**Forgot the password?** There's no email-based reset (no outbound SMTP), so use the
-admin command — it generates a fresh password, prints it once, and you change it in
-Settings after logging in. With a single account the email argument is optional:
+**Account email.** Email verification, email changes, and password resets use Resend's
+HTTP API (no SMTP dependency). Configure these for production:
+
+```bash
+APP_URL=https://reader.example.com
+RESEND_API_KEY=re_...
+EMAIL_FROM="rssapp <accounts@reader.example.com>"
+```
+
+`APP_URL` must be an HTTPS absolute URL in production. In development, when Resend is
+not configured, the app prints the one-time link to the server log instead. Raw tokens
+are never stored in the database; links are single-use and expire.
+
+The command below remains an operational escape hatch. It generates a fresh password,
+invalidates all existing sessions for that account, and prints the password once:
 
 ```bash
 npm run reset-password                    # dev checkout
@@ -139,6 +153,7 @@ boot, and the in-process poller starts with the server.
 ```bash
 # once: create .env next to compose.yaml
 echo "AUTH_SECRET=$(npx auth secret --raw 2>/dev/null || openssl rand -base64 33)" > .env
+printf '\nAPP_URL=https://reader.example.com\nRESEND_API_KEY=re_...\nEMAIL_FROM="rssapp <accounts@reader.example.com>"\n' >> .env
 
 docker compose up -d --build    # app on http://<host>:3000 + Postgres
 ```
@@ -146,7 +161,9 @@ docker compose up -d --build    # app on http://<host>:3000 + Postgres
 - The app **refuses to boot without `AUTH_SECRET`** (it signs the session cookies).
 - `APP_PORT=8080` in `.env` changes the published port.
 - Upgrades: `git pull && docker compose up -d --build` — migrations run on boot.
-- First visit shows the one-time create-account form; after that it's sign-in only.
+- On a fresh local install, first visit shows the temporary one-time bootstrap form;
+  it is not public product signup. Public signup and onboarding arrive in the next
+  account phase.
 - **Settings → Subscriptions & data** can download a complete, portable JSON backup
   (account data, subscriptions, articles, states, saved pages, labels, rules, and
   highlights; never passwords). A restore assistant validates a backup, compares it with
