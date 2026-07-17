@@ -142,6 +142,30 @@ export const accountInvites = pgTable(
 );
 
 /**
+ * Short-lived, hashed counters for anonymous authentication endpoints. The
+ * bucket/key pair carries no raw email address or network address.
+ */
+export const authRateLimits = pgTable(
+  "auth_rate_limits",
+  {
+    bucket: text("bucket").notNull(),
+    keyHash: text("key_hash").notNull(),
+    windowStartedAt: timestamp("window_started_at", {
+      withTimezone: true,
+    }).notNull(),
+    attempts: integer("attempts").notNull().default(0),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.bucket, t.keyHash] }),
+    index("auth_rate_limits_updated_at_idx").on(t.updatedAt),
+    check("auth_rate_limits_attempts_check", sql`${t.attempts} >= 0`),
+  ],
+);
+
+/**
  * One-time, hashed secrets for account lifecycle links. The raw token is
  * delivered by email and is deliberately never written to Postgres.
  */

@@ -3,6 +3,12 @@
 import { z } from "zod";
 import { requestPasswordReset } from "@/lib/account-lifecycle";
 import { AccountTokenCooldownError } from "@/lib/account-tokens";
+import {
+  AUTH_RATE_LIMITS,
+  consumeAuthRateLimits,
+  emailRateLimitKey,
+  requestNetworkRateLimitKey,
+} from "@/lib/auth-rate-limit";
 import { EmailDeliveryError } from "@/lib/transactional-email";
 
 export interface RecoveryActionState {
@@ -25,6 +31,25 @@ export async function requestPasswordResetAction(
   if (!email.success) return { ok: false, message: "Enter a valid email." };
 
   try {
+    const networkKey = await requestNetworkRateLimitKey();
+    const limit = await consumeAuthRateLimits([
+      {
+        policy: AUTH_RATE_LIMITS.recoveryEmail,
+        key: emailRateLimitKey(email.data),
+      },
+      ...(networkKey
+        ? [{ policy: AUTH_RATE_LIMITS.recoveryNetwork, key: networkKey }]
+        : []),
+    ]);
+    if (limit.limited) {
+      // Keep the response identical to every other recovery request. It must
+      // not reveal whether the address exists or whether it was rate limited.
+      return {
+        ok: true,
+        message:
+          "If that email belongs to an active account, a reset link is on its way.",
+      };
+    }
     await requestPasswordReset(email.data);
   } catch (error) {
     if (error instanceof AccountTokenCooldownError) {

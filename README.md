@@ -53,6 +53,13 @@ per minute. A failed delivery releases its link immediately so the person can re
 not configured, the app prints the one-time link to the server log instead. Raw tokens
 are never stored in the database; links are single-use and expire.
 
+**Abuse protection.** Failed sign-ins are limited per email address and, when the reverse
+proxy provides `X-Forwarded-For`, per network. Signup and password-recovery requests use
+the same durable protection. Counters retain only salted hashes and expire within a day;
+the recovery response deliberately stays identical whether an address exists or is
+temporarily limited. Configure your proxy to overwrite—not trust client-supplied—forwarded
+IP headers.
+
 **Account operator.** On a fresh install, the first account claims the deployment-owner
 role atomically. A one-account legacy install is promoted automatically; when an upgrade
 already has multiple accounts, choose deliberately instead of relying on account age:

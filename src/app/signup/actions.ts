@@ -4,6 +4,12 @@ import { z } from "zod";
 import type { AuthActionState } from "@/app/login/actions";
 import { startRegistration } from "@/lib/account-lifecycle";
 import { AccountTokenCooldownError } from "@/lib/account-tokens";
+import {
+  AUTH_RATE_LIMITS,
+  consumeAuthRateLimits,
+  emailRateLimitKey,
+  requestNetworkRateLimitKey,
+} from "@/lib/auth-rate-limit";
 import { hashPassword } from "@/lib/password";
 import { EmailDeliveryError } from "@/lib/transactional-email";
 
@@ -27,6 +33,21 @@ export async function signUpAction(
   }
 
   try {
+    const networkKey = await requestNetworkRateLimitKey();
+    const limit = await consumeAuthRateLimits([
+      {
+        policy: AUTH_RATE_LIMITS.signUpEmail,
+        key: emailRateLimitKey(parsed.data.email),
+      },
+      ...(networkKey
+        ? [{ policy: AUTH_RATE_LIMITS.signUpNetwork, key: networkKey }]
+        : []),
+    ]);
+    if (limit.limited) {
+      return {
+        error: `Too many account requests. Try again in ${limit.retryAfterSeconds} seconds.`,
+      };
+    }
     const result = await startRegistration({
       rawEmail: parsed.data.email,
       passwordHash: hashPassword(parsed.data.password),

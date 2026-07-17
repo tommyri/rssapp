@@ -4,6 +4,11 @@ import Credentials from "next-auth/providers/credentials";
 import { authConfig } from "@/auth.config";
 import { db } from "@/db";
 import { users } from "@/db/schema";
+import {
+  AUTH_RATE_LIMITS,
+  clearAuthRateLimit,
+  emailRateLimitKey,
+} from "@/lib/auth-rate-limit";
 import { verifyPassword } from "@/lib/password";
 
 export const { auth, handlers, signIn, signOut } = NextAuth({
@@ -29,6 +34,12 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
         )
           return null;
 
+        // Successful authentication clears only the address-specific failure
+        // bucket; the network bucket continues protecting shared sources.
+        await clearAuthRateLimit(
+          AUTH_RATE_LIMITS.signInEmail,
+          emailRateLimitKey(email),
+        );
         await db
           .update(users)
           .set({ lastSignedInAt: new Date() })

@@ -19,7 +19,9 @@ Position: build v1 as a simple personal product, but treat "hosted service with 
    The first signup owns a fresh deployment; a multi-account upgrade uses an explicit
    operator-transfer command rather than guessing from account age.
    One-time verification/reset/change-email links and owner-issued invitations are stored
-   only as hashes, with bounded expiry, and delivered through transactional email.
+   only as hashes, with bounded expiry, and delivered through transactional email. Failed
+   sign-ins and anonymous signup/recovery requests have durable, salted-hash rate limits
+   before public registration is exposed.
 
 5. **Bigint primary keys, not UUIDs.** The Google Reader–compat API — the feature with the most direct business leverage — expects int64 item ids. Bigint ids now make it a pure API layer later; UUIDs would force an id-mapping retrofit across millions of item rows.
 
