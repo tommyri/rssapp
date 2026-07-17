@@ -3,14 +3,16 @@
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
-import { users } from "@/db/schema";
+import { accountAuditEvents, users } from "@/db/schema";
+import { accountAuditEventValues } from "@/lib/account-audit";
+import { accountDeletionConfirmationError } from "@/lib/account-deletion";
 import {
   requestEmailChange,
   sendEmailVerification,
 } from "@/lib/account-lifecycle";
 import { AccountTokenCooldownError } from "@/lib/account-tokens";
 import { isArticleListDensity } from "@/lib/article-list-density";
-import { getCurrentUserId } from "@/lib/current-user";
+import { getCurrentUser, getCurrentUserId } from "@/lib/current-user";
 import {
   EMBED_PROVIDERS,
   type EmbedLoadingPreferences,
@@ -222,4 +224,64 @@ export async function changePasswordAction(
     message:
       check.ok && !currentPassword ? "Password set." : "Password changed.",
   };
+}
+
+export async function deleteAccountAction(
+  _prev: AccountActionState,
+  formData: FormData,
+): Promise<AccountActionState> {
+  const currentUser = await getCurrentUser();
+  const typedEmail = String(formData.get("confirmationEmail") ?? "");
+  const confirmation = String(formData.get("confirmation") ?? "");
+  const currentPassword = String(formData.get("currentPassword") ?? "");
+
+  const earlyError = accountDeletionConfirmationError({
+    role: currentUser.role,
+    accountEmail: currentUser.email,
+    typedEmail,
+    confirmation,
+  });
+  if (earlyError) return { ok: false, message: earlyError };
+
+  const result = await db.transaction(async (tx) => {
+    const [user] = await tx
+      .select({
+        id: users.id,
+        email: users.email,
+        role: users.role,
+        passwordHash: users.passwordHash,
+      })
+      .from(users)
+      .where(eq(users.id, currentUser.id))
+      .for("update");
+    if (!user) return { ok: false as const, message: "Account not found." };
+
+    const confirmationError = accountDeletionConfirmationError({
+      role: user.role,
+      accountEmail: user.email,
+      typedEmail,
+      confirmation,
+    });
+    if (confirmationError)
+      return { ok: false as const, message: confirmationError };
+    if (
+      user.passwordHash &&
+      !verifyPassword(currentPassword, user.passwordHash)
+    ) {
+      return { ok: false as const, message: "Current password is incorrect." };
+    }
+
+    // The user row owns every reader-specific relation through cascading FKs.
+    // Global feeds and articles remain because other accounts can still use them.
+    await tx.insert(accountAuditEvents).values(
+      accountAuditEventValues({
+        actorUserId: user.id,
+        targetUserId: user.id,
+        eventType: "account_deleted",
+      }),
+    );
+    await tx.delete(users).where(eq(users.id, user.id));
+    return { ok: true as const, message: "Account deleted." };
+  });
+  return result;
 }

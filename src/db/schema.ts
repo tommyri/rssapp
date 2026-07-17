@@ -109,6 +109,7 @@ export const accountAuditEventTypes = [
   "invitation_issued",
   "invitation_revoked",
   "invitation_delivery_failed",
+  "account_deleted",
 ] as const;
 export type AccountAuditEventType = (typeof accountAuditEventTypes)[number];
 
@@ -148,9 +149,11 @@ export const accountInvites = pgTable(
     id: id(),
     email: text("email").notNull(),
     tokenHash: text("token_hash").notNull(),
-    invitedByUserId: bigint("invited_by_user_id", { mode: "number" })
-      .notNull()
-      .references(() => users.id, { onDelete: "restrict" }),
+    // Retain an accepted or pending invitation when its former owner deletes
+    // their account; the current owner can still revoke it from the console.
+    invitedByUserId: bigint("invited_by_user_id", {
+      mode: "number",
+    }).references(() => users.id, { onDelete: "set null" }),
     expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
     acceptedAt: timestamp("accepted_at", { withTimezone: true }),
     revokedAt: timestamp("revoked_at", { withTimezone: true }),
@@ -275,7 +278,7 @@ export const accountAuditEvents = pgTable(
     index("account_audit_events_target_user_id_idx").on(t.targetUserId),
     check(
       "account_audit_events_type_check",
-      sql`${t.eventType} in ('account_suspended', 'account_restored', 'ownership_transferred', 'registration_mode_changed', 'invitation_issued', 'invitation_revoked', 'invitation_delivery_failed')`,
+      sql`${t.eventType} in ('account_suspended', 'account_restored', 'ownership_transferred', 'registration_mode_changed', 'invitation_issued', 'invitation_revoked', 'invitation_delivery_failed', 'account_deleted')`,
     ),
   ],
 );

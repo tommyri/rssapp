@@ -4,6 +4,7 @@ import Link from "next/link";
 import {
   ChangeEmailForm,
   ChangePasswordForm,
+  DeleteAccountForm,
   EmailVerificationForm,
   ProfileForm,
   ReadingPrefsForm,
@@ -157,6 +158,12 @@ export default async function SettingsPage({
             notice={googleAccountSettingsNotice(params.google)}
           />
         ) : null}
+        <DeleteAccountForm
+          email={user?.email ?? ""}
+          hasPassword={Boolean(user?.passwordHash)}
+          isOwner={user?.role === "owner"}
+          userId={userId}
+        />
       </>
     ),
   };

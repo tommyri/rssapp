@@ -27,7 +27,13 @@ Position: build v1 as a simple personal product, but treat "hosted service with 
    sign-ins and anonymous signup/recovery requests have durable, salted-hash rate limits
    before public registration is exposed.
 
-5. **Bigint primary keys, not UUIDs.** The Google Reader–compat API — the feature with the most direct business leverage — expects int64 item ids. Bigint ids now make it a pure API layer later; UUIDs would force an id-mapping retrofit across millions of item rows.
+6. **Self-service account deletion has a narrow, safe foundation.** A user can remove
+   their account only after clear, deliberate confirmation; server-side cascading foreign
+   keys remove their reader data and sign-in identities while shared feeds/articles stay
+   available. The sole deployment owner must transfer ownership first. This is a product
+   privacy control, not a claim of complete legal-compliance automation.
+
+7. **Bigint primary keys, not UUIDs.** The Google Reader–compat API — the feature with the most direct business leverage — expects int64 item ids. Bigint ids now make it a pure API layer later; UUIDs would force an id-mapping retrofit across millions of item rows.
 
 6. **Stay closed-source until we choose a license deliberately.** If we open the code, the license *is* a business decision: MIT/Apache lets anyone run a competing hosted service on our code; AGPL protects a hosted offering (the Miniflux/FreshRSS route). No action needed now — just don't publish the repo casually before deciding.
 
@@ -40,7 +46,10 @@ Position: build v1 as a simple personal product, but treat "hosted service with 
   operational audit trail are enough for a self-hosted deployment. Multiple operators
   and any support-session feature need a separate security design before we host
   accounts ourselves.
-- **Compliance (GDPR export/delete)** — OPML export already covers the biggest piece; full account export/delete is a v-whenever-there-are-users feature. Keep in mind, don't build.
+- **Formal compliance program (GDPR/DSAR policy, legal review, retention schedule)** —
+  portable JSON backups and self-service account deletion now cover the core product
+  controls, but hosted-service legal obligations, support processes, and documented
+  retention guarantees need deliberate work when there are customers.
 - **Observability stack** — structured logs now; metrics/tracing when there's traffic worth measuring.
 
 ## Market context (orientation, not commitment)

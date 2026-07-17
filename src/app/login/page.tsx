@@ -19,9 +19,11 @@ export default async function LoginPage({
   if (user) redirect("/");
   const params = await searchParams;
   const notice =
-    params.notice === "ownership-transferred" && params.owner
-      ? `${params.owner} is now the deployment owner. Please sign in again.`
-      : googleAuthNotice(params.google);
+    params.notice === "account-deleted"
+      ? "Your account and reader data have been deleted."
+      : params.notice === "ownership-transferred" && params.owner
+        ? `${params.owner} is now the deployment owner. Please sign in again.`
+        : googleAuthNotice(params.google);
 
   return (
     <div className="flex flex-1 items-center justify-center px-4 py-16">

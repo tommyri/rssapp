@@ -35,4 +35,17 @@ describe("account audit events", () => {
       }),
     ).toBe("Changed registration from open to invite_only");
   });
+
+  it("uses a generic description after the deleted account's data is removed", () => {
+    expect(
+      accountAuditEventDescription({
+        id: 2,
+        actorEmail: null,
+        targetEmail: null,
+        eventType: "account_deleted",
+        metadata: {},
+        createdAt: new Date(),
+      }),
+    ).toBe("Deleted an account");
+  });
 });

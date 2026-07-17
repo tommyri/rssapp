@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import {
   startTransition,
   useActionState,
@@ -12,6 +13,7 @@ import {
   type AccountActionState,
   changeEmailAction,
   changePasswordAction,
+  deleteAccountAction,
   resendVerificationAction,
   updateProfileAction,
   updateReadingPrefsAction,
@@ -26,6 +28,7 @@ import {
   type EmbedLoadingPreferences,
   type EmbedLoadMode,
 } from "@/lib/embed-loading";
+import { clearOfflineDeviceData } from "@/lib/offline-library";
 import { DEFAULT_AUTO_READ_DAYS } from "@/lib/reading-prefs";
 
 const initial: AccountActionState = { ok: true, message: "" };
@@ -474,5 +477,123 @@ export function ChangePasswordForm({ hasPassword }: { hasPassword: boolean }) {
       <SubmitButton label={hasPassword ? "Change password" : "Set password"} />
       <Message state={state} />
     </form>
+  );
+}
+
+export function DeleteAccountForm({
+  email,
+  hasPassword,
+  isOwner,
+  userId,
+}: {
+  email: string;
+  hasPassword: boolean;
+  isOwner: boolean;
+  userId: number;
+}) {
+  const [state, formAction, pending] = useActionState(
+    deleteAccountAction,
+    initial,
+  );
+  const [clearingDeviceData, setClearingDeviceData] = useState(false);
+
+  useEffect(() => {
+    if (!state.ok || state.message !== "Account deleted.") return;
+
+    let active = true;
+    setClearingDeviceData(true);
+    const redirectToLogin = () => {
+      if (!active) return;
+      active = false;
+      window.location.assign("/login?notice=account-deleted");
+    };
+    // Device storage cleanup is best effort: an unavailable IndexedDB must never
+    // strand someone on a deleted account page.
+    const fallback = window.setTimeout(redirectToLogin, 1_000);
+    void clearOfflineDeviceData(userId)
+      .catch(() => undefined)
+      .finally(() => {
+        window.clearTimeout(fallback);
+        redirectToLogin();
+      });
+
+    return () => {
+      active = false;
+      window.clearTimeout(fallback);
+    };
+  }, [state.message, state.ok, userId]);
+
+  return (
+    <section className="space-y-4 rounded-lg border border-destructive/40 p-4">
+      <div className="space-y-1">
+        <h3 className="font-medium text-destructive">Delete account</h3>
+        <p className="text-xs text-muted-foreground">
+          This permanently deletes your account and all of your subscriptions,
+          reading state, saved pages, labels, rules, highlights, and sign-in
+          methods. This cannot be undone.
+        </p>
+      </div>
+
+      {isOwner ? (
+        <p className="text-sm text-muted-foreground">
+          Transfer ownership in{" "}
+          <Link href="/admin/accounts" className="underline">
+            Accounts
+          </Link>{" "}
+          before deleting this account.
+        </p>
+      ) : (
+        <form action={formAction} className="space-y-3">
+          <p className="text-xs text-muted-foreground">
+            Download a{" "}
+            <Link href="/settings?section=data" className="underline">
+              backup
+            </Link>{" "}
+            first if you may want this data later.
+          </p>
+          <div className="space-y-2">
+            <Label htmlFor="delete-email">Your email address</Label>
+            <Input
+              id="delete-email"
+              name="confirmationEmail"
+              type="email"
+              autoComplete="email"
+              placeholder={email}
+              required
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="delete-confirmation">Type DELETE to confirm</Label>
+            <Input
+              id="delete-confirmation"
+              name="confirmation"
+              autoComplete="off"
+              required
+            />
+          </div>
+          {hasPassword ? (
+            <div className="space-y-2">
+              <Label htmlFor="delete-current-password">Current password</Label>
+              <Input
+                id="delete-current-password"
+                name="currentPassword"
+                type="password"
+                autoComplete="current-password"
+                required
+              />
+            </div>
+          ) : null}
+          <Button
+            type="submit"
+            variant="destructive"
+            size="sm"
+            disabled={pending || clearingDeviceData}
+          >
+            {pending || clearingDeviceData ? "Deleting…" : "Delete account"}
+          </Button>
+          <Message state={state} />
+        </form>
+      )}
+    </section>
   );
 }

@@ -69,5 +69,7 @@ export function accountAuditEventDescription(event: AccountAuditEvent): string {
       return `Revoked the invitation for ${event.metadata.invitationEmail ?? "an email address"}`;
     case "invitation_delivery_failed":
       return `Could not deliver the invitation to ${event.metadata.invitationEmail ?? "an email address"}`;
+    case "account_deleted":
+      return "Deleted an account";
   }
 }

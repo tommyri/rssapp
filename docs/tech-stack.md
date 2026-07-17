@@ -50,10 +50,12 @@ sign-in, and onboarding records completion separately so existing readers are ne
 surprised by the new-user flow. The single deployment owner is selected safely (the first
 signup on an empty install, or an explicit operator transfer for a multi-account upgrade)
   and has an owner-only account console. The owner can choose open, invitation-only, or
-  closed registration without baking a public-access decision into a deployment.
-  Google is optional and maps its stable provider subject to a local account only after
-  an explicit Settings link (or during new-account creation); a matching email alone is
-  never used to merge identities. Staff roles remain later work.
+closed registration without baking a public-access decision into a deployment. Google
+is optional and maps its stable provider subject to a local account only after an
+explicit Settings link (or during new-account creation); a matching email alone is
+never used to merge identities. A non-owner can delete their account after explicit
+confirmation; database foreign keys remove account-owned data and identity records while
+shared feeds and items survive. Staff roles remain later work.
 
 ## Architecture sketch
 
@@ -81,6 +83,8 @@ signup on an empty install, or an explicit operator transfer for a multi-account
   no raw address or network source is retained.
 - `account_audit_events` — immutable, indexed operational history for owner actions;
   actor/target IDs are retained while readable details stay narrowly scoped to the event.
+  IDs become null when an account is deleted, retaining a generic operational record
+  without a live account reference.
 - `oauth_identities` + `oauth_intents` — stable external-provider subjects and short-lived,
   hashed, one-time handoffs for explicit account linking or policy-controlled signup.
 - `feeds` — url, title, site_url, etag, last_modified, next_fetch_at, fetch_interval_minutes, error state (shared across users)

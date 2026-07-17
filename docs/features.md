@@ -128,6 +128,12 @@ Phased plan. Each phase should ship as a usable app — MVP alone should be good
   immutable timeline of suspensions, restorations, ownership handovers, registration
   changes, and invitation events. Each event is written in the same transaction as its
   change; a command-line ownership recovery is captured as a System event.
+- **Self-service account deletion** *(shipped July 2026)* — a non-owner can remove their
+  account from **Settings → Account** only after entering their email, typing `DELETE`,
+  and confirming their current password when applicable. The transaction removes
+  account-owned reader data and provider identities while shared feeds and articles stay
+  available; current-browser offline copies are cleared immediately afterward. Owners
+  must transfer ownership before deletion.
 - **Optional Google sign-in and explicit linking** *(shipped July 2026)* — deployments
   with `AUTH_GOOGLE_ID` and `AUTH_GOOGLE_SECRET` configured offer Google at sign-in and
   signup. Google uses a verified provider email for a new account, still honours open,

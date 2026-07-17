@@ -199,7 +199,7 @@ export async function issueAccountInvitation({
 
 export async function revokeAccountInvitation(
   invitationId: number,
-  invitedByUserId: number,
+  actorUserId: number,
   eventType:
     | "invitation_revoked"
     | "invitation_delivery_failed" = "invitation_revoked",
@@ -211,7 +211,6 @@ export async function revokeAccountInvitation(
       .where(
         and(
           eq(accountInvites.id, invitationId),
-          eq(accountInvites.invitedByUserId, invitedByUserId),
           isNull(accountInvites.acceptedAt),
           isNull(accountInvites.revokedAt),
         ),
@@ -220,7 +219,7 @@ export async function revokeAccountInvitation(
     if (!invite) return false;
     await tx.insert(accountAuditEvents).values(
       accountAuditEventValues({
-        actorUserId: invitedByUserId,
+        actorUserId,
         eventType,
         metadata: { invitationId: invite.id, invitationEmail: invite.email },
       }),

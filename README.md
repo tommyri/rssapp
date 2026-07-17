@@ -94,6 +94,13 @@ The same **Accounts** console keeps a recent, immutable audit trail of access ch
 ownership handovers, registration-policy edits, and invitation events. It also records a
 break-glass ownership transfer made with the command below as a System event.
 
+**Account deletion.** A non-owner can permanently delete their account from
+**Settings → Account** by confirming their email, typing `DELETE`, and (when one exists)
+their current password. It removes all account-owned reader data and linked sign-in
+methods; shared feeds and articles remain for other readers. The current browser also
+clears its device-local offline library. Download a backup first—deletion cannot be
+undone. A deployment owner must first transfer ownership from **Accounts**.
+
 The command below remains an operational escape hatch. It generates a fresh password,
 invalidates all existing sessions for that account, and prints the password once:
 
