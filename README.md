@@ -60,7 +60,8 @@ npm run set-owner -- person@example.com
 ```
 
 Only that owner sees **Accounts** in the reader sidebar and can suspend or restore member
-accounts. Ownership transfer and suspension immediately invalidate affected sessions;
+accounts. The owner can transfer ownership only to an active, verified member; the former
+and new owner are immediately signed out. Suspension also invalidates a member session;
 restoring a member requires a fresh sign-in.
 
 The command below remains an operational escape hatch. It generates a fresh password,

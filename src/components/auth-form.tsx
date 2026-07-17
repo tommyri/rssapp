@@ -20,7 +20,13 @@ function SubmitButton({ label }: { label: string }) {
   );
 }
 
-export function AuthForm({ mode }: { mode: "login" | "signup" }) {
+export function AuthForm({
+  mode,
+  notice,
+}: {
+  mode: "login" | "signup";
+  notice?: string;
+}) {
   const isSignup = mode === "signup";
   const [state, formAction] = useActionState(
     isSignup ? signUpAction : loginAction,
@@ -63,6 +69,9 @@ export function AuthForm({ mode }: { mode: "login" | "signup" }) {
         </div>
         {state.error ? (
           <p className="text-sm text-destructive">{state.error}</p>
+        ) : null}
+        {notice ? (
+          <p className="text-sm text-muted-foreground">{notice}</p>
         ) : null}
         {state.message ? (
           <p className="text-sm text-muted-foreground">{state.message}</p>

@@ -36,12 +36,19 @@ async function main() {
   const client = await pool.connect();
   try {
     await client.query("begin");
+    // Keep CLI and in-app ownership changes in one serialized handover lane.
+    await client.query("select pg_advisory_xact_lock(795509)");
     const { rows } = await client.query(
-      "select id, email from users where email = $1 for update",
+      "select id, email, status, email_verified_at from users where email = $1 for update",
       [email],
     );
     const user = rows[0];
     if (!user) throw new Error(`No account with email ${email}.`);
+    if (user.status !== "active" || !user.email_verified_at) {
+      throw new Error(
+        "The new owner must be active and have a verified email.",
+      );
+    }
 
     await client.query(
       "update users set role = 'member', session_version = session_version + 1 where role = 'owner'",

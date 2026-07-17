@@ -1,7 +1,9 @@
 import { AccountStatusControl } from "@/components/account-status-control";
 import { BackLink } from "@/components/back-link";
+import { OwnershipTransferControl } from "@/components/ownership-transfer-control";
 import { listManagedAccounts } from "@/lib/admin-accounts";
 import { getCurrentOwner } from "@/lib/current-user";
+import { canReceiveOwnership } from "@/lib/owner-transfer";
 
 function dateLabel(value: Date | null) {
   return value ? value.toLocaleDateString("en-GB") : "Never";
@@ -92,10 +94,22 @@ export default async function AccountManagementPage() {
                         Owner account
                       </p>
                     ) : (
-                      <AccountStatusControl
-                        accountId={account.id}
-                        status={account.status}
-                      />
+                      <div className="flex flex-col items-end gap-3">
+                        <AccountStatusControl
+                          accountId={account.id}
+                          status={account.status}
+                        />
+                        {canReceiveOwnership(account) ? (
+                          <OwnershipTransferControl
+                            accountId={account.id}
+                            email={account.email}
+                          />
+                        ) : (
+                          <p className="max-w-48 text-right text-xs text-muted-foreground">
+                            Ownership requires an active, verified account.
+                          </p>
+                        )}
+                      </div>
                     )}
                   </td>
                 </tr>
