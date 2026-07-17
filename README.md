@@ -73,6 +73,10 @@ accounts. The owner can transfer ownership only to an active, verified member; t
 and new owner are immediately signed out. Suspension also invalidates a member session;
 restoring a member requires a fresh sign-in.
 
+The same **Accounts** console keeps a recent, immutable audit trail of access changes,
+ownership handovers, registration-policy edits, and invitation events. It also records a
+break-glass ownership transfer made with the command below as a System event.
+
 The command below remains an operational escape hatch. It generates a fresh password,
 invalidates all existing sessions for that account, and prints the password once:
 

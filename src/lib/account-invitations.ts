@@ -1,11 +1,13 @@
 import { and, desc, eq, gt, isNull, sql } from "drizzle-orm";
 import { db } from "@/db";
 import {
+  accountAuditEvents,
   accountInvites,
   instanceSettings,
   type RegistrationMode,
   registrationModes,
 } from "@/db/schema";
+import { accountAuditEventValues } from "@/lib/account-audit";
 import {
   createAccountTokenSecret,
   hashAccountToken,
@@ -57,17 +59,39 @@ export async function getRegistrationMode(): Promise<RegistrationMode> {
   return settings?.registrationMode ?? "open";
 }
 
-export async function setRegistrationMode(
-  mode: RegistrationMode,
-): Promise<void> {
+export async function setRegistrationMode({
+  mode,
+  actorUserId,
+}: {
+  mode: RegistrationMode;
+  actorUserId: number;
+}): Promise<void> {
   const now = new Date();
-  await db
-    .insert(instanceSettings)
-    .values({ id: 1, registrationMode: mode, updatedAt: now })
-    .onConflictDoUpdate({
-      target: instanceSettings.id,
-      set: { registrationMode: mode, updatedAt: now },
-    });
+  await db.transaction(async (tx) => {
+    const [current] = await tx
+      .select({ registrationMode: instanceSettings.registrationMode })
+      .from(instanceSettings)
+      .where(eq(instanceSettings.id, 1))
+      .for("update");
+    await tx
+      .insert(instanceSettings)
+      .values({ id: 1, registrationMode: mode, updatedAt: now })
+      .onConflictDoUpdate({
+        target: instanceSettings.id,
+        set: { registrationMode: mode, updatedAt: now },
+      });
+    if (current?.registrationMode === mode) return;
+    await tx.insert(accountAuditEvents).values(
+      accountAuditEventValues({
+        actorUserId,
+        eventType: "registration_mode_changed",
+        metadata: {
+          previousRegistrationMode: current?.registrationMode ?? "open",
+          registrationMode: mode,
+        },
+      }),
+    );
+  });
 }
 
 export async function listPendingAccountInvites(): Promise<
@@ -107,7 +131,7 @@ export async function issueAccountInvitation({
     // Repeated sends for one address are serialized even when the owner has
     // multiple console tabs open. The partial unique index is a second guard.
     await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${email}))`);
-    await tx
+    const replaced = await tx
       .update(accountInvites)
       .set({ revokedAt: now })
       .where(
@@ -116,7 +140,22 @@ export async function issueAccountInvitation({
           isNull(accountInvites.acceptedAt),
           isNull(accountInvites.revokedAt),
         ),
+      )
+      .returning({ id: accountInvites.id, email: accountInvites.email });
+    if (replaced.length) {
+      await tx.insert(accountAuditEvents).values(
+        replaced.map((previous) =>
+          accountAuditEventValues({
+            actorUserId: invitedByUserId,
+            eventType: "invitation_revoked",
+            metadata: {
+              invitationId: previous.id,
+              invitationEmail: previous.email,
+            },
+          }),
+        ),
       );
+    }
     const [created] = await tx
       .insert(accountInvites)
       .values({
@@ -132,6 +171,13 @@ export async function issueAccountInvitation({
         createdAt: accountInvites.createdAt,
       });
     if (!created) throw new Error("Could not create account invitation.");
+    await tx.insert(accountAuditEvents).values(
+      accountAuditEventValues({
+        actorUserId: invitedByUserId,
+        eventType: "invitation_issued",
+        metadata: { invitationId: created.id, invitationEmail: created.email },
+      }),
+    );
     return created;
   });
 
@@ -140,7 +186,11 @@ export async function issueAccountInvitation({
   } catch (error) {
     // A failed delivery must not leave a seemingly valid invite that cannot
     // actually be used or force the owner to wait before trying again.
-    await revokeAccountInvitation(invite.id, invitedByUserId);
+    await revokeAccountInvitation(
+      invite.id,
+      invitedByUserId,
+      "invitation_delivery_failed",
+    );
     throw error;
   }
 
@@ -150,18 +200,31 @@ export async function issueAccountInvitation({
 export async function revokeAccountInvitation(
   invitationId: number,
   invitedByUserId: number,
+  eventType:
+    | "invitation_revoked"
+    | "invitation_delivery_failed" = "invitation_revoked",
 ): Promise<boolean> {
-  const [invite] = await db
-    .update(accountInvites)
-    .set({ revokedAt: new Date() })
-    .where(
-      and(
-        eq(accountInvites.id, invitationId),
-        eq(accountInvites.invitedByUserId, invitedByUserId),
-        isNull(accountInvites.acceptedAt),
-        isNull(accountInvites.revokedAt),
-      ),
-    )
-    .returning({ id: accountInvites.id });
-  return invite !== undefined;
+  return db.transaction(async (tx) => {
+    const [invite] = await tx
+      .update(accountInvites)
+      .set({ revokedAt: new Date() })
+      .where(
+        and(
+          eq(accountInvites.id, invitationId),
+          eq(accountInvites.invitedByUserId, invitedByUserId),
+          isNull(accountInvites.acceptedAt),
+          isNull(accountInvites.revokedAt),
+        ),
+      )
+      .returning({ id: accountInvites.id, email: accountInvites.email });
+    if (!invite) return false;
+    await tx.insert(accountAuditEvents).values(
+      accountAuditEventValues({
+        actorUserId: invitedByUserId,
+        eventType,
+        metadata: { invitationId: invite.id, invitationEmail: invite.email },
+      }),
+    );
+    return true;
+  });
 }

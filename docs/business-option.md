@@ -32,9 +32,10 @@ Position: build v1 as a simple personal product, but treat "hosted service with 
 - **Billing** — Stripe, plans, entitlements. A `plan` column and a webhook handler bolt onto the existing `users` table when there's revenue to collect.
 - **Scaling machinery** — job queues (BullMQ/Redis), read replicas, caching layers. The `next_fetch_at` + `fetch_log` design upgrades to a real queue naturally.
 - **Teams/orgs, sharing, SSO** — org-shaped features for an org-shaped business we don't have.
-- **Staff roles and support impersonation** — the one-owner console is enough for a
-  self-hosted deployment. Multiple operators, audit trails, and any support-session
-  feature need a separate security design before we host accounts ourselves.
+- **Staff roles and support impersonation** — the one-owner console and its immutable
+  operational audit trail are enough for a self-hosted deployment. Multiple operators
+  and any support-session feature need a separate security design before we host
+  accounts ourselves.
 - **Compliance (GDPR export/delete)** — OPML export already covers the biggest piece; full account export/delete is a v-whenever-there-are-users feature. Keep in mind, don't build.
 - **Observability stack** — structured logs now; metrics/tracing when there's traffic worth measuring.
 

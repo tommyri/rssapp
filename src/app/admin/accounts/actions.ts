@@ -5,7 +5,13 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { db } from "@/db";
-import { type AccountStatus, accountStatuses, users } from "@/db/schema";
+import {
+  type AccountStatus,
+  accountAuditEvents,
+  accountStatuses,
+  users,
+} from "@/db/schema";
+import { accountAuditEventValues } from "@/lib/account-audit";
 import {
   isRegistrationMode,
   issueAccountInvitation,
@@ -59,22 +65,36 @@ export async function setAccountStatusAction(
     return { ok: false, message: "You cannot change your own account access." };
   }
 
-  const [account] = await db
-    .update(users)
-    .set({
-      status,
-      // A resumed account must sign in again; an old session cannot spring back
-      // to life after its owner deliberately suspended it.
-      sessionVersion: sql`${users.sessionVersion} + 1`,
-    })
-    .where(
-      and(
-        eq(users.id, accountId),
-        ne(users.id, owner.id),
-        eq(users.role, "member"),
-      ),
-    )
-    .returning({ email: users.email, status: users.status });
+  const account = await db.transaction(async (tx) => {
+    const [updated] = await tx
+      .update(users)
+      .set({
+        status,
+        // A resumed account must sign in again; an old session cannot spring back
+        // to life after its owner deliberately suspended it.
+        sessionVersion: sql`${users.sessionVersion} + 1`,
+      })
+      .where(
+        and(
+          eq(users.id, accountId),
+          ne(users.id, owner.id),
+          eq(users.role, "member"),
+        ),
+      )
+      .returning({ id: users.id, email: users.email, status: users.status });
+    if (!updated) return null;
+    await tx.insert(accountAuditEvents).values(
+      accountAuditEventValues({
+        actorUserId: owner.id,
+        targetUserId: updated.id,
+        eventType:
+          updated.status === "suspended"
+            ? "account_suspended"
+            : "account_restored",
+      }),
+    );
+    return updated;
+  });
 
   if (!account) {
     return { ok: false, message: "That account is no longer available." };
@@ -152,6 +172,13 @@ export async function transferOwnershipAction(
         sessionVersion: sql`${users.sessionVersion} + 1`,
       })
       .where(eq(users.id, recipient.id));
+    await tx.insert(accountAuditEvents).values(
+      accountAuditEventValues({
+        actorUserId: currentOwner.id,
+        targetUserId: recipient.id,
+        eventType: "ownership_transferred",
+      }),
+    );
 
     return recipient.email;
   });
@@ -175,13 +202,13 @@ export async function setRegistrationModeAction(
   _prev: RegistrationPolicyActionState,
   formData: FormData,
 ): Promise<RegistrationPolicyActionState> {
-  await getCurrentOwner();
+  const owner = await getCurrentOwner();
   const mode = String(formData.get("registrationMode") ?? "");
   if (!isRegistrationMode(mode)) {
     return { ok: false, message: "Choose a valid registration policy." };
   }
 
-  await setRegistrationMode(mode);
+  await setRegistrationMode({ mode, actorUserId: owner.id });
   revalidatePath("/admin/accounts");
   revalidatePath("/signup");
   return { ok: true, message: registrationModeDescription(mode) };

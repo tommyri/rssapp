@@ -4,6 +4,10 @@ import { AccountStatusControl } from "@/components/account-status-control";
 import { BackLink } from "@/components/back-link";
 import { OwnershipTransferControl } from "@/components/ownership-transfer-control";
 import {
+  accountAuditEventDescription,
+  listAccountAuditEvents,
+} from "@/lib/account-audit";
+import {
   getRegistrationMode,
   listPendingAccountInvites,
 } from "@/lib/account-invitations";
@@ -15,13 +19,24 @@ function dateLabel(value: Date | null) {
   return value ? value.toLocaleDateString("en-GB") : "Never";
 }
 
+function activityDate(value: Date) {
+  return value.toLocaleString("en-GB", {
+    day: "numeric",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
 export default async function AccountManagementPage() {
   await getCurrentOwner();
-  const [accounts, registrationMode, invitations] = await Promise.all([
-    listManagedAccounts(),
-    getRegistrationMode(),
-    listPendingAccountInvites(),
-  ]);
+  const [accounts, registrationMode, invitations, auditEvents] =
+    await Promise.all([
+      listManagedAccounts(),
+      getRegistrationMode(),
+      listPendingAccountInvites(),
+      listAccountAuditEvents(),
+    ]);
 
   return (
     <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-6 md:px-8">
@@ -80,6 +95,35 @@ export default async function AccountManagementPage() {
             </div>
           </div>
         ) : null}
+      </section>
+
+      <section className="mb-6 rounded-lg border p-4">
+        <div className="mb-4">
+          <h2 className="font-serif text-lg font-semibold">Recent activity</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Security and access changes from this owner console and operational
+            recovery commands.
+          </p>
+        </div>
+        {auditEvents.length ? (
+          <ol className="divide-y rounded-md border">
+            {auditEvents.map((event) => (
+              <li
+                key={event.id}
+                className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 px-3 py-2.5"
+              >
+                <p className="text-sm">{accountAuditEventDescription(event)}</p>
+                <p className="text-xs text-muted-foreground">
+                  {event.actorEmail} · {activityDate(event.createdAt)}
+                </p>
+              </li>
+            ))}
+          </ol>
+        ) : (
+          <p className="rounded-md border border-dashed px-3 py-4 text-sm text-muted-foreground">
+            No account administration changes have been recorded yet.
+          </p>
+        )}
       </section>
 
       <div className="overflow-x-auto rounded-lg border">

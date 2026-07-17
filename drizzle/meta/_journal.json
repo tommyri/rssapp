@@ -127,6 +127,13 @@
       "when": 1784317355811,
       "tag": "0017_panoramic_pretty_boy",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1784317793534,
+      "tag": "0018_brave_blindfold",
+      "breakpoints": true
     }
   ]
 }

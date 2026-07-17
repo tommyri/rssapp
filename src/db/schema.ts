@@ -93,6 +93,24 @@ export type AccountTokenKind = (typeof accountTokenKinds)[number];
 export const registrationModes = ["open", "invite_only", "closed"] as const;
 export type RegistrationMode = (typeof registrationModes)[number];
 
+export const accountAuditEventTypes = [
+  "account_suspended",
+  "account_restored",
+  "ownership_transferred",
+  "registration_mode_changed",
+  "invitation_issued",
+  "invitation_revoked",
+  "invitation_delivery_failed",
+] as const;
+export type AccountAuditEventType = (typeof accountAuditEventTypes)[number];
+
+export interface AccountAuditMetadata {
+  previousRegistrationMode?: RegistrationMode;
+  registrationMode?: RegistrationMode;
+  invitationEmail?: string;
+  invitationId?: number;
+}
+
 /** One global row: product-wide configuration must not live on an owner profile. */
 export const instanceSettings = pgTable(
   "instance_settings",
@@ -162,6 +180,37 @@ export const authRateLimits = pgTable(
     primaryKey({ columns: [t.bucket, t.keyHash] }),
     index("auth_rate_limits_updated_at_idx").on(t.updatedAt),
     check("auth_rate_limits_attempts_check", sql`${t.attempts} >= 0`),
+  ],
+);
+
+/** Immutable operator history for security-sensitive account administration. */
+export const accountAuditEvents = pgTable(
+  "account_audit_events",
+  {
+    id: id(),
+    // Null identifies a break-glass operational command with no web-session actor.
+    actorUserId: bigint("actor_user_id", { mode: "number" }).references(
+      () => users.id,
+      { onDelete: "set null" },
+    ),
+    targetUserId: bigint("target_user_id", { mode: "number" }).references(
+      () => users.id,
+      { onDelete: "set null" },
+    ),
+    eventType: text("event_type").notNull().$type<AccountAuditEventType>(),
+    metadata: jsonb("metadata")
+      .notNull()
+      .default({})
+      .$type<AccountAuditMetadata>(),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    index("account_audit_events_created_at_idx").on(t.createdAt),
+    index("account_audit_events_target_user_id_idx").on(t.targetUserId),
+    check(
+      "account_audit_events_type_check",
+      sql`${t.eventType} in ('account_suspended', 'account_restored', 'ownership_transferred', 'registration_mode_changed', 'invitation_issued', 'invitation_revoked', 'invitation_delivery_failed')`,
+    ),
   ],
 );
 

@@ -77,6 +77,8 @@ signup on an empty install, or an explicit operator transfer for a multi-account
   short-lived, hashed owner-issued signup invitations.
 - `auth_rate_limits` — transient, salted-hash counters for public account endpoints;
   no raw address or network source is retained.
+- `account_audit_events` — immutable, indexed operational history for owner actions;
+  actor/target IDs are retained while readable details stay narrowly scoped to the event.
 - `feeds` — url, title, site_url, etag, last_modified, next_fetch_at, fetch_interval_minutes, error state (shared across users)
 - `subscriptions` — user ↔ feed, custom title, folder_id, per-feed `settings` (`fullContent`, `autoReadDays`, `sortOrder`, `defaultUnreadOnly`)
 - `folders` — per user

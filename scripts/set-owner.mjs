@@ -57,6 +57,10 @@ async function main() {
       "update users set role = 'owner', session_version = session_version + 1 where id = $1",
       [user.id],
     );
+    await client.query(
+      "insert into account_audit_events (actor_user_id, target_user_id, event_type, metadata) values (null, $1, 'ownership_transferred', '{}'::jsonb)",
+      [user.id],
+    );
     await client.query("commit");
     console.log(`Ownership transferred to ${user.email}.`);
     console.log("All affected sessions were signed out.");
