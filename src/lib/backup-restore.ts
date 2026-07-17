@@ -5,6 +5,7 @@ import {
   feeds,
   folders,
   highlights,
+  itemAudioProgress,
   itemLabels,
   itemStates,
   items,
@@ -102,8 +103,34 @@ const backupDocumentSchema = z.object({
       readLaterAt: nullableTimestamp,
       readingProgress: z.number().min(0).max(1).nullable(),
       readingProgressUpdatedAt: nullableTimestamp,
+      // Kept as a migration path for backups produced while enclosures had
+      // one item-level position rather than source-specific positions.
+      audioProgressSeconds: z
+        .number()
+        .finite()
+        .min(0)
+        .nullable()
+        .optional()
+        .default(null),
+      audioProgressUpdatedAt: nullableTimestamp.optional().default(null),
     }),
   ),
+  audioProgress: z
+    .array(
+      z.object({
+        feedUrl: httpUrl,
+        guid: shortText.min(1),
+        audioUrl: httpUrl,
+        progressSeconds: z
+          .number()
+          .finite()
+          .min(0)
+          .max(60 * 60 * 24 * 31),
+        updatedAt: timestamp,
+      }),
+    )
+    .optional()
+    .default([]),
   labels: z.array(
     z.object({
       name: z.string().min(1).max(MAX_LABEL_NAME_LENGTH),
@@ -576,10 +603,10 @@ export async function restoreBackup(
               title: item.title,
               author: item.author,
               contentHtml: item.contentHtml
-                ? sanitizeArticleHtml(item.contentHtml)
+                ? sanitizeArticleHtml(item.contentHtml, item.url)
                 : null,
               fullContentHtml: item.fullContentHtml
-                ? sanitizeArticleHtml(item.fullContentHtml)
+                ? sanitizeArticleHtml(item.fullContentHtml, item.url)
                 : null,
               audioUrl: safeHttpUrl(item.audioUrl),
               audioType: item.audioType,
@@ -592,6 +619,12 @@ export async function restoreBackup(
     }
 
     const itemIdByKey = new Map<string, number>();
+    const audioUrlByItemKey = new Map(
+      backup.items.map((item) => [
+        itemKey(item.feedUrl, item.guid),
+        item.audioUrl,
+      ]),
+    );
     const guidsByFeed = new Map<string, string[]>();
     for (const item of backup.items) {
       const guids = guidsByFeed.get(item.feedUrl) ?? [];
@@ -634,7 +667,8 @@ export async function restoreBackup(
         .insert(itemStates)
         .values(
           batch.flatMap((state) => {
-            const itemId = itemIdByKey.get(itemKey(state.feedUrl, state.guid));
+            const key = itemKey(state.feedUrl, state.guid);
+            const itemId = itemIdByKey.get(key);
             return itemId
               ? [
                   {
@@ -657,6 +691,45 @@ export async function restoreBackup(
           }),
         )
         .onConflictDoNothing();
+    }
+
+    const audioProgressValues = new Map<
+      string,
+      {
+        userId: number;
+        itemId: number;
+        audioUrl: string;
+        progressSeconds: number;
+        updatedAt: Date;
+      }
+    >();
+    for (const state of backup.itemStates) {
+      const key = itemKey(state.feedUrl, state.guid);
+      const itemId = itemIdByKey.get(key);
+      const audioUrl = audioUrlByItemKey.get(key);
+      if (itemId && audioUrl && state.audioProgressSeconds !== null) {
+        audioProgressValues.set(`${itemId}\u0000${audioUrl}`, {
+          userId,
+          itemId,
+          audioUrl,
+          progressSeconds: state.audioProgressSeconds,
+          updatedAt: date(state.audioProgressUpdatedAt) ?? new Date(),
+        });
+      }
+    }
+    for (const progress of backup.audioProgress) {
+      const itemId = itemIdByKey.get(itemKey(progress.feedUrl, progress.guid));
+      if (!itemId) continue;
+      audioProgressValues.set(`${itemId}\u0000${progress.audioUrl}`, {
+        userId,
+        itemId,
+        audioUrl: progress.audioUrl,
+        progressSeconds: progress.progressSeconds,
+        updatedAt: new Date(progress.updatedAt),
+      });
+    }
+    for (const batch of chunks([...audioProgressValues.values()])) {
+      await tx.insert(itemAudioProgress).values(batch).onConflictDoNothing();
     }
 
     const itemLabelValues = backup.itemLabels.flatMap((assignment) => {
@@ -686,7 +759,7 @@ export async function restoreBackup(
             siteName: page.siteName,
             excerpt: page.excerpt,
             contentHtml: page.contentHtml
-              ? sanitizeArticleHtml(page.contentHtml)
+              ? sanitizeArticleHtml(page.contentHtml, page.url)
               : null,
             status: page.status,
             error: page.error,

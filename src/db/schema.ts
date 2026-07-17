@@ -484,6 +484,28 @@ export const itemStates = pgTable(
   ],
 );
 
+/** One independently resumable source for each audio element in a feed item. */
+export const itemAudioProgress = pgTable(
+  "item_audio_progress",
+  {
+    userId: bigint("user_id", { mode: "number" })
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    itemId: bigint("item_id", { mode: "number" })
+      .notNull()
+      .references(() => items.id, { onDelete: "cascade" }),
+    audioUrl: text("audio_url").notNull(),
+    progressSeconds: real("progress_seconds").notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.userId, t.itemId, t.audioUrl] }),
+    index("item_audio_progress_user_item_idx").on(t.userId, t.itemId),
+  ],
+);
+
 // Per-user organization, shared by feed articles and saved web pages through
 // separate join tables. Labels are intentionally independent of subscriptions:
 // an article can remain labeled even if it is also saved to Read later.

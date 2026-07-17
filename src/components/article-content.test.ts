@@ -1,5 +1,6 @@
 import { parseHTML } from "linkedom";
 import { describe, expect, it } from "vitest";
+import { bindArticleAudioProgress } from "@/lib/article-audio-progress";
 import { renderHighlights, syncHighlightNotes } from "./article-content";
 
 function withDom<T>(html: string, run: (root: HTMLElement) => T): T {
@@ -178,5 +179,64 @@ describe("renderHighlights", () => {
       expect(mark?.textContent).toBe("important");
       expect(mark?.dataset.readerNote).toBe("true");
     });
+  });
+});
+
+describe("bindArticleAudioProgress", () => {
+  it("restores and persists playback for audio embedded in article HTML", () => {
+    withDom(
+      '<audio src="https://cdn.example.com/episodes/recap.m4a"></audio>',
+      (root) => {
+        const audio = root.querySelector("audio") as HTMLAudioElement;
+        const AudioEvent = root.ownerDocument.defaultView?.Event;
+        if (!AudioEvent) throw new Error("Test DOM does not provide Event.");
+        Object.defineProperties(audio, {
+          currentTime: { configurable: true, value: 0, writable: true },
+          duration: { configurable: true, value: Number.POSITIVE_INFINITY },
+        });
+        const changes: Array<[string, number | null]> = [];
+        const cleanup = bindArticleAudioProgress(root, {
+          initialProgressByUrl: {
+            "https://cdn.example.com/episodes/recap.m4a": 3_600,
+          },
+          onProgressChange: (url, progress) => changes.push([url, progress]),
+        });
+
+        audio.dispatchEvent(new AudioEvent("loadedmetadata"));
+        expect(audio.currentTime).toBe(3_600);
+
+        audio.currentTime = 3_630;
+        audio.dispatchEvent(new AudioEvent("seeked"));
+        expect(changes).toEqual([
+          ["https://cdn.example.com/episodes/recap.m4a", 3_630],
+        ]);
+
+        cleanup();
+      },
+    );
+  });
+
+  it("restores when audio metadata loaded before the binding is attached", () => {
+    withDom(
+      '<audio src="https://cdn.example.com/episodes/already-ready.m4a"></audio>',
+      (root) => {
+        const audio = root.querySelector("audio") as HTMLAudioElement;
+        Object.defineProperties(audio, {
+          currentTime: { configurable: true, value: 0, writable: true },
+          duration: { configurable: true, value: 3_600 },
+          readyState: { configurable: true, value: 1 },
+        });
+
+        const cleanup = bindArticleAudioProgress(root, {
+          initialProgressByUrl: {
+            "https://cdn.example.com/episodes/already-ready.m4a": 1_800,
+          },
+          onProgressChange: () => undefined,
+        });
+
+        expect(audio.currentTime).toBe(1_800);
+        cleanup();
+      },
+    );
   });
 });

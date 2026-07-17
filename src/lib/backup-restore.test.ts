@@ -123,4 +123,46 @@ describe("parseBackupDocument", () => {
 
     expect(() => parseBackupDocument(backup)).not.toThrow();
   });
+
+  it("keeps per-source audio positions while accepting older backups without them", () => {
+    const raw = validBackup();
+    const backup = parseBackupDocument({
+      ...raw,
+      itemStates: [
+        {
+          ...raw.itemStates[0],
+          audioProgressSeconds: 1_245.5,
+          audioProgressUpdatedAt: timestamp,
+        },
+      ],
+      audioProgress: [
+        {
+          feedUrl: raw.items[0].feedUrl,
+          guid: raw.items[0].guid,
+          audioUrl: "https://cdn.example.com/episode.m4a",
+          progressSeconds: 1_245.5,
+          updatedAt: timestamp,
+        },
+      ],
+    });
+
+    expect(backup.itemStates[0]).toMatchObject({
+      audioProgressSeconds: 1_245.5,
+      audioProgressUpdatedAt: timestamp,
+    });
+    expect(backup.audioProgress).toEqual([
+      {
+        feedUrl: raw.items[0].feedUrl,
+        guid: raw.items[0].guid,
+        audioUrl: "https://cdn.example.com/episode.m4a",
+        progressSeconds: 1_245.5,
+        updatedAt: timestamp,
+      },
+    ]);
+    expect(parseBackupDocument(raw).itemStates[0]).toMatchObject({
+      audioProgressSeconds: null,
+      audioProgressUpdatedAt: null,
+    });
+    expect(parseBackupDocument(raw).audioProgress).toEqual([]);
+  });
 });

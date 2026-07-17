@@ -70,7 +70,7 @@ export async function extractReadablePage(url: string): Promise<ReadablePage> {
     }
     return {
       status: "ok",
-      html: sanitizeArticleHtml(article.content),
+      html: sanitizeArticleHtml(article.content, url),
       title: clean(article.title),
       byline: clean(article.byline),
       siteName: clean(article.siteName),

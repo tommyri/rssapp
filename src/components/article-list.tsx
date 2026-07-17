@@ -48,10 +48,13 @@ import {
   useReaderKeyboard,
 } from "@/components/use-reader-keyboard";
 import { useReadingProgress } from "@/components/use-reading-progress";
+import { hasExpandedArticleContent } from "@/lib/article-display";
 import {
   type ArticleListDensity,
   articleListDensityClasses,
 } from "@/lib/article-list-density";
+import { withAudioProgress } from "@/lib/audio-progress";
+import { persistItemAudioProgress } from "@/lib/audio-progress-client";
 import { alsoInLabel } from "@/lib/duplicates";
 import type { EmbedLoadingPreferences } from "@/lib/embed-loading";
 import { relativeTime } from "@/lib/format";
@@ -879,25 +882,67 @@ export function ArticleList({
                         {item.pageError ??
                           "Couldn't fetch a readable copy of this page."}
                       </p>
-                    ) : contentHtml ? (
+                    ) : hasExpandedArticleContent(
+                        contentHtml,
+                        item.audioUrl,
+                      ) ? (
                       <div ref={articleRef}>
                         {item.audioUrl ? (
                           <ArticleAudioPlayer
+                            itemId={item.id}
                             url={item.audioUrl}
                             type={item.audioType}
+                            initialProgress={
+                              item.audioProgress[item.audioUrl] ?? null
+                            }
+                            onProgressChange={(audioUrl, progress) =>
+                              setEntryState([key], {
+                                audioProgress: withAudioProgress(
+                                  item.audioProgress,
+                                  audioUrl,
+                                  progress,
+                                ),
+                              })
+                            }
                           />
                         ) : null}
-                        <ArticleContent
-                          html={contentHtml}
-                          embedLoading={embedLoading}
-                          highlights={highlights}
-                          focusHighlightId={focusHighlightId}
-                          onCreateHighlight={(anchor, note) =>
-                            createHighlightForItem(item, anchor, note)
-                          }
-                          onUpdateHighlightNote={updateHighlightNote}
-                          onDeleteHighlight={removeHighlight}
-                        />
+                        {contentHtml ? (
+                          <ArticleContent
+                            html={contentHtml}
+                            embedLoading={embedLoading}
+                            itemId={item.kind === "item" ? item.id : undefined}
+                            audioProgress={item.audioProgress}
+                            onAudioProgressChange={
+                              item.kind === "item"
+                                ? (audioUrl, progress) => {
+                                    setEntryState([key], {
+                                      audioProgress: withAudioProgress(
+                                        item.audioProgress,
+                                        audioUrl,
+                                        progress,
+                                      ),
+                                    });
+                                    return persistItemAudioProgress({
+                                      itemId: item.id,
+                                      audioUrl,
+                                      progress,
+                                    });
+                                  }
+                                : undefined
+                            }
+                            highlights={highlights}
+                            focusHighlightId={focusHighlightId}
+                            onCreateHighlight={(anchor, note) =>
+                              createHighlightForItem(item, anchor, note)
+                            }
+                            onUpdateHighlightNote={updateHighlightNote}
+                            onDeleteHighlight={removeHighlight}
+                          />
+                        ) : (
+                          <p className="text-sm text-muted-foreground italic">
+                            This episode does not include article text.
+                          </p>
+                        )}
                       </div>
                     ) : (
                       <p className="text-sm text-muted-foreground italic">

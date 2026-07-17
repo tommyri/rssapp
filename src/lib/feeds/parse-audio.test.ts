@@ -43,4 +43,31 @@ describe("podcast enclosures", () => {
       audioType: "audio/ogg",
     });
   });
+
+  it("resolves episode artwork against the entry URL before storing it", async () => {
+    const feed = await parseFeed(
+      JSON.stringify({
+        version: "https://jsonfeed.org/version/1.1",
+        title: "Show",
+        items: [
+          {
+            id: "ep-3",
+            url: "https://podcasts.example.com/shows/episode-3",
+            content_html: '<img src="/img/podcast/rss.png">',
+            attachments: [
+              {
+                url: "https://cdn.example.com/episode.mp3",
+                mime_type: "audio/mpeg",
+              },
+            ],
+          },
+        ],
+      }),
+      "application/feed+json",
+    );
+
+    expect(feed.items[0].contentHtml).toContain(
+      'src="https://podcasts.example.com/img/podcast/rss.png"',
+    );
+  });
 });

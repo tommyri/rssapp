@@ -1,9 +1,11 @@
 "use client";
 
 import { HighlighterIcon, PencilIcon, XIcon } from "lucide-react";
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/button";
+import { bindArticleAudioProgress } from "@/lib/article-audio-progress";
+import type { AudioProgressByUrl } from "@/lib/audio-progress";
 import {
   type EmbedLoadingPreferences,
   resolveEmbedLoading,
@@ -258,6 +260,9 @@ function activateEmbed(link: HTMLAnchorElement) {
 export function ArticleContent({
   html,
   embedLoading,
+  itemId,
+  audioProgress = {},
+  onAudioProgressChange,
   highlights = [],
   focusHighlightId,
   onCreateHighlight,
@@ -266,6 +271,13 @@ export function ArticleContent({
 }: {
   html: string;
   embedLoading: EmbedLoadingPreferences;
+  /** Feed item id when article-embedded audio should resume across devices. */
+  itemId?: number;
+  audioProgress?: AudioProgressByUrl;
+  onAudioProgressChange?: (
+    url: string,
+    progress: number | null,
+  ) => Promise<boolean>;
   highlights?: ArticleHighlight[];
   /** Highlight-library source links open and center this persisted annotation. */
   focusHighlightId?: number;
@@ -283,11 +295,17 @@ export function ArticleContent({
   const renderedHtml = deferEmbedsHtml(html);
   const ref = useRef<HTMLDivElement>(null);
   const sourceHtmlRef = useRef(renderedHtml);
+  const audioProgressRef = useRef(audioProgress);
+  const onAudioProgressChangeRef = useRef(onAudioProgressChange);
   const focusedHighlightRef = useRef<number | null>(null);
   const noteInputRef = useRef<HTMLTextAreaElement>(null);
   const highlightDialogRef = useRef<HTMLElement>(null);
   const selectionDialogRef = useRef<HTMLDivElement>(null);
   const [articleHtml, setArticleHtml] = useState(renderedHtml);
+  // React treats a freshly-created dangerouslySetInnerHTML object as an update.
+  // Keep its identity stable when reader state changes so native media and text
+  // selection remain attached to the existing article DOM.
+  const articleMarkup = useMemo(() => ({ __html: articleHtml }), [articleHtml]);
   const [zoomSrc, setZoomSrc] = useState<string | null>(null);
   const [pendingHighlight, setPendingHighlight] =
     useState<PendingHighlight | null>(null);
@@ -302,6 +320,41 @@ export function ArticleContent({
   );
   const [editedNote, setEditedNote] = useState("");
   const [savingNoteId, setSavingNoteId] = useState<number | null>(null);
+  const [audioSaveError, setAudioSaveError] = useState<string | null>(null);
+  audioProgressRef.current = audioProgress;
+  onAudioProgressChangeRef.current = onAudioProgressChange;
+
+  useEffect(() => {
+    const container = ref.current;
+    if (
+      !articleHtml ||
+      !container ||
+      itemId === undefined ||
+      !onAudioProgressChangeRef.current
+    ) {
+      return;
+    }
+    return bindArticleAudioProgress(container, {
+      initialProgressByUrl: audioProgressRef.current,
+      onProgressChange: (audioUrl, progress) => {
+        const persist = onAudioProgressChangeRef.current;
+        if (!persist) return;
+        void persist(audioUrl, progress)
+          .then((saved) => {
+            setAudioSaveError(
+              saved
+                ? null
+                : "Couldn't save listening position. Try playing or pausing again.",
+            );
+          })
+          .catch(() => {
+            setAudioSaveError(
+              "Couldn't save listening position. Try playing or pausing again.",
+            );
+          });
+      },
+    });
+  }, [articleHtml, itemId]);
 
   useEffect(() => {
     if (!renderedHtml) return;
@@ -596,7 +649,7 @@ export function ArticleContent({
           className="article-content"
           // Sanitized at ingest/extraction (src/lib/feeds/sanitize.ts).
           // biome-ignore lint/security/noDangerouslySetInnerHtml: content is sanitized before storage
-          dangerouslySetInnerHTML={{ __html: articleHtml }}
+          dangerouslySetInnerHTML={articleMarkup}
         />
         {highlightPicker && pickerHighlights.length > 1 ? (
           <aside
@@ -803,6 +856,11 @@ export function ArticleContent({
           </div>
         ) : null}
       </div>
+      {audioSaveError ? (
+        <output className="mt-2 block text-xs text-destructive">
+          {audioSaveError}
+        </output>
+      ) : null}
       {zoomSrc
         ? createPortal(
             <button

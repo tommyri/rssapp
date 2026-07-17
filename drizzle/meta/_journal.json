@@ -162,6 +162,27 @@
       "when": 1784320851883,
       "tag": "0022_redundant_smiling_tiger",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1784321400464,
+      "tag": "0023_curly_nextwave",
+      "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1784323963652,
+      "tag": "0024_familiar_ironclad",
+      "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1784326062887,
+      "tag": "0025_low_vance_astro",
+      "breakpoints": true
     }
   ]
 }

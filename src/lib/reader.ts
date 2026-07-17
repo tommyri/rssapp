@@ -5,6 +5,7 @@ import { db } from "@/db";
 import {
   feeds,
   folders,
+  itemAudioProgress,
   itemLabels,
   itemStates,
   items as itemsTable,
@@ -16,11 +17,13 @@ import {
   type ArticleListDensity,
   normalizeArticleListDensity,
 } from "@/lib/article-list-density";
+import type { AudioProgressByUrl } from "@/lib/audio-progress";
 import { otherFeedTitles } from "@/lib/duplicates";
 import {
   type EmbedLoadingPreferences,
   normalizeEmbedLoadingPreferences,
 } from "@/lib/embed-loading";
+import { normalizeStoredArticleHtml } from "@/lib/feeds";
 import { getHighlightTarget } from "@/lib/highlights";
 import { labelsForTargets, type ReaderLabel } from "@/lib/labels";
 import type { ExportEntry } from "@/lib/opml";
@@ -232,6 +235,8 @@ export interface ReaderItem {
   readLater: boolean;
   /** Fraction through the readable article body; null when not resumable. */
   readingProgress: number | null;
+  /** Absolute seconds for each audio source embedded by this item. */
+  audioProgress: AudioProgressByUrl;
   /**
    * Set only in collapsed multi-feed views (duplicate filtering): how many
    * copies of this story the user's feeds carry, and the titles of the *other*
@@ -316,6 +321,31 @@ async function attachReaderLabels(
   readerItems: ReaderItem[],
 ): Promise<ReaderItem[]> {
   if (readerItems.length === 0) return readerItems;
+  const itemIds = readerItems
+    .filter((item) => item.kind === "item")
+    .map((item) => item.id);
+  const savedAudioProgress =
+    itemIds.length > 0
+      ? await db
+          .select({
+            itemId: itemAudioProgress.itemId,
+            audioUrl: itemAudioProgress.audioUrl,
+            progressSeconds: itemAudioProgress.progressSeconds,
+          })
+          .from(itemAudioProgress)
+          .where(
+            and(
+              eq(itemAudioProgress.userId, userId),
+              inArray(itemAudioProgress.itemId, itemIds),
+            ),
+          )
+      : [];
+  const audioProgressByItem = new Map<number, AudioProgressByUrl>();
+  for (const audio of savedAudioProgress) {
+    const current = audioProgressByItem.get(audio.itemId) ?? {};
+    current[audio.audioUrl] = audio.progressSeconds;
+    audioProgressByItem.set(audio.itemId, current);
+  }
   const byTarget = await labelsForTargets(
     userId,
     readerItems.map((item) =>
@@ -324,10 +354,21 @@ async function attachReaderLabels(
         : { kind: "page", savedPageId: item.id },
     ),
   );
-  return readerItems.map((item) => ({
-    ...item,
-    labels: byTarget.get(`${item.kind}:${item.id}`) ?? [],
-  }));
+  return readerItems.map((item) => {
+    const contentHtml = normalizeStoredArticleHtml(item.contentHtml, item.url);
+    const fullContentHtml = normalizeStoredArticleHtml(
+      item.fullContentHtml,
+      item.url,
+    );
+    return {
+      ...item,
+      contentHtml,
+      fullContentHtml,
+      audioProgress:
+        item.kind === "item" ? (audioProgressByItem.get(item.id) ?? {}) : {},
+      labels: byTarget.get(`${item.kind}:${item.id}`) ?? [],
+    };
+  });
 }
 
 /** One page of articles for a view, keyset-paginated (newest-first unless feed is oldest-first). */
@@ -380,6 +421,7 @@ export async function listItems(
       starred: sql<boolean>`coalesce(${itemStates.starred}, false)`,
       readLater: sql<boolean>`coalesce(${itemStates.readLater}, false)`,
       readingProgress: itemStates.readingProgress,
+      audioProgress: sql<AudioProgressByUrl>`'{}'::jsonb`,
     })
     .from(itemsTable)
     .innerJoin(
@@ -466,6 +508,7 @@ async function listItemsCollapsed(
           "group_read_later",
         ),
       readingProgress: itemStates.readingProgress,
+      audioProgress: sql<AudioProgressByUrl>`'{}'::jsonb`.as("audio_progress"),
       dupCount:
         sql<number>`cast(count(*) over (partition by ${collapseKey}) as int)`.as(
           "dup_count",
@@ -521,6 +564,7 @@ async function listItemsCollapsed(
       starred: grouped.groupStarred,
       readLater: grouped.groupReadLater,
       readingProgress: grouped.readingProgress,
+      audioProgress: grouped.audioProgress,
       dupCount: grouped.dupCount,
       dupFeedTitles: grouped.dupFeedTitles,
     })
@@ -577,6 +621,7 @@ export async function searchItems(
       starred: sql<boolean>`coalesce(${itemStates.starred}, false)`,
       readLater: sql<boolean>`coalesce(${itemStates.readLater}, false)`,
       readingProgress: itemStates.readingProgress,
+      audioProgress: sql<AudioProgressByUrl>`'{}'::jsonb`,
     })
     .from(itemsTable)
     .innerJoin(
@@ -633,6 +678,7 @@ function savedPageToItem(p: SavedPage): ReaderItem {
     starred: false,
     readLater: true,
     readingProgress: p.readingProgress,
+    audioProgress: {},
     pageStatus: p.status,
     pageError: p.error,
   };
@@ -986,6 +1032,60 @@ export async function setItemReadingProgress(
       target: [itemStates.userId, itemStates.itemId],
       set: { readingProgress, readingProgressUpdatedAt: new Date() },
     });
+}
+
+/** Persist a listener's position only when the article remains in their reader. */
+export async function setItemAudioProgress(
+  userId: number,
+  itemId: number,
+  audioUrl: string,
+  audioProgressSeconds: number | null,
+): Promise<boolean> {
+  const [subscribedItem] = await db
+    .select({ id: itemsTable.id })
+    .from(itemsTable)
+    .innerJoin(
+      subscriptions,
+      and(
+        eq(subscriptions.feedId, itemsTable.feedId),
+        eq(subscriptions.userId, userId),
+      ),
+    )
+    .where(eq(itemsTable.id, itemId))
+    .limit(1);
+  if (!subscribedItem) return false;
+
+  const updatedAt = new Date();
+  if (audioProgressSeconds === null) {
+    await db
+      .delete(itemAudioProgress)
+      .where(
+        and(
+          eq(itemAudioProgress.userId, userId),
+          eq(itemAudioProgress.itemId, itemId),
+          eq(itemAudioProgress.audioUrl, audioUrl),
+        ),
+      );
+    return true;
+  }
+  await db
+    .insert(itemAudioProgress)
+    .values({
+      userId,
+      itemId,
+      audioUrl,
+      progressSeconds: audioProgressSeconds,
+      updatedAt,
+    })
+    .onConflictDoUpdate({
+      target: [
+        itemAudioProgress.userId,
+        itemAudioProgress.itemId,
+        itemAudioProgress.audioUrl,
+      ],
+      set: { progressSeconds: audioProgressSeconds, updatedAt },
+    });
+  return true;
 }
 
 /** The user's duplicate-collapsing preference (on unless explicitly disabled). */

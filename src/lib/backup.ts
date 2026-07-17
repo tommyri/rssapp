@@ -6,6 +6,7 @@ import {
   feeds,
   folders,
   highlights,
+  itemAudioProgress,
   itemLabels,
   itemStates,
   items,
@@ -60,6 +61,7 @@ export async function exportUserBackup(userId: number) {
     subscriptionRows,
     subscribedItemRows,
     stateRows,
+    audioProgressRows,
     labelRows,
     itemLabelRows,
     ruleRows,
@@ -137,6 +139,23 @@ export async function exportUserBackup(userId: number) {
       .innerJoin(feeds, eq(feeds.id, items.feedId))
       .where(eq(itemStates.userId, userId))
       .orderBy(asc(feeds.url), asc(items.publishedAt), asc(items.id)),
+    db
+      .select({
+        feedUrl: feeds.url,
+        guid: items.guid,
+        audioUrl: itemAudioProgress.audioUrl,
+        progressSeconds: itemAudioProgress.progressSeconds,
+        updatedAt: itemAudioProgress.updatedAt,
+      })
+      .from(itemAudioProgress)
+      .innerJoin(items, eq(items.id, itemAudioProgress.itemId))
+      .innerJoin(feeds, eq(feeds.id, items.feedId))
+      .where(eq(itemAudioProgress.userId, userId))
+      .orderBy(
+        asc(feeds.url),
+        asc(items.guid),
+        asc(itemAudioProgress.audioUrl),
+      ),
     db
       .select({ name: labels.name, createdAt: labels.createdAt })
       .from(labels)
@@ -351,6 +370,13 @@ export async function exportUserBackup(userId: number) {
       readLaterAt: iso(state.readLaterAt),
       readingProgress: state.readingProgress,
       readingProgressUpdatedAt: iso(state.readingProgressUpdatedAt),
+    })),
+    audioProgress: audioProgressRows.map((progress) => ({
+      feedUrl: progress.feedUrl,
+      guid: progress.guid,
+      audioUrl: progress.audioUrl,
+      progressSeconds: progress.progressSeconds,
+      updatedAt: iso(progress.updatedAt),
     })),
     labels: labelRows.map((label) => ({
       name: label.name,

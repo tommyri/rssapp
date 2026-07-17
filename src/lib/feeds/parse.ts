@@ -67,7 +67,9 @@ async function parseXml(xml: string): Promise<ParsedFeed> {
       url: item.link ?? null,
       title: item.title ?? null,
       author: raw.dcCreator ?? item.creator ?? null,
-      contentHtml: html ? sanitizeArticleHtml(html) : null,
+      contentHtml: html
+        ? sanitizeArticleHtml(html, item.link ?? feed.link)
+        : null,
       ...audio,
       publishedAt: toDate(item.isoDate ?? item.pubDate),
     };
@@ -127,7 +129,9 @@ function parseJsonFeed(body: string): ParsedFeed {
       url: item.url ?? null,
       title: item.title ?? null,
       author: item.author?.name ?? item.authors?.[0]?.name ?? null,
-      contentHtml: html ? sanitizeArticleHtml(html) : null,
+      contentHtml: html
+        ? sanitizeArticleHtml(html, item.url ?? doc.home_page_url)
+        : null,
       ...audio,
       publishedAt: toDate(item.date_published),
     };
