@@ -15,7 +15,7 @@ The stack in use, chosen for: one codebase, boring/durable choices, easy self-ho
 | Sanitization | `sanitize-html` | Never render feed HTML unsanitized |
 | Content extraction | `@mozilla/readability` + `linkedom` | For truncated feeds |
 | Styling / UI | Tailwind CSS v4 + Radix UI (shadcn-style) | Fast to build, easy to customize |
-| Auth | Auth.js credentials + account lifecycle | Verified email, recovery, and active-account enforcement |
+| Auth | Auth.js credentials + optional Google OAuth | Verified email, recovery, explicit provider linking, and active-account enforcement |
 | Validation | Zod | Server-action inputs, feed URL forms |
 | Testing | Vitest | Unit/parsing tests (E2E via Playwright is a later addition) |
 | Lint/format | Biome | One tool instead of ESLint+Prettier |
@@ -41,7 +41,7 @@ No Redis, no BullMQ — a `fetch_log` table plus `next_fetch_at` on feeds is our
 **Consequence:** we need a long-running Node server. That rules out Vercel/serverless as the primary target and is why Docker on a home server/VPS is the deployment plan.
 
 ### Auth.js for a real account lifecycle
-Auth.js credentials gives us solid session handling while the application owns the
+Auth.js gives us solid session handling while the application owns the
 product-specific lifecycle: verified email, one-time recovery links, suspension, and
 session revocation. `getCurrentUserId()` re-resolves a JWT against the active account on
 every protected request, so a revoked session or suspended account cannot keep reading
@@ -50,8 +50,10 @@ sign-in, and onboarding records completion separately so existing readers are ne
 surprised by the new-user flow. The single deployment owner is selected safely (the first
 signup on an empty install, or an explicit operator transfer for a multi-account upgrade)
   and has an owner-only account console. The owner can choose open, invitation-only, or
-  closed registration without baking a public-access decision into a deployment; social
-  identities and staff roles remain later work.
+  closed registration without baking a public-access decision into a deployment.
+  Google is optional and maps its stable provider subject to a local account only after
+  an explicit Settings link (or during new-account creation); a matching email alone is
+  never used to merge identities. Staff roles remain later work.
 
 ## Architecture sketch
 
@@ -68,7 +70,7 @@ signup on an empty install, or an explicit operator transfer for a multi-account
 
 ### Core data model
 
-- `users` — product account: email, password hash, verification/status/session lifecycle,
+- `users` — product account: email, optional password hash, verification/status/session lifecycle,
   profile-ready fields, and reader `settings` (e.g. `autoReadDays`). Everything user-owned
   hangs off it.
 - `account_tokens` — hashed, one-time, expiring email-verification, email-change, and
@@ -79,6 +81,8 @@ signup on an empty install, or an explicit operator transfer for a multi-account
   no raw address or network source is retained.
 - `account_audit_events` — immutable, indexed operational history for owner actions;
   actor/target IDs are retained while readable details stay narrowly scoped to the event.
+- `oauth_identities` + `oauth_intents` — stable external-provider subjects and short-lived,
+  hashed, one-time handoffs for explicit account linking or policy-controlled signup.
 - `feeds` — url, title, site_url, etag, last_modified, next_fetch_at, fetch_interval_minutes, error state (shared across users)
 - `subscriptions` — user ↔ feed, custom title, folder_id, per-feed `settings` (`fullContent`, `autoReadDays`, `sortOrder`, `defaultUnreadOnly`)
 - `folders` — per user

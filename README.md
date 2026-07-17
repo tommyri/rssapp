@@ -26,16 +26,33 @@ The dev database URL defaults to the compose credentials (see `src/db/config.ts`
 
 ### Auth
 
-Auth.js (credentials). Config is split for edge compatibility:
+Auth.js (credentials, with optional Google OAuth). Config is split for edge compatibility:
 `src/auth.config.ts` (edge-safe, drives the route-protecting proxy in `src/proxy.ts` —
-Next 16's successor to `middleware.ts`) and `src/auth.ts` (the Credentials provider, which
-reads the DB). `getCurrentUserId()` in `src/lib/current-user.ts` is the single place a
+Next 16's successor to `middleware.ts`) and `src/auth.ts` (the providers, which
+read the DB). `getCurrentUserId()` in `src/lib/current-user.ts` is the single place a
 JWT becomes a current, active account: it also rejects suspended accounts and sessions
 invalidated by a password reset.
 
 Set **`AUTH_SECRET`** in production (used to sign session JWTs). In dev it falls back to an
 insecure constant so the app runs without config — generate a real one with
 `npx auth secret` before deploying.
+
+**Optional Google sign-in.** Configure both values below to show **Continue with
+Google** on sign-in and sign-up. Add `https://your-domain/api/auth/callback/google`
+as an authorized redirect URI in Google Cloud (or
+`http://localhost:3000/api/auth/callback/google` locally):
+
+```bash
+AUTH_GOOGLE_ID=...
+AUTH_GOOGLE_SECRET=...
+```
+
+Google accounts use their stable provider subject, never a matching email address, as
+their identity. A person with an existing password account must first sign in and choose
+**Settings → Account → Connect Google**; this prevents accidental account merges. New
+Google accounts follow the same open/invitation-only/closed registration policy and use
+Google's verified email, so no separate verification email is needed. Google-only users
+can set a local password later from Settings.
 
 **Account email.** Email verification, email changes, and password resets use Resend's
 HTTP API (no SMTP dependency). Configure these for production:

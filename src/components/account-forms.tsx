@@ -73,9 +73,11 @@ function AutoSaveStatus({
 export function ChangeEmailForm({
   currentEmail,
   emailVerified,
+  hasPassword,
 }: {
   currentEmail: string;
   emailVerified: boolean;
+  hasPassword: boolean;
 }) {
   const [state, formAction] = useActionState(changeEmailAction, initial);
   return (
@@ -97,16 +99,18 @@ export function ChangeEmailForm({
           required
         />
       </div>
-      <div className="space-y-2">
-        <Label htmlFor="email-current">Current password</Label>
-        <Input
-          id="email-current"
-          name="currentPassword"
-          type="password"
-          autoComplete="current-password"
-          required
-        />
-      </div>
+      {hasPassword ? (
+        <div className="space-y-2">
+          <Label htmlFor="email-current">Current password</Label>
+          <Input
+            id="email-current"
+            name="currentPassword"
+            type="password"
+            autoComplete="current-password"
+            required
+          />
+        </div>
+      ) : null}
       <p className="text-xs text-muted-foreground">
         Your current email stays active until you confirm the new one.
       </p>
@@ -426,21 +430,27 @@ export function ReadingPrefsForm({
   );
 }
 
-export function ChangePasswordForm() {
+export function ChangePasswordForm({ hasPassword }: { hasPassword: boolean }) {
   const [state, formAction] = useActionState(changePasswordAction, initial);
   return (
     <form action={formAction} className="space-y-3 rounded-lg border p-4">
       <h3 className="font-medium">Password</h3>
-      <div className="space-y-2">
-        <Label htmlFor="pw-current">Current password</Label>
-        <Input
-          id="pw-current"
-          name="currentPassword"
-          type="password"
-          autoComplete="current-password"
-          required
-        />
-      </div>
+      {hasPassword ? (
+        <div className="space-y-2">
+          <Label htmlFor="pw-current">Current password</Label>
+          <Input
+            id="pw-current"
+            name="currentPassword"
+            type="password"
+            autoComplete="current-password"
+            required
+          />
+        </div>
+      ) : (
+        <p className="text-xs text-muted-foreground">
+          Set a password if you would also like to sign in without Google.
+        </p>
+      )}
       <div className="space-y-2">
         <Label htmlFor="pw-new">New password</Label>
         <Input
@@ -461,7 +471,7 @@ export function ChangePasswordForm() {
           required
         />
       </div>
-      <SubmitButton label="Change password" />
+      <SubmitButton label={hasPassword ? "Change password" : "Set password"} />
       <Message state={state} />
     </form>
   );

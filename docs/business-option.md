@@ -10,7 +10,11 @@ Position: build v1 as a simple personal product, but treat "hosted service with 
 
 3. **The fetcher stays behind a module boundary.** The worker communicates with the rest of the app only through its own interface and the database — it never imports web-layer code. If a hosted service needs the fetcher split into its own container (or several), that's a deployment change, not a refactor.
 
-4. **Email is the login identity.** Auth.js credentials with email + password, not a username. Email is what password reset, notifications, and billing all need later.
+4. **Email is the login identity, with provider identities kept distinct.** Auth.js
+   supports credentials and an optional Google path. An OAuth account is keyed by its
+   provider subject, not by email; an existing account must explicitly connect it from
+   Settings. This removes signup friction without creating the risky automatic
+   email-account merge that becomes a support and security problem later.
 
 5. **Account lifecycle is server-enforced.** Users have an active/suspended state and a
    session version. Every protected request rechecks both against Postgres; password

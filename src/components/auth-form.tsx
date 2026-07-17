@@ -5,6 +5,7 @@ import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
 import { type AuthActionState, loginAction } from "@/app/login/actions";
 import { signUpAction } from "@/app/signup/actions";
+import { GoogleAuthButton } from "@/components/google-auth-controls";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -24,10 +25,12 @@ export function AuthForm({
   mode,
   notice,
   inviteToken,
+  googleEnabled,
 }: {
   mode: "login" | "signup";
   notice?: string;
   inviteToken?: string;
+  googleEnabled: boolean;
 }) {
   const isSignup = mode === "signup";
   const [state, formAction] = useActionState(
@@ -82,30 +85,40 @@ export function AuthForm({
           <p className="text-sm text-muted-foreground">{state.message}</p>
         ) : null}
         <SubmitButton label={isSignup ? "Create account" : "Sign in"} />
-        {!isSignup ? (
-          <>
-            <Link
-              href="/forgot-password"
-              className="block text-center text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
-            >
-              Forgot your password?
-            </Link>
-            <Link
-              href="/signup"
-              className="block text-center text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
-            >
-              Create an account
-            </Link>
-          </>
-        ) : (
+      </form>
+      {googleEnabled ? (
+        <div className="space-y-4">
+          <div className="flex items-center gap-3 text-xs text-muted-foreground">
+            <span className="h-px flex-1 bg-border" />
+            <span>or</span>
+            <span className="h-px flex-1 bg-border" />
+          </div>
+          <GoogleAuthButton mode={mode} inviteToken={inviteToken} />
+        </div>
+      ) : null}
+      {!isSignup ? (
+        <div className="space-y-3">
           <Link
-            href="/login"
+            href="/forgot-password"
             className="block text-center text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
           >
-            Already have an account? Sign in
+            Forgot your password?
           </Link>
-        )}
-      </form>
+          <Link
+            href="/signup"
+            className="block text-center text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+          >
+            Create an account
+          </Link>
+        </div>
+      ) : (
+        <Link
+          href="/login"
+          className="block text-center text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+        >
+          Already have an account? Sign in
+        </Link>
+      )}
     </div>
   );
 }

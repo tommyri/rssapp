@@ -34,7 +34,8 @@ export const users = pgTable(
   {
     id: id(),
     email: text("email").notNull().unique(),
-    passwordHash: text("password_hash").notNull(),
+    /** Null means this account uses an external identity until it sets a password. */
+    passwordHash: text("password_hash"),
     /** A user can read only after proving that they control this address. */
     emailVerifiedAt: timestamp("email_verified_at", { withTimezone: true }),
     /** Reserved for the account profile introduced with onboarding. */
@@ -92,6 +93,13 @@ export type AccountTokenKind = (typeof accountTokenKinds)[number];
 /** Controls whether a deployment accepts public, invited, or no new accounts. */
 export const registrationModes = ["open", "invite_only", "closed"] as const;
 export type RegistrationMode = (typeof registrationModes)[number];
+
+/** External sign-in identities are kept separate from product accounts. */
+export const oauthIdentityProviders = ["google"] as const;
+export type OAuthIdentityProvider = (typeof oauthIdentityProviders)[number];
+
+export const oauthIntentKinds = ["signup", "link"] as const;
+export type OAuthIntentKind = (typeof oauthIntentKinds)[number];
 
 export const accountAuditEventTypes = [
   "account_suspended",
@@ -156,6 +164,64 @@ export const accountInvites = pgTable(
     uniqueIndex("account_invites_pending_email_idx")
       .on(t.email)
       .where(sql`${t.acceptedAt} is null and ${t.revokedAt} is null`),
+  ],
+);
+
+/**
+ * An external provider subject belongs to exactly one rssapp account. Email is
+ * intentionally not part of this identity: addresses can change at either end
+ * and must never trigger an automatic account merge.
+ */
+export const oauthIdentities = pgTable(
+  "oauth_identities",
+  {
+    id: id(),
+    userId: bigint("user_id", { mode: "number" })
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    provider: text("provider").notNull().$type<OAuthIdentityProvider>(),
+    providerAccountId: text("provider_account_id").notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    uniqueIndex("oauth_identities_provider_subject_idx").on(
+      t.provider,
+      t.providerAccountId,
+    ),
+    uniqueIndex("oauth_identities_user_provider_idx").on(t.userId, t.provider),
+    check("oauth_identities_provider_check", sql`${t.provider} in ('google')`),
+  ],
+);
+
+/**
+ * One-time handoffs between a local account action and an OAuth callback. The
+ * browser receives only the raw secret in an HttpOnly cookie; Postgres holds
+ * its hash, the intent's expiry, and no Google profile data.
+ */
+export const oauthIntents = pgTable(
+  "oauth_intents",
+  {
+    id: id(),
+    provider: text("provider").notNull().$type<OAuthIdentityProvider>(),
+    kind: text("kind").notNull().$type<OAuthIntentKind>(),
+    tokenHash: text("token_hash").notNull(),
+    /** Present only when an authenticated account explicitly links a provider. */
+    userId: bigint("user_id", { mode: "number" }).references(() => users.id, {
+      onDelete: "cascade",
+    }),
+    /** Binds a link handoff to the session generation that initiated it. */
+    sessionVersion: integer("session_version"),
+    /** Hashed invite secret carried through an invitation-only Google signup. */
+    invitationTokenHash: text("invitation_token_hash"),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    usedAt: timestamp("used_at", { withTimezone: true }),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    uniqueIndex("oauth_intents_token_hash_idx").on(t.tokenHash),
+    index("oauth_intents_user_id_idx").on(t.userId),
+    check("oauth_intents_provider_check", sql`${t.provider} in ('google')`),
+    check("oauth_intents_kind_check", sql`${t.kind} in ('signup', 'link')`),
   ],
 );
 

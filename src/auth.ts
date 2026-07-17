@@ -1,6 +1,8 @@
 import { eq } from "drizzle-orm";
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
+import type { GoogleProfile } from "next-auth/providers/google";
+import Google from "next-auth/providers/google";
 import { authConfig } from "@/auth.config";
 import { db } from "@/db";
 import { users } from "@/db/schema";
@@ -9,7 +11,11 @@ import {
   clearAuthRateLimit,
   emailRateLimitKey,
 } from "@/lib/auth-rate-limit";
+import { completeGoogleAuthentication } from "@/lib/google-auth";
+import { googleOAuthCredentials } from "@/lib/google-auth-config";
 import { verifyPassword } from "@/lib/password";
+
+const googleCredentials = googleOAuthCredentials();
 
 export const { auth, handlers, signIn, signOut } = NextAuth({
   ...authConfig,
@@ -30,6 +36,7 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
           !user ||
           user.status !== "active" ||
           !user.emailVerifiedAt ||
+          !user.passwordHash ||
           !verifyPassword(password, user.passwordHash)
         )
           return null;
@@ -52,5 +59,26 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
         };
       },
     }),
+    ...(googleCredentials ? [Google(googleCredentials)] : []),
   ],
+  callbacks: {
+    ...authConfig.callbacks,
+    async signIn({ user, account, profile }) {
+      if (account?.provider !== "google") return true;
+      const result = await completeGoogleAuthentication(
+        profile as GoogleProfile | undefined,
+      );
+      if (result.kind === "redirect") return result.url;
+
+      // Auth.js is intentionally adapter-free here; binding its JWT user to
+      // the local account keeps all account lifecycle enforcement in our own
+      // current-user lookup instead of trusting a provider email on later requests.
+      Object.assign(user, {
+        id: String(result.account.id),
+        email: result.account.email,
+        sessionVersion: result.account.sessionVersion,
+      });
+      return true;
+    },
+  },
 });

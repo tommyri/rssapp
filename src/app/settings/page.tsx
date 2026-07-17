@@ -10,6 +10,7 @@ import {
 } from "@/components/account-forms";
 import { BackLink } from "@/components/back-link";
 import { BackupControls } from "@/components/backup-controls";
+import { GoogleAccountLink } from "@/components/google-auth-controls";
 import { OpmlControls } from "@/components/opml-controls";
 import { ReaderTypographyForm } from "@/components/reader-typography";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -18,6 +19,11 @@ import { users } from "@/db/schema";
 import { normalizeArticleListDensity } from "@/lib/article-list-density";
 import { getCurrentUserId } from "@/lib/current-user";
 import { normalizeEmbedLoadingPreferences } from "@/lib/embed-loading";
+import { hasGoogleIdentity } from "@/lib/google-auth";
+import {
+  googleAccountSettingsNotice,
+  isGoogleAuthEnabled,
+} from "@/lib/google-auth-config";
 // Categorized settings (docs/design-ux.md): the rail/pills are a selector, not
 // a scroll shortcut — one category renders at a time, driven by ?section=, so
 // switching never moves the page. URL-addressable: refresh, back, and the ⌘K
@@ -47,7 +53,7 @@ const SECTION_SCOPE: Record<SettingsSectionId, "Account" | "This device"> = {
 export default async function SettingsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ section?: string }>;
+  searchParams: Promise<{ section?: string; google?: string }>;
 }) {
   const params = await searchParams;
   const active = parseSettingsSection(params.section);
@@ -58,6 +64,10 @@ export default async function SettingsPage({
   const user = await db.query.users.findFirst({
     where: eq(users.id, userId),
   });
+  const googleEnabled = isGoogleAuthEnabled();
+  const googleConnected = googleEnabled
+    ? await hasGoogleIdentity(userId)
+    : false;
 
   // Build an absolute bookmarklet from the request's own origin so it points at
   // this deployment wherever it's hosted.
@@ -136,9 +146,17 @@ export default async function SettingsPage({
         <ChangeEmailForm
           currentEmail={user?.email ?? ""}
           emailVerified={Boolean(user?.emailVerifiedAt)}
+          hasPassword={Boolean(user?.passwordHash)}
         />
         <EmailVerificationForm verified={Boolean(user?.emailVerifiedAt)} />
-        <ChangePasswordForm />
+        <ChangePasswordForm hasPassword={Boolean(user?.passwordHash)} />
+        {googleEnabled ? (
+          <GoogleAccountLink
+            connected={googleConnected}
+            hasPassword={Boolean(user?.passwordHash)}
+            notice={googleAccountSettingsNotice(params.google)}
+          />
+        ) : null}
       </>
     ),
   };

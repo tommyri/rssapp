@@ -3,11 +3,15 @@ import { redirect } from "next/navigation";
 import { AuthForm } from "@/components/auth-form";
 import { getRegistrationMode } from "@/lib/account-invitations";
 import { getOptionalCurrentUser } from "@/lib/current-user";
+import {
+  googleAuthNotice,
+  isGoogleAuthEnabled,
+} from "@/lib/google-auth-config";
 
 export default async function SignupPage({
   searchParams,
 }: {
-  searchParams: Promise<{ invite?: string }>;
+  searchParams: Promise<{ invite?: string; google?: string }>;
 }) {
   const user = await getOptionalCurrentUser();
   if (user) redirect("/");
@@ -67,8 +71,9 @@ export default async function SignupPage({
         notice={
           registrationMode === "invite_only"
             ? "Create your account using this invitation."
-            : undefined
+            : googleAuthNotice(params.google)
         }
+        googleEnabled={isGoogleAuthEnabled()}
       />
     </div>
   );

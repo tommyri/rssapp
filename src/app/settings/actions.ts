@@ -45,13 +45,14 @@ export async function updateProfileAction(
   return { ok: true, message: "Saved." };
 }
 
-/** Load the user and check their current password — required for any credential change. */
+/** Check the current password when this account has one configured. */
 async function verifyCurrentPassword(
   userId: number,
   currentPassword: string,
 ): Promise<{ ok: true } | { ok: false; message: string }> {
   const user = await db.query.users.findFirst({ where: eq(users.id, userId) });
   if (!user) return { ok: false, message: "Account not found." };
+  if (!user.passwordHash) return { ok: true };
   if (!verifyPassword(currentPassword, user.passwordHash)) {
     return { ok: false, message: "Current password is incorrect." };
   }
@@ -216,5 +217,9 @@ export async function changePasswordAction(
     .update(users)
     .set({ passwordHash: hashPassword(newPassword) })
     .where(eq(users.id, userId));
-  return { ok: true, message: "Password changed." };
+  return {
+    ok: true,
+    message:
+      check.ok && !currentPassword ? "Password set." : "Password changed.",
+  };
 }
