@@ -25,7 +25,9 @@ Position: build v1 as a simple personal product, but treat "hosted service with 
    One-time verification/reset/change-email links and owner-issued invitations are stored
    only as hashes, with bounded expiry, and delivered through transactional email. Failed
    sign-ins and anonymous signup/recovery requests have durable, salted-hash rate limits
-   before public registration is exposed.
+   before public registration is exposed. New sign-ins also receive opaque, server-side
+   session handles so a person can review and end a specific browser session without
+   invalidating every sign-in.
 
 6. **Self-service account deletion has a narrow, safe foundation.** A user can remove
    their account only after clear, deliberate confirmation; server-side cascading foreign

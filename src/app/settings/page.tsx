@@ -9,6 +9,7 @@ import {
   ProfileForm,
   ReadingPrefsForm,
 } from "@/components/account-forms";
+import { AccountSessionControls } from "@/components/account-session-controls";
 import { BackLink } from "@/components/back-link";
 import { BackupControls } from "@/components/backup-controls";
 import { GoogleAccountLink } from "@/components/google-auth-controls";
@@ -18,7 +19,8 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { db } from "@/db";
 import { users } from "@/db/schema";
 import { normalizeArticleListDensity } from "@/lib/article-list-density";
-import { getCurrentUserId } from "@/lib/current-user";
+import { listActiveAuthSessions } from "@/lib/auth-sessions";
+import { getCurrentSessionId, getCurrentUserId } from "@/lib/current-user";
 import { normalizeEmbedLoadingPreferences } from "@/lib/embed-loading";
 import { hasGoogleIdentity } from "@/lib/google-auth";
 import {
@@ -42,6 +44,13 @@ const escapeAttr = (s: string) =>
     .replace(/"/g, "&quot;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;");
+
+const sessionDate = (date: Date) =>
+  new Intl.DateTimeFormat("en", {
+    dateStyle: "medium",
+    timeStyle: "short",
+    timeZone: "UTC",
+  }).format(date);
 
 /** Does the setting follow the account (Postgres) or stay on this device? */
 const SECTION_SCOPE: Record<SettingsSectionId, "Account" | "This device"> = {
@@ -69,6 +78,19 @@ export default async function SettingsPage({
   const googleConnected = googleEnabled
     ? await hasGoogleIdentity(userId)
     : false;
+  const currentSessionId =
+    active === "account" ? await getCurrentSessionId() : null;
+  const accountSessions =
+    active === "account" && user
+      ? await listActiveAuthSessions({
+          userId,
+          sessionVersion: user.sessionVersion,
+        })
+      : [];
+  const canManageSessions = Boolean(
+    currentSessionId &&
+      accountSessions.some(({ id }) => id === currentSessionId),
+  );
 
   // Build an absolute bookmarklet from the request's own origin so it points at
   // this deployment wherever it's hosted.
@@ -151,6 +173,14 @@ export default async function SettingsPage({
         />
         <EmailVerificationForm verified={Boolean(user?.emailVerifiedAt)} />
         <ChangePasswordForm hasPassword={Boolean(user?.passwordHash)} />
+        <AccountSessionControls
+          canManage={canManageSessions}
+          sessions={accountSessions.map((session) => ({
+            id: session.id,
+            signedInAt: sessionDate(session.createdAt),
+            isCurrent: session.id === currentSessionId,
+          }))}
+        />
         {googleEnabled ? (
           <GoogleAccountLink
             connected={googleConnected}

@@ -66,6 +66,12 @@ EMAIL_FROM="rssapp <accounts@reader.example.com>"
 For delivery safety, each account can request each kind of account email at most once
 per minute. A failed delivery releases its link immediately so the person can retry.
 
+**Signed-in sessions.** Every new sign-in is recorded separately. In
+**Settings → Account**, a person can review the active sign-ins for their reader and
+end one or all other sessions without interrupting the one they are using. Sessions
+created before this feature are managed after the next sign-in, and all sessions remain
+subject to the account-wide revocation that follows a password reset.
+
 `APP_URL` must be an HTTPS absolute URL in production. In development, when Resend is
 not configured, the app prints the one-time link to the server log instead. Raw tokens
 are never stored in the database; links are single-use and expire.

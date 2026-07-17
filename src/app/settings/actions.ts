@@ -1,6 +1,7 @@
 "use server";
 
 import { eq } from "drizzle-orm";
+import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { db } from "@/db";
 import { accountAuditEvents, users } from "@/db/schema";
@@ -12,7 +13,15 @@ import {
 } from "@/lib/account-lifecycle";
 import { AccountTokenCooldownError } from "@/lib/account-tokens";
 import { isArticleListDensity } from "@/lib/article-list-density";
-import { getCurrentUser, getCurrentUserId } from "@/lib/current-user";
+import {
+  revokeAuthSession,
+  revokeOtherAuthSessions,
+} from "@/lib/auth-sessions";
+import {
+  getCurrentSessionId,
+  getCurrentUser,
+  getCurrentUserId,
+} from "@/lib/current-user";
 import {
   EMBED_PROVIDERS,
   type EmbedLoadingPreferences,
@@ -284,4 +293,67 @@ export async function deleteAccountAction(
     return { ok: true as const, message: "Account deleted." };
   });
   return result;
+}
+
+export async function revokeSessionAction(
+  _prev: AccountActionState,
+  formData: FormData,
+): Promise<AccountActionState> {
+  const currentUser = await getCurrentUser();
+  const currentSessionId = await getCurrentSessionId();
+  if (!currentSessionId) {
+    return {
+      ok: false,
+      message: "Sign out and back in before managing your signed-in sessions.",
+    };
+  }
+
+  const sessionId = String(formData.get("sessionId") ?? "");
+  if (sessionId === currentSessionId) {
+    return {
+      ok: false,
+      message: "Use Sign out to end this session.",
+    };
+  }
+  const revoked = await revokeAuthSession({
+    id: sessionId,
+    userId: currentUser.id,
+    sessionVersion: currentUser.sessionVersion,
+  });
+  if (!revoked) {
+    return {
+      ok: false,
+      message: "That signed-in session is no longer active.",
+    };
+  }
+
+  revalidatePath("/settings");
+  return { ok: true, message: "Session signed out." };
+}
+
+export async function revokeOtherSessionsAction(
+  _prev: AccountActionState,
+): Promise<AccountActionState> {
+  const currentUser = await getCurrentUser();
+  const currentSessionId = await getCurrentSessionId();
+  if (!currentSessionId) {
+    return {
+      ok: false,
+      message: "Sign out and back in before managing your signed-in sessions.",
+    };
+  }
+
+  const count = await revokeOtherAuthSessions({
+    currentSessionId,
+    userId: currentUser.id,
+    sessionVersion: currentUser.sessionVersion,
+  });
+  revalidatePath("/settings");
+  return {
+    ok: true,
+    message:
+      count === 0
+        ? "No other signed-in sessions found."
+        : `Signed out of ${count} other session${count === 1 ? "" : "s"}.`,
+  };
 }

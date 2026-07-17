@@ -1,10 +1,15 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, gt, isNull } from "drizzle-orm";
 import { notFound, redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { db } from "@/db";
-import { users } from "@/db/schema";
+import { authSessions, users } from "@/db/schema";
+import { isAuthSessionId } from "@/lib/auth-sessions";
 
-type SessionIdentity = { id?: string; sessionVersion?: number };
+type SessionIdentity = {
+  id?: string;
+  sessionVersion?: number;
+  sessionId?: string;
+};
 
 /**
  * Resolve a session to a current account on every protected server request.
@@ -25,6 +30,33 @@ export async function getOptionalCurrentUser() {
     return null;
   }
 
+  // Older cookies predate individual-session tracking. Keep their existing
+  // lifecycle behavior until Auth.js expires them; a fresh sign-in starts a
+  // manageable server-recorded session.
+  if (isAuthSessionId(identity?.sessionId)) {
+    const [result] = await db
+      .select({ user: users })
+      .from(users)
+      .innerJoin(
+        authSessions,
+        and(
+          eq(authSessions.userId, users.id),
+          eq(authSessions.id, identity.sessionId),
+          eq(authSessions.sessionVersion, sessionVersion),
+          isNull(authSessions.revokedAt),
+          gt(authSessions.expiresAt, new Date()),
+        ),
+      )
+      .where(
+        and(
+          eq(users.id, id),
+          eq(users.status, "active"),
+          eq(users.sessionVersion, sessionVersion),
+        ),
+      );
+    return result?.user ?? null;
+  }
+
   const user = await db.query.users.findFirst({
     where: and(
       eq(users.id, id),
@@ -33,6 +65,13 @@ export async function getOptionalCurrentUser() {
     ),
   });
   return user ?? null;
+}
+
+/** The opaque handle for this browser's sign-in, if it was issued recently. */
+export async function getCurrentSessionId(): Promise<string | null> {
+  const session = await auth();
+  const identity = session?.user as SessionIdentity | undefined;
+  return isAuthSessionId(identity?.sessionId) ? identity.sessionId : null;
 }
 
 /**

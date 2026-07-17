@@ -134,6 +134,11 @@ Phased plan. Each phase should ship as a usable app — MVP alone should be good
   account-owned reader data and provider identities while shared feeds and articles stay
   available; current-browser offline copies are cleared immediately afterward. Owners
   must transfer ownership before deletion.
+- **Signed-in session controls** *(shipped July 2026)* — every new browser sign-in gets a
+  server-verifiable session record. **Settings → Account** lists those active sessions
+  and can end one or all others while preserving the current session. The existing
+  account-wide session generation remains the emergency revoke-everything control for a
+  password reset or operator access change.
 - **Optional Google sign-in and explicit linking** *(shipped July 2026)* — deployments
   with `AUTH_GOOGLE_ID` and `AUTH_GOOGLE_SECRET` configured offer Google at sign-in and
   signup. Google uses a verified provider email for a new account, still honours open,

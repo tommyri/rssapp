@@ -11,6 +11,7 @@ import {
   clearAuthRateLimit,
   emailRateLimitKey,
 } from "@/lib/auth-rate-limit";
+import { createAuthSession } from "@/lib/auth-sessions";
 import { completeGoogleAuthentication } from "@/lib/google-auth";
 import { googleOAuthCredentials } from "@/lib/google-auth-config";
 import { verifyPassword } from "@/lib/password";
@@ -52,10 +53,16 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
           .set({ lastSignedInAt: new Date() })
           .where(eq(users.id, user.id));
 
+        const sessionId = await createAuthSession({
+          userId: user.id,
+          sessionVersion: user.sessionVersion,
+        });
+
         return {
           id: String(user.id),
           email: user.email,
           sessionVersion: user.sessionVersion,
+          sessionId,
         };
       },
     }),
@@ -77,6 +84,10 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
         id: String(result.account.id),
         email: result.account.email,
         sessionVersion: result.account.sessionVersion,
+        sessionId: await createAuthSession({
+          userId: result.account.id,
+          sessionVersion: result.account.sessionVersion,
+        }),
       });
       return true;
     },

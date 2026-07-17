@@ -3,7 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { signOut } from "@/auth";
-import { getCurrentUserId } from "@/lib/current-user";
+import { revokeAuthSessionById } from "@/lib/auth-sessions";
+import { getCurrentSessionId, getCurrentUserId } from "@/lib/current-user";
 import {
   addFeedForUser,
   getOrExtractFullContent,
@@ -144,6 +145,8 @@ export async function importOpmlAction(
 }
 
 export async function signOutAction(): Promise<void> {
+  const sessionId = await getCurrentSessionId();
+  if (sessionId) await revokeAuthSessionById(sessionId);
   await signOut({ redirectTo: "/login" });
 }
 

@@ -80,6 +80,33 @@ export const users = pgTable(
 export const accountStatuses = ["active", "suspended"] as const;
 export type AccountStatus = (typeof accountStatuses)[number];
 
+/**
+ * Opaque handles for individual browser sign-ins. They complement (rather
+ * than replace) the user's sessionVersion, which remains the emergency
+ * revoke-everything switch for password resets and account administration.
+ */
+export const authSessions = pgTable(
+  "auth_sessions",
+  {
+    id: text("id").primaryKey(),
+    userId: bigint("user_id", { mode: "number" })
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    sessionVersion: integer("session_version").notNull(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    revokedAt: timestamp("revoked_at", { withTimezone: true }),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    index("auth_sessions_user_generation_idx").on(
+      t.userId,
+      t.sessionVersion,
+      t.createdAt,
+    ),
+    index("auth_sessions_expires_at_idx").on(t.expiresAt),
+  ],
+);
+
 export const accountRoles = ["owner", "member"] as const;
 export type AccountRole = (typeof accountRoles)[number];
 

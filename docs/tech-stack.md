@@ -55,7 +55,10 @@ is optional and maps its stable provider subject to a local account only after a
 explicit Settings link (or during new-account creation); a matching email alone is
 never used to merge identities. A non-owner can delete their account after explicit
 confirmation; database foreign keys remove account-owned data and identity records while
-shared feeds and items survive. Staff roles remain later work.
+shared feeds and items survive. Each new sign-in also receives an opaque, server-side
+session handle. It complements—not replaces—the account's session version: Settings can
+revoke a specific active sign-in, while lifecycle events can invalidate every session at
+once. Staff roles remain later work.
 
 ## Architecture sketch
 
@@ -81,6 +84,8 @@ shared feeds and items survive. Staff roles remain later work.
   short-lived, hashed owner-issued signup invitations.
 - `auth_rate_limits` — transient, salted-hash counters for public account endpoints;
   no raw address or network source is retained.
+- `auth_sessions` — opaque, expiring browser sign-in handles, scoped to a user and their
+  session generation so individual sessions can be revoked from Settings.
 - `account_audit_events` — immutable, indexed operational history for owner actions;
   actor/target IDs are retained while readable details stay narrowly scoped to the event.
   IDs become null when an account is deleted, retaining a generic operational record
