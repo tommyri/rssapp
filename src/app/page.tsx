@@ -324,6 +324,9 @@ export default async function Home({
               <SidebarUtil href="/labels" label="Labels" />
               <SidebarUtil href="/settings" label="Settings" />
               <SidebarUtil href="/offline" label="Offline" />
+              {user.role === "owner" ? (
+                <SidebarUtil href="/admin/accounts" label="Accounts" />
+              ) : null}
             </div>
             <SignOutButton
               userId={userId}

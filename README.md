@@ -48,6 +48,18 @@ EMAIL_FROM="rssapp <accounts@reader.example.com>"
 not configured, the app prints the one-time link to the server log instead. Raw tokens
 are never stored in the database; links are single-use and expire.
 
+**Account operator.** On a fresh install, the first account claims the deployment-owner
+role atomically. A one-account legacy install is promoted automatically; when an upgrade
+already has multiple accounts, choose deliberately instead of relying on account age:
+
+```bash
+npm run set-owner -- person@example.com
+```
+
+Only that owner sees **Accounts** in the reader sidebar and can suspend or restore member
+accounts. Ownership transfer and suspension immediately invalidate affected sessions;
+restoring a member requires a fresh sign-in.
+
 The command below remains an operational escape hatch. It generates a fresh password,
 invalidates all existing sessions for that account, and prints the password once:
 

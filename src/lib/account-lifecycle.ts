@@ -1,4 +1,4 @@
-import { and, eq, sql } from "drizzle-orm";
+import { and, count, eq, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { users } from "@/db/schema";
 import {
@@ -17,6 +17,11 @@ export type StartRegistrationResult =
   | "created"
   | "verification_resent"
   | "already_verified";
+
+/** Only an empty deployment may establish its owner through public signup. */
+export function registrationRole(accountCount: number): "owner" | "member" {
+  return accountCount === 0 ? "owner" : "member";
+}
 
 /**
  * Create a public account in its safely locked state, then deliver the proof
@@ -42,11 +47,29 @@ export async function startRegistration({
     return "verification_resent";
   }
 
-  const [user] = await db
-    .insert(users)
-    .values({ email, passwordHash })
-    .onConflictDoNothing()
-    .returning({ id: users.id, emailVerifiedAt: users.emailVerifiedAt });
+  const [{ value: accountCount }] = await db
+    .select({ value: count() })
+    .from(users);
+  const role = registrationRole(accountCount);
+  let user: { id: number } | undefined;
+
+  // The very first account owns a fresh deployment. A partial unique index
+  // keeps concurrent first signups safe; every registration into an existing
+  // installation is a member, even if a legacy operator still needs setup.
+  if (role === "owner") {
+    [user] = await db
+      .insert(users)
+      .values({ email, passwordHash, role })
+      .onConflictDoNothing()
+      .returning({ id: users.id });
+  }
+  if (!user) {
+    [user] = await db
+      .insert(users)
+      .values({ email, passwordHash, role: "member" })
+      .onConflictDoNothing()
+      .returning({ id: users.id });
+  }
 
   // Another request can win the unique-email race between the lookup and the
   // insert. Treat it exactly like a normal repeat submission.

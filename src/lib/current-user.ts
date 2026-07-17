@@ -1,5 +1,5 @@
 import { and, eq } from "drizzle-orm";
-import { redirect } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { db } from "@/db";
 import { users } from "@/db/schema";
@@ -49,6 +49,13 @@ export async function getCurrentUserId(): Promise<number> {
 export async function getCurrentUser() {
   const user = await getOptionalCurrentUser();
   if (!user) redirect("/login");
+  return user;
+}
+
+/** The one deployment owner can use operational account-management surfaces. */
+export async function getCurrentOwner() {
+  const user = await getCurrentUser();
+  if (user.role !== "owner") notFound();
   return user;
 }
 

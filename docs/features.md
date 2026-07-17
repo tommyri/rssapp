@@ -45,6 +45,9 @@ Phased plan. Each phase should ship as a usable app — MVP alone should be good
 - **Search** — full-text search across titles and content (Postgres FTS)
 - **Account settings** — edit a private profile name, change email through a confirmation
   link, resend verification, and change a password in the app
+- **Owner account console** — the one deployment owner can review member accounts and
+  suspend or restore access. Either action invalidates the member’s existing sessions;
+  the owner can never suspend themself through the UI.
 - **Overload valves** — displayed unread counts cap at "1k+"; mark-all-read with "older than a day/week"; mark-read-on-scroll (on by default, toggleable); auto-mark-read after N days (defaults to 30, overridable globally and per-feed)
 - **Dark mode** — follow system, manual override
 - **Feed health** — the Manage feeds page shows each feed's article/unread counts, last-fetched time, and failing feeds with their error and consecutive-failure count (silent/redirected detection is a later refinement)

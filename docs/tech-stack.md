@@ -47,7 +47,9 @@ session revocation. `getCurrentUserId()` re-resolves a JWT against the active ac
 every protected request, so a revoked session or suspended account cannot keep reading
 just because its cookie has not expired. Public signup verifies the email before a first
 sign-in, and onboarding records completion separately so existing readers are never
-surprised by the new-user flow. Social identities remain later work.
+surprised by the new-user flow. The single deployment owner is selected safely (the first
+signup on an empty install, or an explicit operator transfer for a multi-account upgrade)
+and has an owner-only account console; social identities and staff roles remain later work.
 
 ## Architecture sketch
 

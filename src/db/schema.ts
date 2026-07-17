@@ -43,6 +43,8 @@ export const users = pgTable(
     onboardingCompletedAt: timestamp("onboarding_completed_at", {
       withTimezone: true,
     }),
+    /** The deployment owner can manage accounts; all reader accounts are members. */
+    role: text("role").notNull().default("member").$type<AccountRole>(),
     /**
      * This is an account-lifecycle state, not a product plan. Server-side
      * current-user resolution enforces it on every protected request.
@@ -65,11 +67,20 @@ export const users = pgTable(
   },
   (t) => [
     check("users_status_check", sql`${t.status} in ('active', 'suspended')`),
+    check("users_role_check", sql`${t.role} in ('owner', 'member')`),
+    // A single operator owns a self-hosted deployment. The partial unique index
+    // makes the first public registration race-safe on an empty installation.
+    uniqueIndex("users_single_owner_idx")
+      .on(t.role)
+      .where(sql`${t.role} = 'owner'`),
   ],
 );
 
 export const accountStatuses = ["active", "suspended"] as const;
 export type AccountStatus = (typeof accountStatuses)[number];
+
+export const accountRoles = ["owner", "member"] as const;
+export type AccountRole = (typeof accountRoles)[number];
 
 export const accountTokenKinds = [
   "email_verification",
