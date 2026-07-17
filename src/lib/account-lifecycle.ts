@@ -6,6 +6,7 @@ import {
   consumeAccountToken,
   issueAccountToken,
   normalizeAccountEmail,
+  revokeAccountToken,
 } from "@/lib/account-tokens";
 import {
   sendEmailChangeVerification,
@@ -17,6 +18,33 @@ export type StartRegistrationResult =
   | "created"
   | "verification_resent"
   | "already_verified";
+
+async function deliverAccountToken({
+  userId,
+  kind,
+  email,
+  deliver,
+}: {
+  userId: number;
+  kind: "email_verification" | "password_reset" | "email_change";
+  email: string;
+  deliver: (token: string) => Promise<void>;
+}): Promise<void> {
+  const issued = await issueAccountToken({ userId, kind, email });
+  try {
+    await deliver(issued.secret);
+  } catch (error) {
+    try {
+      await revokeAccountToken({ id: issued.id, userId, kind });
+    } catch (revokeError) {
+      console.error(
+        "[account] could not revoke an undelivered token:",
+        revokeError,
+      );
+    }
+    throw error;
+  }
+}
 
 /** Only an empty deployment may establish its owner through public signup. */
 export function registrationRole(accountCount: number): "owner" | "member" {
@@ -83,12 +111,12 @@ export async function sendEmailVerification(userId: number): Promise<boolean> {
   const user = await activeUserForAccountToken(userId);
   if (!user || user.emailVerifiedAt) return false;
 
-  const token = await issueAccountToken({
+  await deliverAccountToken({
     userId: user.id,
     kind: "email_verification",
     email: user.email,
+    deliver: (token) => sendVerificationEmail({ to: user.email, token }),
   });
-  await sendVerificationEmail({ to: user.email, token });
   return true;
 }
 
@@ -99,12 +127,12 @@ export async function requestPasswordReset(rawEmail: string): Promise<void> {
   });
   if (!user) return;
 
-  const token = await issueAccountToken({
+  await deliverAccountToken({
     userId: user.id,
     kind: "password_reset",
     email: user.email,
+    deliver: (token) => sendPasswordResetEmail({ to: user.email, token }),
   });
-  await sendPasswordResetEmail({ to: user.email, token });
 }
 
 export async function requestEmailChange(
@@ -121,12 +149,12 @@ export async function requestEmailChange(
   });
   if (existing) return "taken";
 
-  const token = await issueAccountToken({
+  await deliverAccountToken({
     userId: user.id,
     kind: "email_change",
     email,
+    deliver: (token) => sendEmailChangeVerification({ to: email, token }),
   });
-  await sendEmailChangeVerification({ to: email, token });
   return "sent";
 }
 

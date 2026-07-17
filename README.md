@@ -44,6 +44,9 @@ RESEND_API_KEY=re_...
 EMAIL_FROM="rssapp <accounts@reader.example.com>"
 ```
 
+For delivery safety, each account can request each kind of account email at most once
+per minute. A failed delivery releases its link immediately so the person can retry.
+
 `APP_URL` must be an HTTPS absolute URL in production. In development, when Resend is
 not configured, the app prints the one-time link to the server log instead. Raw tokens
 are never stored in the database; links are single-use and expire.

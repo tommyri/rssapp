@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
+  ACCOUNT_EMAIL_COOLDOWN_MS,
   ACCOUNT_TOKEN_TTLS,
+  accountEmailRetryAfterSeconds,
   createAccountTokenSecret,
   hashAccountToken,
   isAccountTokenSecret,
@@ -30,5 +32,28 @@ describe("account token secrets", () => {
     expect(ACCOUNT_TOKEN_TTLS.password_reset).toBe(60 * 60 * 1000);
     expect(ACCOUNT_TOKEN_TTLS.email_change).toBe(60 * 60 * 1000);
     expect(ACCOUNT_TOKEN_TTLS.email_verification).toBe(24 * 60 * 60 * 1000);
+  });
+
+  it("allows a retry after one minute without rounding the remaining wait down", () => {
+    const createdAt = new Date("2026-07-17T10:00:00.000Z");
+    expect(ACCOUNT_EMAIL_COOLDOWN_MS).toBe(60 * 1000);
+    expect(
+      accountEmailRetryAfterSeconds(
+        createdAt,
+        new Date("2026-07-17T10:00:00.001Z"),
+      ),
+    ).toBe(60);
+    expect(
+      accountEmailRetryAfterSeconds(
+        createdAt,
+        new Date("2026-07-17T10:00:59.001Z"),
+      ),
+    ).toBe(1);
+    expect(
+      accountEmailRetryAfterSeconds(
+        createdAt,
+        new Date("2026-07-17T10:01:00.000Z"),
+      ),
+    ).toBe(0);
   });
 });

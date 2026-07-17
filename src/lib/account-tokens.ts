@@ -1,9 +1,12 @@
 import { createHash, randomBytes } from "node:crypto";
-import { and, eq, gt, isNull } from "drizzle-orm";
+import { and, desc, eq, gt, isNull } from "drizzle-orm";
 import { db } from "@/db";
 import { type AccountTokenKind, accountTokens, users } from "@/db/schema";
 
 const TOKEN_BYTES = 32;
+
+/** Avoid repeatedly sending the same account email while keeping recovery quick. */
+export const ACCOUNT_EMAIL_COOLDOWN_MS = 60 * 1000;
 
 export const ACCOUNT_TOKEN_TTLS: Record<AccountTokenKind, number> = {
   email_verification: 24 * 60 * 60 * 1000,
@@ -27,6 +30,33 @@ export function normalizeAccountEmail(value: string): string {
   return value.toLowerCase().trim();
 }
 
+export function accountEmailRetryAfterSeconds(
+  createdAt: Date,
+  now = new Date(),
+): number {
+  return Math.max(
+    0,
+    Math.ceil(
+      (createdAt.getTime() + ACCOUNT_EMAIL_COOLDOWN_MS - now.getTime()) / 1000,
+    ),
+  );
+}
+
+export class AccountTokenCooldownError extends Error {
+  readonly retryAfterSeconds: number;
+
+  constructor(retryAfterSeconds: number) {
+    super("An account email was sent recently.");
+    this.name = "AccountTokenCooldownError";
+    this.retryAfterSeconds = retryAfterSeconds;
+  }
+}
+
+export interface IssuedAccountToken {
+  id: number;
+  secret: string;
+}
+
 /**
  * Creates a replacement one-time token. Issuing another link intentionally
  * invalidates every unused link of the same kind for that account.
@@ -39,11 +69,41 @@ export async function issueAccountToken({
   userId: number;
   kind: AccountTokenKind;
   email: string;
-}): Promise<string> {
+}): Promise<IssuedAccountToken> {
   const secret = createAccountTokenSecret();
   const now = new Date();
 
-  await db.transaction(async (tx) => {
+  const tokenId = await db.transaction(async (tx) => {
+    // Serializing on the user row makes concurrent resend requests observe the
+    // same recent token instead of both sending an email.
+    await tx
+      .select({ id: users.id })
+      .from(users)
+      .where(eq(users.id, userId))
+      .for("update");
+
+    const [latestToken] = await tx
+      .select({ createdAt: accountTokens.createdAt })
+      .from(accountTokens)
+      .where(
+        and(
+          eq(accountTokens.userId, userId),
+          eq(accountTokens.kind, kind),
+          isNull(accountTokens.usedAt),
+        ),
+      )
+      .orderBy(desc(accountTokens.createdAt))
+      .limit(1);
+    if (latestToken) {
+      const retryAfterSeconds = accountEmailRetryAfterSeconds(
+        latestToken.createdAt,
+        now,
+      );
+      if (retryAfterSeconds > 0) {
+        throw new AccountTokenCooldownError(retryAfterSeconds);
+      }
+    }
+
     await tx
       .update(accountTokens)
       .set({ usedAt: now })
@@ -55,16 +115,47 @@ export async function issueAccountToken({
         ),
       );
 
-    await tx.insert(accountTokens).values({
-      userId,
-      kind,
-      email: normalizeAccountEmail(email),
-      tokenHash: hashAccountToken(secret),
-      expiresAt: new Date(now.getTime() + ACCOUNT_TOKEN_TTLS[kind]),
-    });
+    const [token] = await tx
+      .insert(accountTokens)
+      .values({
+        userId,
+        kind,
+        email: normalizeAccountEmail(email),
+        tokenHash: hashAccountToken(secret),
+        expiresAt: new Date(now.getTime() + ACCOUNT_TOKEN_TTLS[kind]),
+      })
+      .returning({ id: accountTokens.id });
+    if (!token) throw new Error("Could not create account token.");
+    return token.id;
   });
 
-  return secret;
+  return { id: tokenId, secret };
+}
+
+/**
+ * If delivery fails, discard the unsent link so a person can retry immediately
+ * instead of waiting through the resend cooldown.
+ */
+export async function revokeAccountToken({
+  id,
+  userId,
+  kind,
+}: {
+  id: number;
+  userId: number;
+  kind: AccountTokenKind;
+}): Promise<void> {
+  await db
+    .update(accountTokens)
+    .set({ usedAt: new Date() })
+    .where(
+      and(
+        eq(accountTokens.id, id),
+        eq(accountTokens.userId, userId),
+        eq(accountTokens.kind, kind),
+        isNull(accountTokens.usedAt),
+      ),
+    );
 }
 
 export interface ConsumedAccountToken {

@@ -8,6 +8,7 @@ import {
   requestEmailChange,
   sendEmailVerification,
 } from "@/lib/account-lifecycle";
+import { AccountTokenCooldownError } from "@/lib/account-tokens";
 import { isArticleListDensity } from "@/lib/article-list-density";
 import { getCurrentUserId } from "@/lib/current-user";
 import {
@@ -80,6 +81,12 @@ export async function changeEmailAction(
   try {
     result = await requestEmailChange(userId, email.data);
   } catch (error) {
+    if (error instanceof AccountTokenCooldownError) {
+      return {
+        ok: true,
+        message: `A confirmation email was sent recently. Check ${email.data} or try again in ${error.retryAfterSeconds} seconds.`,
+      };
+    }
     if (error instanceof EmailDeliveryError) {
       console.error("[account] email change email unavailable:", error);
       return {
@@ -115,6 +122,12 @@ export async function resendVerificationAction(
   try {
     sent = await sendEmailVerification(userId);
   } catch (error) {
+    if (error instanceof AccountTokenCooldownError) {
+      return {
+        ok: true,
+        message: `A verification email was sent recently. Check your inbox or try again in ${error.retryAfterSeconds} seconds.`,
+      };
+    }
     if (error instanceof EmailDeliveryError) {
       console.error("[account] verification email unavailable:", error);
       return {

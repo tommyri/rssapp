@@ -3,6 +3,7 @@
 import { z } from "zod";
 import type { AuthActionState } from "@/app/login/actions";
 import { startRegistration } from "@/lib/account-lifecycle";
+import { AccountTokenCooldownError } from "@/lib/account-tokens";
 import { hashPassword } from "@/lib/password";
 import { EmailDeliveryError } from "@/lib/transactional-email";
 
@@ -41,6 +42,12 @@ export async function signUpAction(
         "Check your email for a verification link. Once verified, you can sign in.",
     };
   } catch (error) {
+    if (error instanceof AccountTokenCooldownError) {
+      return {
+        error: "",
+        message: `A verification link was sent recently. Check your inbox or try again in ${error.retryAfterSeconds} seconds.`,
+      };
+    }
     if (error instanceof EmailDeliveryError) {
       console.error("[account] signup verification email unavailable:", error);
       return {

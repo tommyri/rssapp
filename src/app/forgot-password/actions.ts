@@ -2,6 +2,7 @@
 
 import { z } from "zod";
 import { requestPasswordReset } from "@/lib/account-lifecycle";
+import { AccountTokenCooldownError } from "@/lib/account-tokens";
 import { EmailDeliveryError } from "@/lib/transactional-email";
 
 export interface RecoveryActionState {
@@ -26,6 +27,15 @@ export async function requestPasswordResetAction(
   try {
     await requestPasswordReset(email.data);
   } catch (error) {
+    if (error instanceof AccountTokenCooldownError) {
+      // Keep this response identical to a successful unknown-address request.
+      // Password-reset throttling must not become an account-enumeration signal.
+      return {
+        ok: true,
+        message:
+          "If that email belongs to an active account, a reset link is on its way.",
+      };
+    }
     if (error instanceof EmailDeliveryError) {
       console.error("[account] password reset email unavailable:", error);
       return {
