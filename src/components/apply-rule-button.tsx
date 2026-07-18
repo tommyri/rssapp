@@ -51,9 +51,9 @@ export function ApplyRuleButton({
           <DialogHeader>
             <DialogTitle>Apply this rule to existing articles?</DialogTitle>
             <DialogDescription>
-              This can change read, star, mute, or label state. It scans the
-              newest 500 articles in this rule's scope and cannot undo changes
-              already made.
+              This can change read, star, mute, label, or notification state. It
+              scans the newest 500 articles in this rule's scope and cannot undo
+              changes already made.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>

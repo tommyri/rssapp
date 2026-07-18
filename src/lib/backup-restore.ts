@@ -10,6 +10,7 @@ import {
   itemStates,
   items,
   labels,
+  notifications,
   rules,
   savedPageLabels,
   savedPages,
@@ -20,6 +21,7 @@ import { normalizeArticleListDensity } from "@/lib/article-list-density";
 import { canonicalizeUrl } from "@/lib/canonical-url";
 import { normalizeEmbedLoadingPreferences } from "@/lib/embed-loading";
 import { sanitizeArticleHtml } from "@/lib/feeds/sanitize";
+import { RULE_ACTIONS } from "@/lib/rules/engine";
 import {
   parseSubscriptionSettings,
   type SubscriptionSettings,
@@ -45,6 +47,7 @@ const userSettings = z.object({
   collapseDuplicates: z.boolean().optional(),
   articleListDensity: z.unknown().optional(),
   embedLoading: z.unknown().optional(),
+  inAppRuleAlerts: z.boolean().optional(),
 });
 
 const itemSchema = z.object({
@@ -150,7 +153,7 @@ const backupDocumentSchema = z.object({
       field: z.enum(["title", "content", "author"]),
       matchType: z.enum(["contains", "regex"]),
       pattern: shortText.min(1),
-      action: z.enum(["mute", "mark_read", "star", "tag"]),
+      action: z.enum(RULE_ACTIONS),
       labelName: z.string().min(1).max(MAX_LABEL_NAME_LENGTH).nullable(),
       enabled: z.boolean(),
       createdAt: timestamp,
@@ -331,6 +334,7 @@ export interface CurrentReaderDataPreview {
   labels: number;
   rules: number;
   highlights: number;
+  notifications: number;
 }
 
 export function previewBackupRestore(
@@ -392,6 +396,9 @@ function restoredUserSettings(backup: BackupDocument) {
           embedLoading: normalizeEmbedLoadingPreferences(settings.embedLoading),
         }
       : {}),
+    ...(typeof settings.inAppRuleAlerts === "boolean"
+      ? { inAppRuleAlerts: settings.inAppRuleAlerts }
+      : {}),
   };
 }
 
@@ -426,6 +433,7 @@ async function currentReaderDataPreview(
     ruleCount,
     pageCount,
     highlightCount,
+    notificationCount,
   ] = await Promise.all([
     tx
       .select({ value: count() })
@@ -449,6 +457,10 @@ async function currentReaderDataPreview(
       .select({ value: count() })
       .from(highlights)
       .where(eq(highlights.userId, userId)),
+    tx
+      .select({ value: count() })
+      .from(notifications)
+      .where(eq(notifications.userId, userId)),
   ]);
   return {
     folders: Number(folderCount[0]?.value ?? 0),
@@ -458,6 +470,7 @@ async function currentReaderDataPreview(
     rules: Number(ruleCount[0]?.value ?? 0),
     savedPages: Number(pageCount[0]?.value ?? 0),
     highlights: Number(highlightCount[0]?.value ?? 0),
+    notifications: Number(notificationCount[0]?.value ?? 0),
   };
 }
 
@@ -475,6 +488,9 @@ async function clearCurrentReaderData(
   // All of these rows are user-owned. Their global feed and item cache remains
   // intact for other accounts and can be reused by the restored subscriptions.
   await tx.delete(highlights).where(eq(highlights.userId, userId));
+  // Alert history is derived from prior rules and articles, neither of which
+  // survives a replace restore. Never leave a stale inbox behind.
+  await tx.delete(notifications).where(eq(notifications.userId, userId));
   await tx.delete(itemStates).where(eq(itemStates.userId, userId));
   await tx.delete(rules).where(eq(rules.userId, userId));
   await tx.delete(savedPages).where(eq(savedPages.userId, userId));

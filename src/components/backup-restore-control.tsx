@@ -36,6 +36,7 @@ interface CurrentReaderDataPreview {
   labels: number;
   rules: number;
   highlights: number;
+  notifications: number;
 }
 
 type RestoreResponse =
@@ -231,6 +232,7 @@ export function BackupRestoreControl({ userId }: { userId: number }) {
                   <span>{plural(current.labels, "label")}</span>
                   <span>{plural(current.rules, "rule")}</span>
                   <span>{plural(current.highlights, "highlight")}</span>
+                  <span>{plural(current.notifications, "notification")}</span>
                 </div>
               ) : null}
             </div>

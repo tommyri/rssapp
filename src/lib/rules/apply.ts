@@ -5,8 +5,10 @@ import {
   itemLabels,
   itemStates,
   items,
+  notifications,
   rules,
   subscriptions,
+  users,
 } from "@/db/schema";
 import {
   type ActionFlags,
@@ -28,12 +30,16 @@ export const RULE_EXISTING_APPLY_LIMIT = 500;
 const ruleItemSort = sql`coalesce(${items.publishedAt}, ${items.createdAt})`;
 
 export interface RuleRow {
+  /** Needed to persist one durable notification per matching article. */
+  id?: number;
   userId: number;
   field: RuleField;
   matchType: RuleMatchType;
   pattern: string;
   action: RuleAction;
   labelId: number | null;
+  /** The user may silence the inbox without disabling their automation. */
+  notificationsEnabled?: boolean;
 }
 
 export interface IngestedItem extends MatchableItem {
@@ -45,6 +51,16 @@ interface RuleApplication {
   itemId: number;
   flags: ActionFlags;
   labelIds: number[];
+  notifications: NotificationApplication[];
+}
+
+interface NotificationApplication {
+  userId: number;
+  itemId: number;
+  ruleId: number;
+  ruleField: RuleField;
+  ruleMatchType: RuleMatchType;
+  rulePattern: string;
 }
 
 export interface ExistingRuleApplicationResult {
@@ -69,7 +85,16 @@ async function applyEffects(entries: RuleApplication[]): Promise<void> {
       labelAssignments.set(`${labelId}:${itemId}`, { labelId, itemId });
     }
   }
-  if (stateEntries.length === 0 && labelAssignments.size === 0) return;
+  const notificationEntries = entries.flatMap(({ notifications }) =>
+    notifications.map((notification) => notification),
+  );
+  if (
+    stateEntries.length === 0 &&
+    labelAssignments.size === 0 &&
+    notificationEntries.length === 0
+  ) {
+    return;
+  }
 
   const now = new Date();
 
@@ -106,6 +131,13 @@ async function applyEffects(entries: RuleApplication[]): Promise<void> {
         .values([...labelAssignments.values()])
         .onConflictDoNothing();
     }
+
+    if (notificationEntries.length > 0) {
+      await tx
+        .insert(notifications)
+        .values(notificationEntries)
+        .onConflictDoNothing();
+    }
   });
 }
 
@@ -113,6 +145,7 @@ async function applyEffects(entries: RuleApplication[]): Promise<void> {
 function evaluate(
   ruleRows: RuleRow[],
   candidates: IngestedItem[],
+  createNotifications = false,
 ): RuleApplication[] {
   const out: RuleApplication[] = [];
   const byUser = new Map<number, RuleRow[]>();
@@ -126,6 +159,23 @@ function evaluate(
     for (const item of candidates) {
       const matches = userRules.filter((rule) => ruleMatches(rule, item));
       if (matches.length === 0) continue;
+      const notifications = matches.flatMap((rule) =>
+        createNotifications &&
+        rule.action === "notify" &&
+        rule.id !== undefined &&
+        rule.notificationsEnabled !== false
+          ? [
+              {
+                userId,
+                itemId: item.id,
+                ruleId: rule.id,
+                ruleField: rule.field,
+                ruleMatchType: rule.matchType,
+                rulePattern: rule.pattern,
+              },
+            ]
+          : [],
+      );
       out.push({
         userId,
         itemId: item.id,
@@ -133,6 +183,7 @@ function evaluate(
         labelIds: matches.flatMap((rule) =>
           rule.action === "tag" && rule.labelId !== null ? [rule.labelId] : [],
         ),
+        notifications,
       });
     }
   }
@@ -152,12 +203,14 @@ export async function applyRulesToNewItems(
   // Enabled rules of this feed's subscribers, scoped to this feed or to all feeds.
   const ruleRows = (await db
     .select({
+      id: rules.id,
       userId: rules.userId,
       field: rules.field,
       matchType: rules.matchType,
       pattern: rules.pattern,
       action: rules.action,
       labelId: rules.labelId,
+      notificationsEnabled: sql<boolean>`coalesce(${users.settings}->>'inAppRuleAlerts', 'true') = 'true'`,
     })
     .from(rules)
     .innerJoin(
@@ -167,6 +220,7 @@ export async function applyRulesToNewItems(
         eq(subscriptions.feedId, feedId),
       ),
     )
+    .innerJoin(users, eq(users.id, rules.userId))
     .where(
       and(
         eq(rules.enabled, true),
@@ -175,7 +229,7 @@ export async function applyRulesToNewItems(
     )) as RuleRow[];
   if (ruleRows.length === 0) return;
 
-  await applyEffects(evaluate(ruleRows, newItems));
+  await applyEffects(evaluate(ruleRows, newItems, true));
 }
 
 /**
@@ -186,6 +240,7 @@ export async function applyRulesToNewItems(
 export async function applyRuleToExistingItems(
   userId: number,
   rule: Omit<RuleRow, "userId"> & { feedId: number | null },
+  notificationsEnabled = true,
 ): Promise<ExistingRuleApplicationResult> {
   const rows = (await db
     .select({
@@ -207,7 +262,13 @@ export async function applyRuleToExistingItems(
     .limit(RULE_EXISTING_APPLY_LIMIT + 1)) as IngestedItem[];
   const candidates = rows.slice(0, RULE_EXISTING_APPLY_LIMIT);
 
-  const entries = evaluate([{ ...rule, userId }], candidates);
+  // A saved rule only alerts for its existing matches after the reader makes
+  // this explicit batch request. Creating a rule itself remains non-retroactive.
+  const entries = evaluate(
+    [{ ...rule, userId, notificationsEnabled }],
+    candidates,
+    rule.action === "notify",
+  );
   await applyEffects(entries);
   return {
     scanned: candidates.length,

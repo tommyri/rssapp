@@ -149,7 +149,8 @@ scaling/business question — see docs/business-option.md.
 ### Rules & filters
 
 Per-user automation on `/rules`: match articles by keyword or regex on
-title/content/author — scoped to one feed or all — and mute, mark read, or star them.
+title/content/author — scoped to one feed or all — and mute, mark read, star,
+label, or add them to the in-app notification inbox.
 Rules run at ingest (new items arrive with state already applied). A saved rule can
 also be explicitly confirmed against a bounded batch of existing articles; creating a
 rule never mutates older items. Muted items vanish from lists and unread counts entirely.

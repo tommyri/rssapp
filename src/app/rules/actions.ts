@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { getCurrentUserId } from "@/lib/current-user";
+import { getCurrentUser, getCurrentUserId } from "@/lib/current-user";
 import { listLabels } from "@/lib/labels";
 import {
   applyRuleToExistingItems,
@@ -100,19 +100,30 @@ export async function applyRuleToExistingAction(
   const ruleId = ruleIdSchema.safeParse(formData.get("ruleId"));
   if (!ruleId.success) return { ok: false, message: "Invalid rule." };
 
-  const userId = await getCurrentUserId();
+  const user = await getCurrentUser();
+  const userId = user.id;
   const rule = await getRule(userId, ruleId.data);
   if (!rule) return { ok: false, message: "That rule is no longer available." };
   if (!rule.enabled) {
     return { ok: false, message: "Enable the rule before applying it." };
   }
 
-  const result = await applyRuleToExistingItems(userId, rule);
+  const result = await applyRuleToExistingItems(
+    userId,
+    rule,
+    user.settings.inAppRuleAlerts !== false,
+  );
   revalidatePath("/rules");
   revalidatePath("/");
+  const notificationMessage =
+    rule.action === "notify"
+      ? user.settings.inAppRuleAlerts !== false
+        ? " Matching articles were added to Notifications."
+        : " Notifications are disabled in Settings."
+      : "";
   return {
     ok: true,
-    message: `Applied to ${result.matched} matching article${result.matched === 1 ? "" : "s"} from ${result.scanned} scanned.`,
+    message: `Applied to ${result.matched} matching article${result.matched === 1 ? "" : "s"} from ${result.scanned} scanned.${notificationMessage}`,
     ...result,
   };
 }

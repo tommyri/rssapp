@@ -1,4 +1,5 @@
 import {
+  BellIcon,
   BookmarkIcon,
   HighlighterIcon,
   PauseIcon,
@@ -12,6 +13,7 @@ import { AddFeedForm } from "@/components/add-feed-form";
 import { ArticleList } from "@/components/article-list";
 import { HighlightLibrary } from "@/components/highlight-library";
 import { MobileShell } from "@/components/mobile-shell";
+import { NotificationLibrary } from "@/components/notification-library";
 import { PullToRefresh } from "@/components/pull-to-refresh";
 import { PwaRegister } from "@/components/pwa-register";
 import { ReaderGlobalKeyboard } from "@/components/reader-global-keyboard";
@@ -24,11 +26,16 @@ import { getCurrentUser } from "@/lib/current-user";
 import { highlightsCount, listHighlightSummaries } from "@/lib/highlights";
 import { listLabelSummaries } from "@/lib/labels";
 import {
+  listNotifications,
+  unreadNotificationsCount,
+} from "@/lib/notifications";
+import {
   type FeedSummary,
   getArticleListDensity,
   getCollapseDuplicates,
   getEmbedLoadingPreferences,
   getReaderItemForHighlight,
+  getReaderItemForNotification,
   listFeeds,
   listItems,
   listLabelItems,
@@ -53,6 +60,7 @@ interface SearchParams {
   label?: string;
   notes?: string;
   highlight?: string;
+  notification?: string;
 }
 
 function parseId(value: string | undefined): number | undefined {
@@ -71,13 +79,17 @@ export default async function Home({
   const starred = params.view === "starred";
   const readLater = params.view === "later";
   const highlightsView = params.view === "highlights";
+  const notificationsView = params.view === "notifications";
   const notesOnly = highlightsView && params.notes === "1";
   const focusHighlightId = highlightsView
     ? parseId(params.highlight)
     : undefined;
+  const focusNotificationId = notificationsView
+    ? parseId(params.notification)
+    : undefined;
   const query = (params.q ?? "").trim();
   const labelId = parseId(params.label);
-  const isSearch = query.length > 0 && !highlightsView;
+  const isSearch = query.length > 0 && !highlightsView && !notificationsView;
 
   const user = await getCurrentUser();
   if (!user.onboardingCompletedAt) redirect("/onboarding");
@@ -91,6 +103,7 @@ export default async function Home({
     sidebarFolders,
     sidebarPreferences,
     highlightCount,
+    notificationCount,
   ] = await Promise.all([
     listFeeds(userId),
     getCollapseDuplicates(userId),
@@ -100,6 +113,7 @@ export default async function Home({
     listSidebarFolders(userId),
     listSidebarPreferences(userId),
     highlightsCount(userId),
+    unreadNotificationsCount(userId),
   ]);
   const activeLabel = labelId
     ? labels.find((label) => label.id === labelId)
@@ -108,12 +122,13 @@ export default async function Home({
     ? feeds.find((f) => f.feedId === feedId)
     : undefined;
 
-  const showingAll = highlightsView
-    ? true
-    : effectiveShowingAll(
-        params.show,
-        feedId ? (activeFeed?.defaultUnreadOnly ?? true) : undefined,
-      );
+  const showingAll =
+    highlightsView || notificationsView
+      ? true
+      : effectiveShowingAll(
+          params.show,
+          feedId ? (activeFeed?.defaultUnreadOnly ?? true) : undefined,
+        );
   // Starred and Read later are archive views — read state doesn't gate them.
   const unreadOnly =
     !showingAll && !starred && !readLater && !activeLabel && !highlightsView;
@@ -131,37 +146,47 @@ export default async function Home({
     sortOrder,
     labelId: activeLabel?.id,
     highlight: Boolean(highlightsView && focusHighlightId),
+    notification: Boolean(notificationsView && focusNotificationId),
   };
 
-  const [page, saved, highlightSummaries, focusedHighlight] = await Promise.all(
-    [
-      highlightsView
-        ? Promise.resolve({ items: [], hasMore: false })
-        : isSearch
-          ? searchEverything(userId, query).then((items) => ({
-              items,
-              hasMore: false,
-            }))
-          : readLater
-            ? listReadLater(userId)
-            : activeLabel
-              ? listLabelItems(userId, activeLabel.id)
-              : listItems(userId, { ...view, limit: 50, collapse }),
-      savedCounts(userId),
-      highlightsView
-        ? listHighlightSummaries(userId, notesOnly)
-        : Promise.resolve([]),
-      focusHighlightId
-        ? getReaderItemForHighlight(userId, focusHighlightId)
-        : Promise.resolve(null),
-    ],
-  );
+  const [
+    page,
+    saved,
+    highlightSummaries,
+    focusedHighlight,
+    notificationSummaries,
+    focusedNotification,
+  ] = await Promise.all([
+    highlightsView || notificationsView
+      ? Promise.resolve({ items: [], hasMore: false })
+      : isSearch
+        ? searchEverything(userId, query).then((items) => ({
+            items,
+            hasMore: false,
+          }))
+        : readLater
+          ? listReadLater(userId)
+          : activeLabel
+            ? listLabelItems(userId, activeLabel.id)
+            : listItems(userId, { ...view, limit: 50, collapse }),
+    savedCounts(userId),
+    highlightsView
+      ? listHighlightSummaries(userId, notesOnly)
+      : Promise.resolve([]),
+    focusHighlightId
+      ? getReaderItemForHighlight(userId, focusHighlightId)
+      : Promise.resolve(null),
+    notificationsView ? listNotifications(userId) : Promise.resolve([]),
+    focusNotificationId
+      ? getReaderItemForNotification(userId, focusNotificationId)
+      : Promise.resolve(null),
+  ]);
   const totalUnread = feeds.reduce((sum, f) => sum + f.unread, 0);
 
   // Read later is a client-owned list that also grows via the save form; folding
   // the saved count into its key remounts it after a save so the new page shows,
   // without remounting other views on every router.refresh().
-  const viewKey = `${feedId ?? ""}:${folderId ?? ""}:${starred}:${readLater}:${highlightsView}:${focusHighlightId ?? ""}:${activeLabel?.id ?? ""}:${showingAll}:${sortOrder ?? ""}:${query}${
+  const viewKey = `${feedId ?? ""}:${folderId ?? ""}:${starred}:${readLater}:${highlightsView}:${focusHighlightId ?? ""}:${notificationsView}:${focusNotificationId ?? ""}:${activeLabel?.id ?? ""}:${showingAll}:${sortOrder ?? ""}:${query}${
     readLater && !isSearch ? `:${saved.readLater}` : ""
   }`;
 
@@ -187,19 +212,21 @@ export default async function Home({
 
   const title = highlightsView
     ? "Highlights"
-    : isSearch
-      ? `“${query}”`
-      : starred
-        ? "Starred"
-        : readLater
-          ? "Read later"
-          : activeLabel
-            ? activeLabel.name
-            : feedId
-              ? (feeds.find((f) => f.feedId === feedId)?.title ?? "Feed")
-              : folderId
-                ? (byFolder.get(folderId)?.name ?? "Folder")
-                : "All articles";
+    : notificationsView
+      ? "Notifications"
+      : isSearch
+        ? `“${query}”`
+        : starred
+          ? "Starred"
+          : readLater
+            ? "Read later"
+            : activeLabel
+              ? activeLabel.name
+              : feedId
+                ? (feeds.find((f) => f.feedId === feedId)?.title ?? "Feed")
+                : folderId
+                  ? (byFolder.get(folderId)?.name ?? "Folder")
+                  : "All articles";
 
   const unreadCount = highlightsView
     ? 0
@@ -243,6 +270,7 @@ export default async function Home({
               !starred &&
               !readLater &&
               !highlightsView &&
+              !notificationsView &&
               !activeLabel &&
               !isSearch
             }
@@ -269,6 +297,13 @@ export default async function Home({
             label="Highlights"
             marker={<HighlighterIcon className="size-4" />}
             count={highlightCount}
+          />
+          <FeedLink
+            href="/?view=notifications"
+            active={notificationsView}
+            label="Notifications"
+            marker={<BellIcon className="size-4" />}
+            count={notificationCount}
           />
 
           {labels.length > 0 ? (
@@ -339,7 +374,41 @@ export default async function Home({
       {/* Content pane */}
       <main data-reader-scroll className="min-w-0 flex-1 overflow-y-auto">
         <div className="mx-auto w-full max-w-3xl px-4 pb-16 md:px-8">
-          {highlightsView ? (
+          {notificationsView ? (
+            focusNotificationId && focusedNotification ? (
+              <PullToRefresh>
+                <div className="pt-6">
+                  <Link
+                    href="/?view=notifications"
+                    className="inline-flex rounded-md px-1 py-1 text-sm text-muted-foreground transition-colors hover:text-foreground"
+                  >
+                    ← All notifications
+                  </Link>
+                  <ArticleList
+                    key={viewKey}
+                    initialItems={[focusedNotification]}
+                    initialHasMore={false}
+                    view={view}
+                    title={title}
+                    toggleHref="/?view=notifications"
+                    showingAll
+                    unreadCount={0}
+                    collapse={false}
+                    density={articleListDensity}
+                    embedLoading={embedLoading}
+                    offlineUserId={userId}
+                    availableLabels={labels}
+                    initialExpandedId={`item:${focusedNotification.id}`}
+                  />
+                </div>
+              </PullToRefresh>
+            ) : (
+              <NotificationLibrary
+                notifications={notificationSummaries}
+                missingNotification={focusNotificationId !== undefined}
+              />
+            )
+          ) : highlightsView ? (
             focusHighlightId && focusedHighlight ? (
               <PullToRefresh>
                 <div className="pt-6">

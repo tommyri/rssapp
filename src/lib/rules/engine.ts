@@ -3,7 +3,13 @@
 
 export const RULE_FIELDS = ["title", "content", "author"] as const;
 export const RULE_MATCH_TYPES = ["contains", "regex"] as const;
-export const RULE_ACTIONS = ["mute", "mark_read", "star", "tag"] as const;
+export const RULE_ACTIONS = [
+  "mute",
+  "mark_read",
+  "star",
+  "tag",
+  "notify",
+] as const;
 
 export type RuleField = (typeof RULE_FIELDS)[number];
 export type RuleMatchType = (typeof RULE_MATCH_TYPES)[number];
@@ -80,6 +86,7 @@ export interface ActionFlags {
   muted: boolean;
   read: boolean;
   starred: boolean;
+  notify: boolean;
 }
 
 /** Fold the actions of every matching rule into one set of state flags. */
@@ -88,5 +95,6 @@ export function combineActions(actions: RuleAction[]): ActionFlags {
     muted: actions.includes("mute"),
     read: actions.includes("mark_read"),
     starred: actions.includes("star"),
+    notify: actions.includes("notify"),
   };
 }

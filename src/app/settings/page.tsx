@@ -14,6 +14,7 @@ import { ApiAccessTokenControls } from "@/components/api-access-token-controls";
 import { BackLink } from "@/components/back-link";
 import { BackupControls } from "@/components/backup-controls";
 import { GoogleAccountLink } from "@/components/google-auth-controls";
+import { NotificationPreferencesForm } from "@/components/notification-preferences-form";
 import { OpmlControls } from "@/components/opml-controls";
 import { ReaderTypographyForm } from "@/components/reader-typography";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -58,6 +59,7 @@ const sessionDate = (date: Date) =>
 const SECTION_SCOPE: Record<SettingsSectionId, "Account" | "This device"> = {
   reading: "Account",
   appearance: "This device",
+  notifications: "Account",
   data: "Account",
   account: "Account",
 };
@@ -153,6 +155,11 @@ export default async function SettingsPage({
 
         <ReaderTypographyForm />
       </>
+    ),
+    notifications: (
+      <NotificationPreferencesForm
+        inAppRuleAlerts={user?.settings.inAppRuleAlerts ?? true}
+      />
     ),
     data: (
       <>

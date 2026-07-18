@@ -264,6 +264,29 @@ export async function updateReadingPrefsAction(
   return { ok: true, message: "Saved." };
 }
 
+/** Toggle whether matching notify rules add alerts to this account's inbox. */
+export async function updateNotificationPreferencesAction(
+  _prev: AccountActionState,
+  formData: FormData,
+): Promise<AccountActionState> {
+  const inAppRuleAlerts = formData.get("inAppRuleAlerts") === "on";
+  const userId = await getCurrentUserId();
+  const user = await db.query.users.findFirst({ where: eq(users.id, userId) });
+  if (!user)
+    return { ok: false, message: "Your account is no longer available." };
+
+  await db
+    .update(users)
+    .set({ settings: { ...user.settings, inAppRuleAlerts } })
+    .where(eq(users.id, userId));
+  revalidatePath("/");
+  revalidatePath("/settings");
+  return {
+    ok: true,
+    message: inAppRuleAlerts ? "Rule alerts are on." : "Rule alerts are off.",
+  };
+}
+
 export async function changePasswordAction(
   _prev: AccountActionState,
   formData: FormData,

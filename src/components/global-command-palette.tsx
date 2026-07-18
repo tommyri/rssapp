@@ -37,6 +37,7 @@ export async function GlobalCommandPalette() {
     { kind: "view", label: "All articles", href: "/" },
     { kind: "view", label: "Starred", href: "/?view=starred" },
     { kind: "view", label: "Read later", href: "/?view=later" },
+    { kind: "view", label: "Notifications", href: "/?view=notifications" },
     { kind: "page", label: "Manage feeds", href: "/feeds" },
     { kind: "page", label: "Rules", href: "/rules" },
     { kind: "page", label: "Settings", href: "/settings" },

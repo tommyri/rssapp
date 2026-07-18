@@ -9,9 +9,28 @@ import {
 } from "@/app/rules/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import type { RuleAction, RuleField, RuleMatchType } from "@/lib/rules";
 
 const initial: RuleActionState = { ok: true, message: "" };
 const initialPreview: RulePreviewState = { ok: true, message: "" };
+
+type RuleDraft = {
+  feedId: string;
+  field: RuleField;
+  matchType: RuleMatchType;
+  pattern: string;
+  action: RuleAction;
+  labelId: string;
+};
+
+const initialDraft: RuleDraft = {
+  feedId: "all",
+  field: "title",
+  matchType: "contains",
+  pattern: "",
+  action: "mute",
+  labelId: "",
+};
 
 const selectClass =
   "border-input h-8 rounded-md border bg-transparent px-2 text-sm shadow-xs outline-none focus-visible:ring-2 focus-visible:ring-ring/50";
@@ -45,13 +64,23 @@ export function RuleForm({
     previewRuleAction,
     initialPreview,
   );
-  const [action, setAction] = useState("mute");
+  // React clears uncontrolled fields after a successful form action. A rule
+  // preview is deliberately non-mutating, so keep the draft in client state
+  // and let the reader test it before deciding to save it.
+  const [draft, setDraft] = useState<RuleDraft>(initialDraft);
 
   return (
     <form action={formAction} className="space-y-3 rounded-lg border p-4">
       <div className="flex flex-wrap items-center gap-2 text-sm">
         <span>In</span>
-        <select name="feedId" defaultValue="all" className={selectClass}>
+        <select
+          name="feedId"
+          value={draft.feedId}
+          onChange={(event) =>
+            setDraft((current) => ({ ...current, feedId: event.target.value }))
+          }
+          className={selectClass}
+        >
           <option value="all">all feeds</option>
           {feeds.map((f) => (
             <option key={f.feedId} value={f.feedId}>
@@ -61,7 +90,17 @@ export function RuleForm({
         </select>
 
         <span>when</span>
-        <select name="field" defaultValue="title" className={selectClass}>
+        <select
+          name="field"
+          value={draft.field}
+          onChange={(event) =>
+            setDraft((current) => ({
+              ...current,
+              field: event.target.value as RuleField,
+            }))
+          }
+          className={selectClass}
+        >
           <option value="title">title</option>
           <option value="content">content</option>
           <option value="author">author</option>
@@ -69,7 +108,13 @@ export function RuleForm({
 
         <select
           name="matchType"
-          defaultValue="contains"
+          value={draft.matchType}
+          onChange={(event) =>
+            setDraft((current) => ({
+              ...current,
+              matchType: event.target.value as RuleMatchType,
+            }))
+          }
           className={selectClass}
         >
           <option value="contains">contains</option>
@@ -81,27 +126,43 @@ export function RuleForm({
           placeholder="keyword or pattern"
           aria-label="Pattern"
           autoComplete="off"
+          value={draft.pattern}
+          onChange={(event) =>
+            setDraft((current) => ({ ...current, pattern: event.target.value }))
+          }
           className="h-8 w-56"
         />
 
         <span>then</span>
         <select
           name="action"
-          value={action}
-          onChange={(event) => setAction(event.target.value)}
+          value={draft.action}
+          onChange={(event) =>
+            setDraft((current) => ({
+              ...current,
+              action: event.target.value as RuleAction,
+            }))
+          }
           className={selectClass}
         >
           <option value="mute">mute</option>
           <option value="mark_read">mark read</option>
           <option value="star">star</option>
           <option value="tag">apply label</option>
+          <option value="notify">add to notifications</option>
         </select>
-        {action === "tag" ? (
+        {draft.action === "tag" ? (
           <>
             <span>as</span>
             <select
               name="labelId"
-              defaultValue=""
+              value={draft.labelId}
+              onChange={(event) =>
+                setDraft((current) => ({
+                  ...current,
+                  labelId: event.target.value,
+                }))
+              }
               className={selectClass}
               aria-label="Label to apply"
             >
@@ -159,7 +220,9 @@ export function RuleForm({
                       ? "mark matching articles read"
                       : preview.action === "star"
                         ? "star matching articles"
-                        : "apply the selected label to matching articles"
+                        : preview.action === "tag"
+                          ? "apply the selected label to matching articles"
+                          : "add matching articles to your notifications"
                 }.`
               : ""}
           </p>

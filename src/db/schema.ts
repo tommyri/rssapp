@@ -60,6 +60,8 @@ export const users = pgTable(
       collapseDuplicates?: boolean;
       articleListDensity?: ArticleListDensity;
       embedLoading?: EmbedLoadingPreferences;
+      /** Whether matching "notify" rules create entries in the in-app inbox. */
+      inAppRuleAlerts?: boolean;
       collapsedFolderIds?: number[];
       sidebarFolderIds?: number[];
       sidebarFeedIds?: Record<string, number[]>;
@@ -566,8 +568,9 @@ export const itemLabels = pgTable(
 );
 
 // Per-user automation (docs/features.md v1): match new items by keyword/regex
-// and mute, mark read, star, or label them. Values of field/match_type/action are
-// constrained by the TS unions in src/lib/rules/engine.ts.
+// and mute, mark read, star, label, or notify them. Values of
+// field/match_type/action are constrained by the TS unions in
+// src/lib/rules/engine.ts.
 export const rules = pgTable(
   "rules",
   {
@@ -582,7 +585,7 @@ export const rules = pgTable(
     field: text("field").notNull(), // 'title' | 'content' | 'author'
     matchType: text("match_type").notNull(), // 'contains' | 'regex'
     pattern: text("pattern").notNull(),
-    action: text("action").notNull(), // 'mute' | 'mark_read' | 'star' | 'tag'
+    action: text("action").notNull(), // mute | mark_read | star | tag | notify
     // Required for tag rules; deleting a label also removes its rules.
     labelId: bigint("label_id", { mode: "number" }).references(
       () => labels.id,
@@ -594,6 +597,49 @@ export const rules = pgTable(
   (t) => [
     index("rules_user_idx").on(t.userId),
     index("rules_label_idx").on(t.labelId),
+  ],
+);
+
+/**
+ * A durable, per-user inbox. Rule alerts are its first event type; keeping the
+ * event snapshot here lets later delivery channels (push and digests) share the
+ * same source of truth without re-evaluating or re-fetching articles.
+ */
+export const notifications = pgTable(
+  "notifications",
+  {
+    id: id(),
+    userId: bigint("user_id", { mode: "number" })
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    itemId: bigint("item_id", { mode: "number" })
+      .notNull()
+      .references(() => items.id, { onDelete: "cascade" }),
+    // Keep past inbox entries useful after a rule is deleted. The snapshot
+    // below explains why the article arrived without exposing a live rule.
+    ruleId: bigint("rule_id", { mode: "number" }).references(() => rules.id, {
+      onDelete: "set null",
+    }),
+    kind: text("kind").notNull().default("rule_match"),
+    ruleField: text("rule_field").notNull(),
+    ruleMatchType: text("rule_match_type").notNull(),
+    rulePattern: text("rule_pattern").notNull(),
+    readAt: timestamp("read_at", { withTimezone: true }),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    check("notifications_kind_check", sql`${t.kind} in ('rule_match')`),
+    // Feed refreshes are retryable. A rule/item pair must therefore only ever
+    // create one inbox entry for a user.
+    uniqueIndex("notifications_user_rule_item_idx").on(
+      t.userId,
+      t.ruleId,
+      t.itemId,
+    ),
+    index("notifications_user_created_idx").on(t.userId, t.createdAt),
+    index("notifications_user_unread_idx")
+      .on(t.userId, t.createdAt)
+      .where(sql`${t.readAt} is null`),
   ],
 );
 

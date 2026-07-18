@@ -100,6 +100,40 @@ describe("parseBackupDocument", () => {
     });
   });
 
+  it("retains the in-app rule-alert preference", () => {
+    const raw = validBackup();
+    const backup = parseBackupDocument({
+      ...raw,
+      user: {
+        ...raw.user,
+        settings: { inAppRuleAlerts: false },
+      },
+    });
+
+    expect(backup.user.settings.inAppRuleAlerts).toBe(false);
+  });
+
+  it("accepts notify rules from an exported backup", () => {
+    const raw = validBackup();
+    const backup = parseBackupDocument({
+      ...raw,
+      rules: [
+        {
+          feedUrl: null,
+          field: "title",
+          matchType: "contains",
+          pattern: "release",
+          action: "notify",
+          labelName: null,
+          enabled: true,
+          createdAt: timestamp,
+        },
+      ],
+    });
+
+    expect(backup.rules[0]?.action).toBe("notify");
+  });
+
   it("rejects references to articles that are not included in the backup", () => {
     const backup = validBackup();
     backup.itemStates[0].guid = "missing-article";

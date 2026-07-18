@@ -101,11 +101,13 @@ describe("combineActions", () => {
       muted: true,
       read: false,
       starred: true,
+      notify: false,
     });
     expect(combineActions([])).toEqual({
       muted: false,
       read: false,
       starred: false,
+      notify: false,
     });
   });
 
@@ -114,6 +116,16 @@ describe("combineActions", () => {
       muted: false,
       read: false,
       starred: false,
+      notify: false,
+    });
+  });
+
+  it("keeps notification rules out of article state while flagging delivery", () => {
+    expect(combineActions(["notify"])).toEqual({
+      muted: false,
+      read: false,
+      starred: false,
+      notify: true,
     });
   });
 });

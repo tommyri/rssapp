@@ -14,6 +14,7 @@ const ACTION_LABEL: Record<string, string> = {
   mark_read: "mark read",
   star: "star",
   tag: "apply label",
+  notify: "add to notifications",
 };
 
 function describe(rule: RuleListEntry): string {
@@ -98,8 +99,9 @@ export default async function RulesPage() {
         <p className="text-xs text-muted-foreground">
           Rules apply to new articles as they arrive. Applying a saved rule to
           existing articles is confirmed and limited to its newest 500 scoped
-          articles. Deleting or disabling a rule doesn't undo what it already
-          did.
+          articles. A notification rule also adds its matching articles to
+          Notifications. Deleting or disabling a rule doesn't undo what it
+          already did.
         </p>
       </div>
     </div>

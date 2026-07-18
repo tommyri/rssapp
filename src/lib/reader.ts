@@ -26,6 +26,7 @@ import {
 import { normalizeStoredArticleHtml } from "@/lib/feeds";
 import { getHighlightTarget } from "@/lib/highlights";
 import { labelsForTargets, type ReaderLabel } from "@/lib/labels";
+import { notificationItemId } from "@/lib/notifications";
 import type { ExportEntry } from "@/lib/opml";
 import { DEFAULT_AUTO_READ_DAYS } from "@/lib/reading-prefs";
 import {
@@ -276,6 +277,8 @@ export interface ReaderView {
   includeMuted?: boolean;
   /** A one-item annotation source behaves as an archive, not an unread feed. */
   highlight?: boolean;
+  /** A one-item notification source behaves as an archive, not an unread feed. */
+  notification?: boolean;
 }
 
 export interface ItemCursor {
@@ -706,6 +709,21 @@ export async function getReaderItemForHighlight(
     savedPageToItem(savedPage),
   ]);
   return readerItem ?? null;
+}
+
+/** Open an inbox article through the normal reader, including muted matches. */
+export async function getReaderItemForNotification(
+  userId: number,
+  notificationId: number,
+): Promise<ReaderItem | null> {
+  const itemId = await notificationItemId(userId, notificationId);
+  if (itemId === null) return null;
+  const page = await listItems(userId, {
+    itemId,
+    includeMuted: true,
+    limit: 1,
+  });
+  return page.items[0] ?? null;
 }
 
 const READ_LATER_LIMIT = 500;
