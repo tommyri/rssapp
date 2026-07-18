@@ -10,6 +10,7 @@ import {
   subscriptions,
   users,
 } from "@/db/schema";
+import { deliverRuleMatchPushNotifications } from "@/lib/push-notifications";
 import {
   type ActionFlags,
   combineActions,
@@ -71,7 +72,10 @@ export interface ExistingRuleApplicationResult {
 }
 
 /** Apply matched state flags and labels without removing existing choices. */
-async function applyEffects(entries: RuleApplication[]): Promise<void> {
+async function applyEffects(
+  entries: RuleApplication[],
+  { deliverPush = false }: { deliverPush?: boolean } = {},
+): Promise<void> {
   if (entries.length === 0) return;
   const stateEntries = entries.filter(
     ({ flags }) => flags.muted || flags.read || flags.starred,
@@ -98,7 +102,7 @@ async function applyEffects(entries: RuleApplication[]): Promise<void> {
 
   const now = new Date();
 
-  await db.transaction(async (tx) => {
+  const createdNotifications = await db.transaction(async (tx) => {
     if (stateEntries.length > 0) {
       await tx
         .insert(itemStates)
@@ -133,12 +137,25 @@ async function applyEffects(entries: RuleApplication[]): Promise<void> {
     }
 
     if (notificationEntries.length > 0) {
-      await tx
+      const insert = tx
         .insert(notifications)
         .values(notificationEntries)
         .onConflictDoNothing();
+      if (deliverPush) {
+        return insert.returning({
+          id: notifications.id,
+          userId: notifications.userId,
+          itemId: notifications.itemId,
+        });
+      }
+      await insert;
     }
+    return [];
   });
+
+  if (deliverPush && createdNotifications.length > 0) {
+    await deliverRuleMatchPushNotifications(createdNotifications);
+  }
 }
 
 /** Evaluate rules against items and produce the state rows to write. */
@@ -229,7 +246,7 @@ export async function applyRulesToNewItems(
     )) as RuleRow[];
   if (ruleRows.length === 0) return;
 
-  await applyEffects(evaluate(ruleRows, newItems, true));
+  await applyEffects(evaluate(ruleRows, newItems, true), { deliverPush: true });
 }
 
 /**

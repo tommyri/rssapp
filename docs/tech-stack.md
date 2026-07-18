@@ -100,6 +100,7 @@ once. Staff roles remain later work.
 - `saved_pages` — per-user "save any link to read later": arbitrary URL (unique per user), a Readability copy (content_html) with a `pending → ready | error` status, read state, and a generated `search_vector`. No feed, so it lives outside `items`; folds into the unified Read later view and search
 - `rules` — per-user automation: match by keyword/regex on title/content/author, scoped to one feed or all, action mute/mark_read/star/tag/notify
 - `notifications` — durable per-user inbox entries, deduplicated by rule and article; stores a rule-match snapshot so future delivery channels share one source of truth
+- `push_subscriptions` — per-account browser/device Web Push endpoints and their encrypted-payload keys; endpoints are unique globally so a shared browser is bound to its active account and expired endpoints can be pruned safely
 - `fetch_log` — per-fetch outcome for the feed health view
 
 Splitting `feeds`/`items` (global) from `subscriptions`/`item_states` (per user) costs nothing now and is exactly what multi-user and the Reader-compat API would need. Application code follows the same rule: every query is scoped by the session's `user_id` even while there's only one user (see business-option.md).

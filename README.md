@@ -156,6 +156,35 @@ also be explicitly confirmed against a bounded batch of existing articles; creat
 rule never mutates older items. Muted items vanish from lists and unread counts entirely.
 The pure matching engine lives in `src/lib/rules/engine.ts` with unit tests alongside.
 
+### Browser push notifications
+
+The in-app inbox is always the source of truth. A reader can additionally opt a
+specific browser/device into push alerts from **Settings → Notifications**. Each feed
+refresh is grouped into at most one alert per reader; a single-article alert marks its
+matching inbox notification read before going to the article, while a batch opens the
+inbox. Nothing is sent until both a
+deployment owner has configured VAPID and the reader explicitly enables this device.
+
+Generate a VAPID key pair once and keep it stable—changing it invalidates every existing
+browser subscription:
+
+```bash
+npx web-push generate-vapid-keys --json
+```
+
+Set the resulting values in the deployment environment (the public key is shared only
+with opted-in browsers; the private key stays server-side):
+
+```bash
+VAPID_SUBJECT=mailto:alerts@reader.example.com
+VAPID_PUBLIC_KEY=...
+VAPID_PRIVATE_KEY=...
+```
+
+Browser push is intentionally disabled in `next dev`, where the app unregisters service
+workers to prevent Turbopack's changing modules from becoming stale. Test it with a
+production build over HTTPS (or `localhost`).
+
 ### Full-content extraction
 
 For truncated feeds, "Load full content" in the article view fetches the article page

@@ -643,6 +643,28 @@ export const notifications = pgTable(
   ],
 );
 
+/**
+ * One Web Push endpoint per browser/device. The endpoint and encryption keys
+ * are scoped to an account and removed if its push service reports it expired.
+ */
+export const pushSubscriptions = pgTable(
+  "push_subscriptions",
+  {
+    id: id(),
+    userId: bigint("user_id", { mode: "number" })
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    endpoint: text("endpoint").notNull(),
+    p256dh: text("p256dh").notNull(),
+    auth: text("auth").notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    uniqueIndex("push_subscriptions_endpoint_idx").on(t.endpoint),
+    index("push_subscriptions_user_created_idx").on(t.userId, t.createdAt),
+  ],
+);
+
 // Per-user "save any link to read later" (docs/features.md v0.2): arbitrary web
 // pages saved by URL. They have no feed, so they live here instead of `items`.
 // A Readability copy is fetched in the background (status pending -> ready/error)

@@ -1,7 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
+  deliverRuleMatchPushNotifications: vi.fn(),
   notificationConflict: vi.fn(),
+  notificationReturning: vi.fn(),
   notificationValues: vi.fn(),
   select: vi.fn(),
   transaction: vi.fn(),
@@ -15,7 +17,11 @@ vi.mock("@/db", () => ({
   },
 }));
 
-import { applyRuleToExistingItems } from "./apply";
+vi.mock("@/lib/push-notifications", () => ({
+  deliverRuleMatchPushNotifications: mocks.deliverRuleMatchPushNotifications,
+}));
+
+import { applyRulesToNewItems, applyRuleToExistingItems } from "./apply";
 
 const matchingItem = {
   id: 91,
@@ -50,11 +56,41 @@ function existingItemQuery() {
   return query;
 }
 
+function newItemRuleQuery() {
+  const query = {
+    from: vi.fn(),
+    innerJoin: vi.fn(),
+    where: vi.fn(),
+  };
+  query.from.mockReturnValue(query);
+  query.innerJoin.mockReturnValue(query);
+  query.where.mockResolvedValue([
+    {
+      id: notificationRule.id,
+      userId: 4,
+      field: notificationRule.field,
+      matchType: notificationRule.matchType,
+      pattern: notificationRule.pattern,
+      action: notificationRule.action,
+      labelId: null,
+      notificationsEnabled: true,
+    },
+  ]);
+  return query;
+}
+
 describe("applyRuleToExistingItems", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.select.mockReturnValue(existingItemQuery());
-    mocks.notificationConflict.mockResolvedValue(undefined);
+    mocks.notificationConflict.mockImplementation(() =>
+      Object.assign(Promise.resolve(undefined), {
+        returning: mocks.notificationReturning,
+      }),
+    );
+    mocks.notificationReturning.mockResolvedValue([
+      { id: 101, userId: 4, itemId: 91 },
+    ]);
     mocks.notificationValues.mockReturnValue({
       onConflictDoNothing: mocks.notificationConflict,
     });
@@ -88,5 +124,20 @@ describe("applyRuleToExistingItems", () => {
     ).resolves.toMatchObject({ scanned: 1, matched: 1, hasMore: false });
 
     expect(mocks.txInsert).not.toHaveBeenCalled();
+  });
+
+  it("delivers only newly persisted notifications from the ingestion path", async () => {
+    mocks.select.mockReturnValue(newItemRuleQuery());
+
+    await applyRulesToNewItems(7, [matchingItem]);
+
+    expect(mocks.notificationReturning).toHaveBeenCalledWith({
+      id: expect.anything(),
+      userId: expect.anything(),
+      itemId: expect.anything(),
+    });
+    expect(mocks.deliverRuleMatchPushNotifications).toHaveBeenCalledWith([
+      { id: 101, userId: 4, itemId: 91 },
+    ]);
   });
 });

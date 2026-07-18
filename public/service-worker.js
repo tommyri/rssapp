@@ -1,4 +1,4 @@
-const SHELL_CACHE = "rssapp-offline-shell-v5";
+const SHELL_CACHE = "rssapp-offline-shell-v6";
 const OFFLINE_PAGE = "/offline";
 const OFFLINE_DATABASE = "rssapp-offline-library";
 const OFFLINE_DATABASE_VERSION = 3;
@@ -235,6 +235,94 @@ self.addEventListener("periodicsync", (event) => {
   if (event.tag === AUTOMATIC_DOWNLOAD_PERIODIC_SYNC_TAG) {
     event.waitUntil(refreshAutomaticReadLater());
   }
+});
+
+function asPushText(value, fallback) {
+  if (typeof value !== "string") return fallback;
+  return value.trim().slice(0, 240) || fallback;
+}
+
+function parsePushPayload(event) {
+  try {
+    const value = event.data?.json();
+    if (!value || typeof value !== "object") throw new Error("Invalid push");
+    const notificationId = Number(value.notificationId);
+    const url = new URL(
+      typeof value.url === "string" ? value.url : "/?view=notifications",
+      self.location.origin,
+    );
+    return {
+      title: asPushText(value.title, "rssapp"),
+      body: asPushText(value.body, "New articles matched your rules."),
+      notificationId:
+        Number.isSafeInteger(notificationId) && notificationId > 0
+          ? notificationId
+          : null,
+      tag: asPushText(value.tag, "rssapp-rule-alert"),
+      url:
+        url.origin === self.location.origin
+          ? `${url.pathname}${url.search}${url.hash}`
+          : "/?view=notifications",
+    };
+  } catch {
+    return {
+      title: "rssapp",
+      body: "New articles matched your rules.",
+      notificationId: null,
+      tag: "rssapp-rule-alert",
+      url: "/?view=notifications",
+    };
+  }
+}
+
+self.addEventListener("push", (event) => {
+  const payload = parsePushPayload(event);
+  event.waitUntil(
+    self.registration.showNotification(payload.title, {
+      body: payload.body,
+      icon: "/icon",
+      tag: payload.tag,
+      data: {
+        notificationId: payload.notificationId,
+        url: payload.url,
+      },
+    }),
+  );
+});
+
+async function openNotificationTarget(url) {
+  const destination = new URL(url, self.location.origin).href;
+  const windows = await self.clients.matchAll({
+    type: "window",
+    includeUncontrolled: true,
+  });
+  const existing = windows.find(
+    (client) => new URL(client.url).origin === self.location.origin,
+  );
+  if (existing) {
+    await existing.focus();
+    return existing.navigate(destination);
+  }
+  return self.clients.openWindow(destination);
+}
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const data = event.notification.data ?? {};
+  const notificationId = Number(data.notificationId);
+  const markRead =
+    Number.isSafeInteger(notificationId) && notificationId > 0
+      ? fetch(`/api/notifications/${notificationId}/open`, {
+          method: "POST",
+          credentials: "same-origin",
+        }).catch(() => undefined)
+      : Promise.resolve();
+  event.waitUntil(
+    Promise.all([
+      markRead,
+      openNotificationTarget(data.url ?? "/?view=notifications"),
+    ]),
+  );
 });
 
 self.addEventListener("fetch", (event) => {

@@ -33,6 +33,11 @@ import {
   isEmbedLoadMode,
 } from "@/lib/embed-loading";
 import { hashPassword, verifyPassword } from "@/lib/password";
+import {
+  parsePushSubscription,
+  removePushSubscription,
+  savePushSubscription,
+} from "@/lib/push-notifications";
 import { EmailDeliveryError } from "@/lib/transactional-email";
 
 export interface AccountActionState {
@@ -284,6 +289,65 @@ export async function updateNotificationPreferencesAction(
   return {
     ok: true,
     message: inAppRuleAlerts ? "Rule alerts are on." : "Rule alerts are off.",
+  };
+}
+
+/** Save an explicit, browser-owned Web Push subscription for this device. */
+export async function savePushSubscriptionAction(
+  rawSubscription: unknown,
+): Promise<AccountActionState> {
+  const subscription = parsePushSubscription(rawSubscription);
+  if (!subscription) {
+    return {
+      ok: false,
+      message: "This browser sent an invalid push subscription.",
+    };
+  }
+  const userId = await getCurrentUserId();
+  try {
+    await savePushSubscription(userId, subscription);
+  } catch {
+    return {
+      ok: false,
+      message: "We could not enable browser notifications. Try again.",
+    };
+  }
+  revalidatePath("/settings");
+  return { ok: true, message: "Browser notifications are on for this device." };
+}
+
+/** Remove only the current device's browser subscription. */
+export async function removePushSubscriptionAction(
+  endpoint: string,
+): Promise<AccountActionState> {
+  let parsedEndpoint: URL;
+  try {
+    parsedEndpoint = new URL(endpoint);
+  } catch {
+    return {
+      ok: false,
+      message: "This browser sent an invalid push subscription.",
+    };
+  }
+  if (parsedEndpoint.protocol !== "https:" || endpoint.length > 2_048) {
+    return {
+      ok: false,
+      message: "This browser sent an invalid push subscription.",
+    };
+  }
+  const userId = await getCurrentUserId();
+  try {
+    await removePushSubscription(userId, endpoint);
+  } catch {
+    return {
+      ok: false,
+      message: "We could not turn off browser notifications. Try again.",
+    };
+  }
+  revalidatePath("/settings");
+  return {
+    ok: true,
+    message: "Browser notifications are off for this device.",
   };
 }
 

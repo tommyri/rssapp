@@ -16,6 +16,7 @@ import { BackupControls } from "@/components/backup-controls";
 import { GoogleAccountLink } from "@/components/google-auth-controls";
 import { NotificationPreferencesForm } from "@/components/notification-preferences-form";
 import { OpmlControls } from "@/components/opml-controls";
+import { PushNotificationControl } from "@/components/push-notification-control";
 import { ReaderTypographyForm } from "@/components/reader-typography";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { db } from "@/db";
@@ -30,6 +31,7 @@ import {
   googleAccountSettingsNotice,
   isGoogleAuthEnabled,
 } from "@/lib/google-auth-config";
+import { getVapidPublicKey } from "@/lib/push-notifications";
 // Categorized settings (docs/design-ux.md): the rail/pills are a selector, not
 // a scroll shortcut — one category renders at a time, driven by ?section=, so
 // switching never moves the page. URL-addressable: refresh, back, and the ⌘K
@@ -157,9 +159,12 @@ export default async function SettingsPage({
       </>
     ),
     notifications: (
-      <NotificationPreferencesForm
-        inAppRuleAlerts={user?.settings.inAppRuleAlerts ?? true}
-      />
+      <div className="space-y-4">
+        <NotificationPreferencesForm
+          inAppRuleAlerts={user?.settings.inAppRuleAlerts ?? true}
+        />
+        <PushNotificationControl publicKey={getVapidPublicKey()} />
+      </div>
     ),
     data: (
       <>
