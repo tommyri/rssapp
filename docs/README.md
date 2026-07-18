@@ -8,6 +8,7 @@ A self-hosted RSS reader web app: subscribe to feeds, get new articles pulled in
 - [tech-stack.md](tech-stack.md) — chosen technologies with rationale, high-level architecture, and open decisions
 - [business-option.md](business-option.md) — decisions made now to keep a future hosted/paid product possible, and what's deliberately deferred
 - [competitive-analysis.md](competitive-analysis.md) — the July 2026 reader market: what's table stakes, what people pay for, where the gap is
+- [greader-api.md](greader-api.md) — connect a Google Reader-compatible native client with a revocable app password
 - [design-ux.md](design-ux.md) — layout, list/reading-pane design, keyboard canon, overload handling, and anti-patterns to avoid
 
 ## Guiding principles

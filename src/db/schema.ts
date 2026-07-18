@@ -339,6 +339,33 @@ export const accountTokens = pgTable(
   ],
 );
 
+/**
+ * Long-lived, user-revocable credentials for native reader clients. The raw
+ * secret is shown only when it is created; Postgres stores a SHA-256 hash so a
+ * database export cannot be used to connect a client.
+ */
+export const apiAccessTokens = pgTable(
+  "api_access_tokens",
+  {
+    id: id(),
+    userId: bigint("user_id", { mode: "number" })
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    /** A person-chosen device/app label, for example “NetNewsWire on Mac”. */
+    name: text("name").notNull(),
+    tokenHash: text("token_hash").notNull(),
+    /** A short non-secret identifier shown in Settings after first reveal. */
+    tokenPrefix: text("token_prefix").notNull(),
+    lastUsedAt: timestamp("last_used_at", { withTimezone: true }),
+    revokedAt: timestamp("revoked_at", { withTimezone: true }),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    uniqueIndex("api_access_tokens_hash_idx").on(t.tokenHash),
+    index("api_access_tokens_user_active_idx").on(t.userId, t.revokedAt),
+  ],
+);
+
 // Global, shared across users: one row per feed URL, fetched once for everyone.
 export const feeds = pgTable(
   "feeds",

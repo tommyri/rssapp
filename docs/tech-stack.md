@@ -112,4 +112,4 @@ One deliberate detail: primary keys are `bigint` identity columns, not UUIDs. Th
 3. ~~**How seriously to take multi-user**~~ — **Decided:** schema and app code are
    multi-tenant from day one. Public registration, verified identity, recovery, and
    onboarding are now built. See business-option.md.
-4. ~~**Reader-compat API priority**~~ — **Decided:** stays in "later". Tommy reads in Inoreader's own apps (not a native sync client), so there's no personal need; the compat API remains a business-leverage feature only (see business-option.md), and bigint ids keep it cheap whenever we want it.
+4. ~~**Reader-compat API priority**~~ — **Shipped July 2026:** the Google Reader-compatible adapter now exposes reader sync through per-account, revocable app passwords. Bigint ids kept the wire format simple. The adapter stays isolated from the internal reader model so a future mobile app can use a modern versioned sync API.

@@ -12,6 +12,11 @@ import {
   sendEmailVerification,
 } from "@/lib/account-lifecycle";
 import { AccountTokenCooldownError } from "@/lib/account-tokens";
+import {
+  createApiAccessToken,
+  normalizeApiAccessTokenName,
+  revokeApiAccessToken,
+} from "@/lib/api-access-tokens";
 import { isArticleListDensity } from "@/lib/article-list-density";
 import {
   revokeAuthSession,
@@ -35,7 +40,64 @@ export interface AccountActionState {
   message: string;
 }
 
+export interface ApiAccessTokenActionState extends AccountActionState {
+  /** Set only after creation; raw credentials are never stored server-side. */
+  secret?: string;
+}
+
 const displayNameSchema = z.string().trim().max(80);
+
+export async function createApiAccessTokenAction(
+  _prev: ApiAccessTokenActionState,
+  formData: FormData,
+): Promise<ApiAccessTokenActionState> {
+  const name = normalizeApiAccessTokenName(String(formData.get("name") ?? ""));
+  if (!name) {
+    return {
+      ok: false,
+      message: "Name this connection with 1 to 80 characters.",
+    };
+  }
+
+  const userId = await getCurrentUserId();
+  try {
+    const { secret } = await createApiAccessToken({ userId, name });
+    revalidatePath("/settings");
+    return {
+      ok: true,
+      message:
+        "App password created. Copy it now — it will not be shown again.",
+      secret,
+    };
+  } catch (error) {
+    console.error("[account] API access token creation failed:", error);
+    return {
+      ok: false,
+      message: "We could not create that app password. Try again.",
+    };
+  }
+}
+
+export async function revokeApiAccessTokenAction(
+  _prev: ApiAccessTokenActionState,
+  formData: FormData,
+): Promise<ApiAccessTokenActionState> {
+  const tokenId = Number(formData.get("tokenId"));
+  if (!Number.isSafeInteger(tokenId) || tokenId < 1) {
+    return { ok: false, message: "That app password is invalid." };
+  }
+
+  const userId = await getCurrentUserId();
+  const revoked = await revokeApiAccessToken({ userId, tokenId });
+  if (!revoked) {
+    return {
+      ok: false,
+      message: "That app password is no longer available.",
+    };
+  }
+  revalidatePath("/settings");
+  return { ok: true, message: "App password revoked." };
+}
 
 export async function updateProfileAction(
   _prev: AccountActionState,

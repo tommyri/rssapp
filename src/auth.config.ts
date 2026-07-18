@@ -24,6 +24,10 @@ export const authConfig = {
         pathname === "/reset-password" ||
         pathname === "/verify-email" ||
         pathname.startsWith("/api/auth") ||
+        // Native reader clients authenticate each request with a revocable API
+        // credential. Let the route handler verify that credential instead of
+        // redirecting a non-browser client to the interactive sign-in page.
+        pathname.startsWith("/api/greader") ||
         pathname === "/service-worker.js" ||
         pathname === "/manifest.webmanifest" ||
         pathname === "/icon" ||

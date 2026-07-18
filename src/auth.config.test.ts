@@ -23,7 +23,21 @@ describe("auth route exceptions", () => {
   it("keeps reader routes behind a session", () => {
     expect(authorized({ auth: null, request: request("/") })).toBe(false);
     expect(
-      authorized({ auth: { user: { id: "1" } }, request: request("/") }),
+      authorized({
+        auth: { user: { id: "1" } } as never,
+        request: request("/"),
+      }),
+    ).toBe(true);
+  });
+
+  it("leaves the token-authenticated reader API to its route handler", () => {
+    const authorized = authConfig.callbacks.authorized;
+    if (!authorized) throw new Error("Missing authorized callback");
+    expect(
+      authorized({
+        auth: null,
+        request: request("/api/greader/reader/api/0/subscription/list"),
+      }),
     ).toBe(true);
   });
 

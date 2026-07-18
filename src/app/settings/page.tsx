@@ -10,6 +10,7 @@ import {
   ReadingPrefsForm,
 } from "@/components/account-forms";
 import { AccountSessionControls } from "@/components/account-session-controls";
+import { ApiAccessTokenControls } from "@/components/api-access-token-controls";
 import { BackLink } from "@/components/back-link";
 import { BackupControls } from "@/components/backup-controls";
 import { GoogleAccountLink } from "@/components/google-auth-controls";
@@ -18,6 +19,7 @@ import { ReaderTypographyForm } from "@/components/reader-typography";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { db } from "@/db";
 import { users } from "@/db/schema";
+import { listApiAccessTokens } from "@/lib/api-access-tokens";
 import { normalizeArticleListDensity } from "@/lib/article-list-density";
 import { listActiveAuthSessions } from "@/lib/auth-sessions";
 import { getCurrentSessionId, getCurrentUserId } from "@/lib/current-user";
@@ -91,6 +93,8 @@ export default async function SettingsPage({
     currentSessionId &&
       accountSessions.some(({ id }) => id === currentSessionId),
   );
+  const apiAccessTokens =
+    active === "account" ? await listApiAccessTokens(userId) : [];
 
   // Build an absolute bookmarklet from the request's own origin so it points at
   // this deployment wherever it's hosted.
@@ -179,6 +183,16 @@ export default async function SettingsPage({
             id: session.id,
             signedInAt: sessionDate(session.createdAt),
             isCurrent: session.id === currentSessionId,
+          }))}
+        />
+        <ApiAccessTokenControls
+          endpoint={`${origin}/api/greader`}
+          tokens={apiAccessTokens.map((token) => ({
+            id: token.id,
+            name: token.name,
+            tokenPrefix: token.tokenPrefix,
+            createdAt: token.createdAt.toISOString(),
+            lastUsedAt: token.lastUsedAt?.toISOString() ?? null,
           }))}
         />
         {googleEnabled ? (
