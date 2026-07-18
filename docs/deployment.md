@@ -334,8 +334,9 @@ mode where a VPS checkout with a local Compose modification blocks `git pull`.
 
 Product milestones can span multiple releases, but each shipped build uses calendar
 versioning: `YYYY.M.N` — year, month, then the release number in that month. The first
-July 2026 release is `2026.7.1`; the next is `2026.7.2`. No zero padding is used, keeping
-the version valid npm semver as well as readable calendar versioning.
+two July 2026 releases are `2026.7.1` and `2026.7.2`; the next is `2026.7.3`. No zero
+padding is used, keeping the version valid npm semver as well as readable calendar
+versioning.
 
 `CHANGELOG.md` is the release source of truth. The release workflow copies the matching
 section into the GitHub Release and promotes the already-tested commit image to both

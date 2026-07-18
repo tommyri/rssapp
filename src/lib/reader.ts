@@ -865,7 +865,7 @@ async function expandToSiblings(
   return [...ids];
 }
 
-/** Mark a batch of items read for one user (scroll-marking, mark-all-read). */
+/** Mark a batch of items read for one user (bulk actions and retention). */
 export async function setItemsRead(
   userId: number,
   itemIds: number[],

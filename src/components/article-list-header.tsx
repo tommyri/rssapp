@@ -12,8 +12,6 @@ interface ArticleListHeaderProps {
   isArchiveView: boolean;
   toggleHref: string;
   showingAll: boolean;
-  scrollMark: boolean;
-  onToggleScrollMark: () => void;
   expanded: boolean;
   readingProgress: number;
   focusMode: boolean;
@@ -29,8 +27,6 @@ export function ArticleListHeader({
   isArchiveView,
   toggleHref,
   showingAll,
-  scrollMark,
-  onToggleScrollMark,
   expanded,
   readingProgress,
   focusMode,
@@ -69,15 +65,6 @@ export function ArticleListHeader({
               {showingAll ? "Unread only" : "Show read"}
             </Link>
           ) : null}
-          <label className="flex cursor-pointer items-center gap-1.5">
-            <input
-              type="checkbox"
-              checked={scrollMark}
-              onChange={onToggleScrollMark}
-              className="accent-primary"
-            />
-            Mark read on scroll
-          </label>
           {!isArchiveView ? (
             <MarkAllControl onMark={onMarkAll} statusMessage={statusMessage} />
           ) : null}

@@ -4,7 +4,7 @@ import { type ReactNode, useRef, useState } from "react";
 import { clampSwipe, SWIPE_TRIGGER_PX, swipeIntent } from "@/lib/swipe";
 
 /**
- * Touch swipe actions for a list row (docs/features.md v0.2): the row follows
+ * Touch swipe actions for a list row (docs/features.md): the row follows
  * the finger once a drag is clearly horizontal, reveals an action icon in the
  * vacated strip, arms at SWIPE_TRIGGER_PX, and fires on release. Vertical
  * scrolling always wins (touch-action: pan-y + the intent check), and a drag
@@ -18,7 +18,7 @@ export function SwipeableRow({
   leftIcon,
   children,
 }: {
-  /** Swipe left-to-right (reveals at the left edge), e.g. toggle read. */
+  /** Swipe left-to-right (reveals at the left edge), e.g. mark unread. */
   onSwipeRight?: () => void;
   /** Swipe right-to-left (reveals at the right edge), e.g. toggle read later. */
   onSwipeLeft?: () => void;

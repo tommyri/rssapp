@@ -23,7 +23,6 @@ import {
   setItemReadingProgress,
   setItemReadLater,
   setItemStarred,
-  setItemsRead,
 } from "@/lib/reader";
 import {
   extractSavedPage,
@@ -260,16 +259,6 @@ export async function setItemReadingProgressAction(
   if (!parsed.success) return;
   const userId = await getCurrentUserId();
   await setItemReadingProgress(userId, itemId, parsed.data);
-}
-
-export async function setItemsReadAction(
-  itemIds: number[],
-  collapse = false,
-): Promise<void> {
-  const ids = z.array(z.number().int().positive()).max(1000).parse(itemIds);
-  if (ids.length === 0) return;
-  const userId = await getCurrentUserId();
-  await setItemsRead(userId, ids, { fanOut: collapse === true });
 }
 
 export async function setItemStarredAction(

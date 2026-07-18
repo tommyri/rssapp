@@ -56,7 +56,9 @@ Sorting: newest-first globally and for folder/all views. A feed can opt into old
 
 - **Two capture paths, one destination:** a paste field at the top of the Read later view (immediate readable-copy extraction) and a drag-to-bookmark **bookmarklet** from Settings (`/save?url=…`, extraction deferred to the background poller). Both mirror how Instapaper/Inoreader let you save from anywhere.
 - **Saved pages read like articles:** a Readability-extracted, sanitized copy renders inline exactly like feed content; "Open original" is always there. A saved page shows a link marker and a `saved <time>` meta line; while its copy is still being fetched it reads "Fetching a readable copy…", and a failed fetch offers **Retry**.
-- **Same triage verbs:** mark read/unread and open-marks-read behave as elsewhere; the read-later-only action is **Remove** (delete the saved page) rather than un-flag. Saved pages are excluded from mark-read-on-scroll (they aren't feed unread).
+- **Same triage verbs:** opening marks read and an intentional **Mark unread** reversal
+  behaves as elsewhere; the read-later-only action is **Remove** (delete the saved page)
+  rather than un-flag. Scrolling never changes read state.
 
 ## Unread & overload management
 
@@ -64,7 +66,12 @@ Philosophy: we're building for "inbox people" (counts, j/k, mark-all-read) but t
 
 - **Cap displayed counts at "1k+"** (shipped) — Feedly's vague number is documented as less stressful than an exact one
 - **Mark-all-read** (shipped) with "older than a day/week" variants (Feedly). **`o`** = mark-older-than-current-article (NNW's catch-up primitive; shipped with keyboard shortcuts)
-- **Mark-read-on-scroll: on by default, toggle to disable** (shipped). It's praised Inoreader behavior and Tommy's habit — but it has articulate haters (birchtree.me), so it must never be unchangeable
+- **Scrolling never changes read state** *(shipped in 2026.7.2)*. The former
+  mark-read-on-scroll control, preference, observer, and batch write were removed
+  completely; this is not a setting. In the regular reader UI, unread → read happens by
+  opening the article or via a deliberate **Mark all read** batch action. **Mark unread**
+  remains an intentional reversal; rules and age-based retention are separately
+  configured automation.
 - **Auto-mark-read after N days** (shipped): global default of **30 days** (matching Feedly's silent behavior), overridable per feed. High-volume feeds shouldn't accumulate guilt
 - Rules/filters (v1) are the real overload answer — and per the Miniflux complaint ("regex-only"), the rules UI must be **keyword-first with regex as the advanced option**
 
@@ -142,17 +149,17 @@ the card reports their availability without exposing a filesystem setting in a w
 
 ## Mobile web
 
-Feedbin proves a web reader can be the best phone experience ("the mobile site is so good it turns out to be the best app"). Requirements: comfortable tap targets, pull-to-refresh, mark-read-on-scroll working in the list. The app is installable and supports a device-local offline library; browser push is a separate production rollout because it depends on deployed HTTPS and VAPID configuration.
+Feedbin proves a web reader can be the best phone experience ("the mobile site is so good it turns out to be the best app"). Requirements: comfortable tap targets, pull-to-refresh, and scrolling that never changes article state. The app is installable and supports a device-local offline library; browser push is a separate production rollout because it depends on deployed HTTPS and VAPID configuration.
 
 **Navigation** *(drawer since July 2026)*: below md the feed sidebar is a left-slide **drawer** behind a slim sticky top bar (menu · brand · refresh), so the article list is the primary surface instead of sitting below a full-height feed list. One app-shell layout — fixed viewport height, only the content pane scrolls — and the drawer is the *same* element that's the static sidebar at md+ (`md:static`), so nothing is duplicated. The drawer closes on navigation, Escape, or scrim tap (`src/components/mobile-shell.tsx`). Folder headers can be collapsed and their state persists per user; drag a folder or feed row directly to reorder it within its current list, with mouse, long-press touch, and keyboard sensors plus animated sorting feedback. This organization is stored in the existing user preferences rather than new tables or columns. Empty folders remain visible so a feed can be moved back into them from its menu.
 
-**Swipe gestures** *(shipped July 2026)*: swipe a collapsed row right = toggle read, left
-= toggle read-later — matching our triage verbs (a post is either read or kept). iOS-mail
-mechanics: the row follows the finger once the drag is clearly horizontal (vertical
-always wins — hijacking scroll is the worse failure), an icon zone arms at the trigger
-threshold, release fires, row springs back. Collapsed headers only, so expanded articles
-keep horizontal code scrolling. Two gestures is the deliberate ceiling — more would need
-a legend, and gestures that need a legend have failed.
+**Swipe gestures** *(shipped July 2026; corrected in 2026.7.2)*: swipe a collapsed row
+left = toggle read-later. A row that is already read can be swiped right to mark it
+unread; an unread row has no read swipe because unread → read requires opening it or a
+bulk action. iOS-mail mechanics remain: the row follows the finger once the drag is
+clearly horizontal (vertical always wins — hijacking scroll is the worse failure), an
+icon zone arms at the trigger threshold, release fires, and the row springs back.
+Collapsed headers only, so expanded articles keep horizontal code scrolling.
 
 ## Anti-patterns (documented backlash — do not ship)
 

@@ -5,6 +5,18 @@ version section verbatim, so this file is the release record rather than an afte
 
 ## [Unreleased]
 
+## [2026.7.2] - 2026-07-19
+
+### Fixed
+
+- Removed passive mark-read-on-scroll behavior, its reader control, stored preference,
+  intersection observer, and client batch endpoint. Scrolling and pagination no longer
+  mutate unread articles; opening an article and explicit bulk actions remain the normal
+  ways to mark it read.
+- Prevented the collapsed-row swipe gesture from marking an unread article read. The
+  right swipe now exists only on already-read rows as an intentional **Mark unread**
+  reversal.
+
 ## [2026.7.1] - 2026-07-19
 
 ### Added

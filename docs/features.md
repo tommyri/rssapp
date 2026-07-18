@@ -5,8 +5,9 @@ its own as a useful reader; the current rollout and next candidates are delibera
 separate from shipped work.
 
 **Release status — 19 July 2026:** v0.1, v1.0, and **2026.7.1 — Notifications,
-full text & reading history** are shipped. **2026.7.2 — Email digests** is next; it is
-separate from the released notification inbox and optional browser push delivery.
+full text & reading history** are shipped. **2026.7.2 — Deliberate read state** is the
+focused follow-up release. **2026.7.3 — Email digests** is next; it stays separate from
+this workflow-critical fix.
 
 ## MVP (v0.1) — daily-drivable reader
 
@@ -27,7 +28,10 @@ separate from the released notification inbox and optional browser push delivery
 
 ### Reading
 - Article list: unread by default, newest first; per-feed, per-folder, and "all" views
-- Read/unread: auto-mark on open and mark-read-on-scroll in list views (table stakes; specifically praised Inoreader behavior), manual toggle, mark-all-read (per feed/folder, and "older than X")
+- Read/unread: auto-mark on open, manual toggle, mark-read-on-scroll in list views, and
+  mark-all-read (per feed/folder, and "older than X"). Mark-read-on-scroll is recorded
+  here as shipped history, but was removed in 2026.7.2: scrolling must not mutate article
+  state.
 - Star/save articles (starred view)
 - Read later: save articles to a dedicated queue independent of star and read state, so a feed can be cleared while specific posts are kept; counts shown in the sidebar
 - Clean reading: articles expand inline in the list (sanitized HTML, images, code blocks); open original in new tab
@@ -52,7 +56,9 @@ separate from the released notification inbox and optional browser push delivery
 - **Owner account console** — the one deployment owner can review member accounts and
   suspend or restore access. Either action invalidates the member’s existing sessions;
   the owner can never suspend themself through the UI.
-- **Overload valves** — displayed unread counts cap at "1k+"; mark-all-read with "older than a day/week"; mark-read-on-scroll (on by default, toggleable); auto-mark-read after N days (defaults to 30, overridable globally and per-feed)
+- **Overload valves** — displayed unread counts cap at "1k+"; mark-all-read with "older
+  than a day/week"; auto-mark-read after N days (defaults to 30, overridable globally and
+  per-feed). The originally shipped mark-read-on-scroll toggle was removed in 2026.7.2.
 - **Dark mode** — follow system, manual override
 - **Feed health** — the Manage feeds page shows each feed's article/unread counts, last-fetched time, and failing feeds with their error and consecutive-failure count (silent/redirected detection is a later refinement)
 - **Favicons** per feed in the sidebar
@@ -73,7 +79,15 @@ July 2026.
 - **Mark-read older than the current article** (`o`) *(shipped July 2026)* — NetNewsWire's catch-up primitive, bound to `o` in the keyboard canon. Uses `markAllRead` with an `olderThan` cutoff at the current article's sort time.
 - **Per-feed sort & view defaults** *(shipped July 2026)* — oldest-first sort and a per-feed unread-only default via `subscriptions.settings` (`sortOrder`, `defaultUnreadOnly`). Editable in the sidebar feed menu and Manage feeds page; oldest-first applies only to single-feed views (folder/all stay newest-first). Feeds that default to showing all articles use `?show=unread` to filter back to unread-only.
 - **Duplicate filtering** *(shipped July 2026)* — collapse the same story arriving from multiple feeds into one row in the All and folder views, tagged "· also in *the other feeds*"; reading it marks every copy read. Matches on a normalized canonical URL (`canonicalizeUrl`, reused from saved links) stored on `items.canonical_url` at ingest and backfilled for older items at boot; the reader groups by it in a single window pass (`listItemsCollapsed` in `src/lib/reader.ts`), keeping the earliest copy as the representative. On by default, toggle in Settings → Reading. Single-feed, Starred, Read later and Search are never collapsed. We already dedup within a feed by GUID; this is the cross-feed case. Inoreader paywalls it, so it's a "free at ours" differentiator.
-- **Mobile swipe gestures** *(shipped July 2026)* — swipe a collapsed row **right to toggle read**, **left to toggle read-later** (the two verbs of our triage flow); the row follows the finger, an icon zone arms at 72px, the action fires on release. Dependency-free: pure gesture math in `src/lib/swipe.ts` (unit-tested — vertical scrolling always wins the intent contest), touch plumbing in `SwipeableRow`. Header-only on purpose so expanded articles keep horizontal code-block scrolling; saved pages only get the read swipe (a destructive Remove behind a swipe is a footgun). Star stays a tap/keyboard verb — two swipe actions is the ceiling before gestures need a legend.
+- **Mobile swipe gestures** *(shipped July 2026; deliberate-read behavior corrected in
+  2026.7.2)* — swipe a collapsed row **left to toggle read-later**. A row that is already
+  read can be swiped **right to mark it unread**, but an unread row cannot be swiped
+  directly to read; it must be opened or included in a bulk read action. The row follows
+  the finger, an icon zone arms at 72px, and the action fires on release. Dependency-free:
+  pure gesture math in `src/lib/swipe.ts` (unit-tested — vertical scrolling always wins
+  the intent contest), with touch plumbing in `SwipeableRow`. Header-only on purpose so
+  expanded articles keep horizontal code-block scrolling. A destructive Remove action
+  stays out of saved-page swipes.
 
 ### Reading pane polish
 - **Reader typography controls** *(shipped July 2026)* — text size (small/medium/large), body font (serif/sans), and column width (narrow/normal/wide) for the expanded article, in Settings → Reading text with a live preview. Applied as `--reader-*` CSS custom properties that `.article-content` consumes (defaults = the previous fixed styling), persisted to localStorage per device (`src/lib/reader-typography.ts`, unit-tested). No pre-hydration script needed — the article body only renders after a click, so there's nothing to flash. Direct quality-of-reading lever.
@@ -198,7 +212,20 @@ failure semantics, and release verification.
 
 The newsletter-to-feed bridge is not part of this release.
 
-## 2026.7.2 — Email digests (next)
+## 2026.7.2 — Deliberate read state
+
+**Goal:** repair the core reading workflow with one focused release: scrolling and
+pagination are navigation, never read-state mutations.
+
+1. Remove **Mark read on scroll** completely: delete the reader-header control, stored
+   preference, intersection-observer batching, and related client state. Scrolling and
+   pagination are navigation only and never mutate an article. In the regular reading
+   UI, unread articles become read by being opened or through a deliberate **Mark all
+   read** batch action; **Mark unread** remains available as an intentional reversal.
+   The collapsed-row swipe no longer offers an unread-to-read bypass. Rules and
+   age-based retention remain separately configured automation.
+
+## 2026.7.3 — Email digests (next)
 
 **Goal:** deliver a calm, user-controlled summary of unread rule notifications without
 requiring readers to keep a browser open or enabling immediate push alerts.

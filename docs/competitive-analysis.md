@@ -36,7 +36,7 @@ What paying users actually praise: rules/filters taming high-volume feeds, monit
 |---|---|
 | OPML import/export | ✅ shipped |
 | Folders + unread management | ✅ shipped |
-| Mark-read-while-scrolling | ✅ shipped (on by default, toggleable) |
+| Mark-read-while-scrolling | ❌ intentionally removed in 2026.7.2; competitor behavior, not table stakes for our product |
 | Full-content extraction for truncated feeds | ✅ shipped |
 | Full-text search | ✅ shipped (free at Inoreader; Feedly paywalling it is resented) |
 | Dark mode | ✅ shipped (Auto/Light/Dark) |
@@ -62,7 +62,10 @@ Consistently paywalled across the market: feed-count caps, **rules/filters/autom
 ## Product decisions this research supports
 
 1. **Rules and notifications are core, not ornamental.** Rules/filters are the #1 willingness-to-pay feature and the core of the “clean UI, powerful underneath” wedge. The rule system and durable inbox are shipped; browser push is the current production rollout.
-2. **Fast, keyboard-friendly reading is table stakes.** Mark-read-on-scroll, the Google Reader keyboard canon, and keyboard pagination are all shipped rather than deferred.
+2. **Fast, keyboard-friendly reading is table stakes; passive state mutation is not.**
+   The Google Reader keyboard canon and keyboard pagination are shipped. The originally
+   shipped mark-read-on-scroll behavior was removed in 2026.7.2 because scrolling should
+   never silently change article state.
 3. **Mobile is covered without a native-app commitment.** The PWA/offline reader and Reader-compatible sync API provide a credible web and third-party-client story. A native client must earn its own product case.
 4. **Keep monitoring, AI, and newsletter ingestion out of the core reader.** Newsletter-to-feed is deliberately deferred to a later, undecided version; it needs inbound-email and abuse design. AI summaries and TTS should be high-quality and likely BYO-key; monitoring feeds remain a separate media-monitoring product.
 5. **Business framing:** the paywall table above still defines a future free/paid split; pricing trust (simple, stable, no bait) is a stated differentiator. Noted in business-option.md.

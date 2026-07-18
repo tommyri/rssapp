@@ -25,7 +25,6 @@ import {
   setItemReadingProgressAction,
   setItemReadLaterAction,
   setItemStarredAction,
-  setItemsReadAction,
   setSavedPageReadAction,
   setSavedPageReadingProgressAction,
 } from "@/app/actions";
@@ -75,8 +74,6 @@ import {
 } from "@/lib/reader-scroll";
 import { readingTimeMinutes } from "@/lib/reading-time";
 
-const SCROLL_MARK_KEY = "rssapp:markReadOnScroll";
-const SCROLL_FLUSH_MS = 800;
 const STAGGER_CAP = 10;
 
 interface Props {
@@ -87,7 +84,7 @@ interface Props {
   /** Href that toggles between unread-only and show-all for this view. */
   toggleHref: string;
   showingAll: boolean;
-  /** Search-results mode: no read filters, no mark-all, no scroll-marking. */
+  /** Search-results mode: no read filters or mark-all. */
   isSearch?: boolean;
   unreadCount?: number;
   /**
@@ -159,19 +156,13 @@ export function ArticleList({
     initialExpandedId ?? null,
   );
   const [focusRequested, setFocusRequested] = useState(false);
-  const [scrollMark, setScrollMark] = useState(true);
   const [statusMsg, setStatusMsg] = useState("");
   const [highlights, setHighlights] = useState<ArticleHighlight[]>([]);
 
-  // Items the user explicitly marked unread — scroll-marking leaves them alone.
   const hasMoreRef = useRef(hasMore);
   hasMoreRef.current = hasMore;
   const loadingMoreRef = useRef(false);
   const pendingKeyboardScrollKeyRef = useRef<string | null>(null);
-  const manuallyUnread = useRef<Set<number>>(new Set());
-  const pendingScrollIds = useRef<Set<number>>(new Set());
-  const flushTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const rowRefs = useRef<Map<Element, number>>(new Map());
   const itemRowRefs = useRef<Map<string, HTMLLIElement>>(new Map());
   const itemsRef = useRef(items);
   itemsRef.current = items;
@@ -183,10 +174,6 @@ export function ArticleList({
   const pendingHighlightChangesRef = useRef<
     Map<number, ArticleHighlight | null>
   >(new Map());
-
-  useEffect(() => {
-    setScrollMark(localStorage.getItem(SCROLL_MARK_KEY) !== "off");
-  }, []);
 
   // Patch entries by composite key so a feed item and a saved page that happen
   // to share a numeric id in the Read later view don't clobber each other.
@@ -273,57 +260,6 @@ export function ArticleList({
     );
   }
 
-  const flushScrollMarks = useCallback(() => {
-    const ids = [...pendingScrollIds.current];
-    pendingScrollIds.current.clear();
-    if (ids.length === 0) return;
-    // Only feed items are scroll-observed, so these are all item ids.
-    setEntryState(
-      ids.map((id) => `item:${id}`),
-      { read: true },
-    );
-    void setItemsReadAction(ids, collapse).then(() => router.refresh());
-  }, [router, setEntryState, collapse]);
-
-  // Scroll-marking: when an unread row leaves the top of the viewport, queue it.
-  // Never in search — scanning results must not consume unread state.
-  useEffect(() => {
-    if (!scrollMark || isSearch) return;
-    const unreadIds = new Set(
-      items
-        .filter(
-          (i) =>
-            i.kind === "item" && !i.read && !manuallyUnread.current.has(i.id),
-        )
-        .map((i) => i.id),
-    );
-    const observer = new IntersectionObserver((entries) => {
-      for (const entry of entries) {
-        if (entry.isIntersecting) continue;
-        if (entry.boundingClientRect.bottom >= 80) continue; // left via bottom, not top
-        const id = rowRefs.current.get(entry.target);
-        if (id !== undefined && unreadIds.has(id)) {
-          pendingScrollIds.current.add(id);
-          if (flushTimer.current) clearTimeout(flushTimer.current);
-          flushTimer.current = setTimeout(flushScrollMarks, SCROLL_FLUSH_MS);
-        }
-      }
-    });
-    for (const [el, id] of rowRefs.current) {
-      if (unreadIds.has(id)) observer.observe(el);
-    }
-    return () => observer.disconnect();
-  }, [items, scrollMark, isSearch, flushScrollMarks]);
-
-  function registerRow(el: HTMLLIElement | null, id: number) {
-    if (el) rowRefs.current.set(el, id);
-    else {
-      for (const [k, v] of rowRefs.current) {
-        if (v === id) rowRefs.current.delete(k);
-      }
-    }
-  }
-
   // Read state lives in different tables per kind; route to the right action.
   function persistRead(item: ReaderItem, read: boolean) {
     const call =
@@ -340,7 +276,6 @@ export function ArticleList({
     setExpandedId(isOpen ? null : keyOf(item));
     // Opening an unread article marks it read (docs/features.md MVP).
     if (!isOpen && !item.read) {
-      if (item.kind === "item") manuallyUnread.current.delete(item.id);
       setEntryState([keyOf(item)], { read: true });
       persistRead(item, true);
     }
@@ -348,7 +283,6 @@ export function ArticleList({
 
   function toggleRead(item: ReaderItem) {
     const read = !item.read;
-    if (!read && item.kind === "item") manuallyUnread.current.add(item.id);
     setEntryState([keyOf(item)], { read });
     persistRead(item, read);
   }
@@ -587,12 +521,6 @@ export function ArticleList({
     router.refresh();
   }
 
-  function toggleScrollMark() {
-    const next = !scrollMark;
-    setScrollMark(next);
-    localStorage.setItem(SCROLL_MARK_KEY, next ? "on" : "off");
-  }
-
   const openItem = useCallback(
     (item: ReaderItem) => {
       setExpandedId(keyOf(item));
@@ -600,7 +528,6 @@ export function ArticleList({
         .get(keyOf(item))
         ?.scrollIntoView({ block: "nearest" });
       if (!item.read) {
-        if (item.kind === "item") manuallyUnread.current.delete(item.id);
         setEntryState([keyOf(item)], { read: true });
         persistReadRef.current(item, true);
       }
@@ -720,8 +647,6 @@ export function ArticleList({
         isArchiveView={isArchiveView}
         toggleHref={toggleHref}
         showingAll={showingAll}
-        scrollMark={scrollMark}
-        onToggleScrollMark={toggleScrollMark}
         expanded={expandedItem !== null}
         readingProgress={readingProgress}
         focusMode={focusMode}
@@ -804,29 +729,25 @@ export function ArticleList({
                       pendingKeyboardScrollKeyRef.current = null;
                     }
                   } else itemRowRefs.current.delete(key);
-                  if (item.kind === "item") registerRow(el, item.id);
                 }}
                 className={`row-enter border-b border-border/60 ${isOpen ? "border-border" : ""}`}
                 style={{
                   animationDelay: `${Math.min(index, STAGGER_CAP) * 30}ms`,
                 }}
               >
-                {/* Touch: swipe the collapsed header right to toggle read, left
-                    to toggle read-later (docs/design-ux.md mobile). Header only
-                    — article content needs its own horizontal scrolling. */}
+                {/* Touch: a read row can be swiped right to mark it unread;
+                    unread rows become read only by opening them or using a
+                    bulk action. Swipe left toggles read-later. Header only —
+                    article content needs its own horizontal scrolling. */}
                 <SwipeableRow
-                  onSwipeRight={() => toggleRead(item)}
+                  onSwipeRight={item.read ? () => toggleRead(item) : undefined}
                   onSwipeLeft={
                     item.kind === "item"
                       ? () => toggleReadLater(item)
                       : undefined
                   }
                   rightIcon={
-                    item.read ? (
-                      <CircleIcon className="size-4" />
-                    ) : (
-                      <CheckIcon className="size-4" />
-                    )
+                    item.read ? <CircleIcon className="size-4" /> : undefined
                   }
                   leftIcon={
                     item.readLater ? (
