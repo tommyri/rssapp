@@ -12,7 +12,6 @@ import type { ReaderItem } from "@/lib/reader";
 export interface ReaderKeyboardHandlers {
   toggleRead: (item: ReaderItem) => void;
   toggleStarred: (item: ReaderItem) => void;
-  loadFullContent: (item: ReaderItem) => Promise<void>;
   markAll: (olderThanDays: number | null) => Promise<void>;
   markOlderThanCurrent: () => Promise<void>;
 }
@@ -23,7 +22,6 @@ interface UseReaderKeyboardOptions {
   itemsRef: MutableRefObject<ReaderItem[]>;
   expandedIdRef: MutableRefObject<string | null>;
   focusRequestedRef: MutableRefObject<boolean>;
-  loadingContentRef: MutableRefObject<Set<number>>;
   handlersRef: MutableRefObject<ReaderKeyboardHandlers>;
   setFocusRequested: Dispatch<SetStateAction<boolean>>;
   moveBy: (delta: number) => Promise<void>;
@@ -38,7 +36,6 @@ export function useReaderKeyboard({
   itemsRef,
   expandedIdRef,
   focusRequestedRef,
-  loadingContentRef,
   handlersRef,
   setFocusRequested,
   moveBy,
@@ -102,19 +99,6 @@ export function useReaderKeyboard({
           event.preventDefault();
           window.open(item.url, "_blank", "noopener,noreferrer");
           return;
-        case "c":
-          if (
-            !item ||
-            item.kind !== "item" ||
-            item.fullContentHtml ||
-            !item.url ||
-            loadingContentRef.current.has(item.id)
-          ) {
-            return;
-          }
-          event.preventDefault();
-          void handlers.loadFullContent(item);
-          return;
         case "o":
           if (isSearch || isArchiveView) return;
           event.preventDefault();
@@ -133,7 +117,6 @@ export function useReaderKeyboard({
     itemsRef,
     expandedIdRef,
     focusRequestedRef,
-    loadingContentRef,
     handlersRef,
     setFocusRequested,
     moveBy,

@@ -7,7 +7,6 @@ import {
   CircleIcon,
   DownloadIcon,
   ExternalLinkIcon,
-  FileTextIcon,
   LinkIcon,
   RotateCwIcon,
   StarIcon,
@@ -18,9 +17,9 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   type ClientView,
   fetchItemsAction,
-  loadFullContentAction,
   markAllReadAction,
   removeSavedPageAction,
+  retryFullContentAction,
   retrySavedPageAction,
   setItemReadAction,
   setItemReadingProgressAction,
@@ -143,9 +142,17 @@ export function ArticleList({
   const isArchiveView = Boolean(
     view.starred || view.readLater || view.labelId || view.highlight,
   );
+  const canContinueReadHistory = Boolean(
+    view.feedId && view.unreadOnly && !showingAll,
+  );
   const [items, setItems] = useState<ReaderItem[]>(initialItems);
   const [hasMore, setHasMore] = useState(initialHasMore);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [readHistoryStarted, setReadHistoryStarted] = useState(false);
+  const [readHistoryStartKey, setReadHistoryStartKey] = useState<string | null>(
+    null,
+  );
+  const [readHistoryChecked, setReadHistoryChecked] = useState(false);
   // Only one article is open at a time — opening another closes the previous.
   // Keyed by kind+id since ids collide across kinds in the Read later view.
   const [expandedId, setExpandedId] = useState<string | null>(
@@ -154,10 +161,6 @@ export function ArticleList({
   const [focusRequested, setFocusRequested] = useState(false);
   const [scrollMark, setScrollMark] = useState(true);
   const [statusMsg, setStatusMsg] = useState("");
-  const [fullContentErrors, setFullContentErrors] = useState<
-    Map<number, string>
-  >(new Map());
-  const [loadingContent, setLoadingContent] = useState<Set<number>>(new Set());
   const [highlights, setHighlights] = useState<ArticleHighlight[]>([]);
 
   // Items the user explicitly marked unread — scroll-marking leaves them alone.
@@ -176,8 +179,6 @@ export function ArticleList({
   expandedIdRef.current = expandedId;
   const focusRequestedRef = useRef(focusRequested);
   focusRequestedRef.current = focusRequested;
-  const loadingContentRef = useRef(loadingContent);
-  loadingContentRef.current = loadingContent;
   const activeHighlightTargetRef = useRef<string | null>(null);
   const pendingHighlightChangesRef = useRef<
     Map<number, ArticleHighlight | null>
@@ -409,24 +410,17 @@ export function ArticleList({
     );
   }
 
-  async function loadFullContent(item: ReaderItem) {
-    setLoadingContent((prev) => new Set(prev).add(item.id));
-    try {
-      const result = await loadFullContentAction(item.id);
-      if (result.ok && result.html) {
-        setEntryState([keyOf(item)], { fullContentHtml: result.html });
-      } else {
-        setFullContentErrors((prev) =>
-          new Map(prev).set(item.id, result.error ?? "Extraction failed."),
-        );
-      }
-    } finally {
-      setLoadingContent((prev) => {
-        const next = new Set(prev);
-        next.delete(item.id);
-        return next;
+  async function retryFullContent(item: ReaderItem) {
+    setEntryState([keyOf(item)], {
+      fullContentStatus: "pending",
+    });
+    const result = await retryFullContentAction(item.id);
+    if (!result.ok) {
+      setEntryState([keyOf(item)], {
+        fullContentStatus: "unavailable",
       });
     }
+    router.refresh();
   }
 
   async function keepOffline(item: ReaderItem, contentHtml: string) {
@@ -511,7 +505,11 @@ export function ArticleList({
     setLoadingMore(true);
     try {
       const page = await fetchItemsAction(
-        view,
+        {
+          ...view,
+          readOnly: readHistoryStarted,
+          unreadOnly: readHistoryStarted ? false : view.unreadOnly,
+        },
         { ts: new Date(last.sortTs).toISOString(), id: last.id },
         collapse,
       );
@@ -533,7 +531,47 @@ export function ArticleList({
       loadingMoreRef.current = false;
       setLoadingMore(false);
     }
-  }, [collapse, view]);
+  }, [collapse, readHistoryStarted, view]);
+
+  const continueWithReadHistory = useCallback(async () => {
+    if (loadingMoreRef.current || readHistoryStarted || readHistoryChecked) {
+      return;
+    }
+    loadingMoreRef.current = true;
+    setLoadingMore(true);
+    try {
+      const last = itemsRef.current.at(-1);
+      const page = await fetchItemsAction(
+        { ...view, readOnly: true, unreadOnly: false },
+        last ? { ts: new Date(last.sortTs).toISOString(), id: last.id } : null,
+        false,
+      );
+      const known = new Set(itemsRef.current.map((item) => keyOf(item)));
+      const additions = page.items.filter((item) => !known.has(keyOf(item)));
+      setReadHistoryChecked(true);
+      if (additions.length === 0) {
+        hasMoreRef.current = false;
+        setHasMore(false);
+        setStatusMsg("No older read articles in this feed.");
+        return;
+      }
+      setReadHistoryStartKey(keyOf(additions[0]));
+      setReadHistoryStarted(true);
+      setItems((prev) => [
+        ...prev,
+        ...additions.filter(
+          (item) => !prev.some((existing) => keyOf(existing) === keyOf(item)),
+        ),
+      ]);
+      hasMoreRef.current = page.hasMore;
+      setHasMore(page.hasMore);
+    } catch {
+      setStatusMsg("Couldn't load read history.");
+    } finally {
+      loadingMoreRef.current = false;
+      setLoadingMore(false);
+    }
+  }, [readHistoryChecked, readHistoryStarted, view]);
 
   async function markAll(olderThanDays: number | null) {
     const { marked } = await markAllReadAction(view, olderThanDays);
@@ -650,14 +688,12 @@ export function ArticleList({
   const keyboardHandlers = useRef<ReaderKeyboardHandlers>({
     toggleRead,
     toggleStarred,
-    loadFullContent,
     markAll,
     markOlderThanCurrent,
   });
   keyboardHandlers.current = {
     toggleRead,
     toggleStarred,
-    loadFullContent,
     markAll,
     markOlderThanCurrent,
   };
@@ -668,7 +704,6 @@ export function ArticleList({
     itemsRef,
     expandedIdRef,
     focusRequestedRef,
-    loadingContentRef,
     handlersRef: keyboardHandlers,
     setFocusRequested,
     moveBy,
@@ -728,7 +763,13 @@ export function ArticleList({
             );
             const isPage = item.kind === "page";
             const contentHtml = item.fullContentHtml ?? item.contentHtml;
-            const error = fullContentErrors.get(item.id);
+            const fullTextPending =
+              !isPage &&
+              (item.fullContentStatus === "pending" ||
+                item.fullContentStatus === "processing" ||
+                item.fullContentStatus === "retrying");
+            const fullTextUnavailable =
+              !isPage && item.fullContentStatus === "unavailable";
             const snippet = snippetOf(item);
             // Best-available estimate: improves when full content is loaded.
             const minutes = readingTimeMinutes(contentHtml);
@@ -738,7 +779,18 @@ export function ArticleList({
                 : isPage && item.pageStatus === "error"
                   ? "Couldn't fetch a readable copy — open the original."
                   : "";
-            return (
+            return [
+              readHistoryStartKey === key ? (
+                <li
+                  key="read-history-divider"
+                  className="border-y border-border/60 bg-muted/30 px-6 py-4"
+                >
+                  <p className="text-sm font-medium">Read history</p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">
+                    Older articles you have already read
+                  </p>
+                </li>
+              ) : null,
               <li
                 key={key}
                 ref={(el) => {
@@ -853,6 +905,8 @@ export function ArticleList({
                         {minutes !== null ? ` · ${minutes} min read` : ""}
                         {isOpen && !isPage && item.fullContentHtml ? (
                           <span className="italic"> · full content</span>
+                        ) : isOpen && fullTextPending ? (
+                          <span className="italic"> · preparing full text</span>
                         ) : null}
                         {item.labels && item.labels.length > 0 ? (
                           <span className="ml-1 inline-flex flex-wrap gap-1 align-middle">
@@ -946,9 +1000,18 @@ export function ArticleList({
                       </div>
                     ) : (
                       <p className="text-sm text-muted-foreground italic">
-                        No content in this feed entry.
+                        {fullTextPending
+                          ? "Preparing a readable copy of this article…"
+                          : "No content in this feed entry."}
                       </p>
                     )}
+
+                    {fullTextUnavailable ? (
+                      <p className="mt-3 text-sm text-muted-foreground">
+                        We couldn’t get a readable full-text copy. The feed
+                        version above remains available when provided.
+                      </p>
+                    ) : null}
 
                     <div className="mt-5 flex flex-wrap items-center gap-2 border-t border-border/60 pt-4 text-xs">
                       {item.url ? (
@@ -997,15 +1060,12 @@ export function ArticleList({
                         </>
                       ) : (
                         <>
-                          {!item.fullContentHtml && item.url ? (
+                          {fullTextUnavailable && item.url ? (
                             <ActionButton
-                              disabled={loadingContent.has(item.id)}
-                              onClick={() => loadFullContent(item)}
+                              onClick={() => retryFullContent(item)}
                             >
-                              <FileTextIcon className="size-3.5" />
-                              {loadingContent.has(item.id)
-                                ? "Loading…"
-                                : "Load full content"}
+                              <RotateCwIcon className="size-3.5" />
+                              Retry full text
                             </ActionButton>
                           ) : null}
                           <ActionButton onClick={() => toggleStarred(item)}>
@@ -1032,16 +1092,13 @@ export function ArticleList({
                             )}
                             {item.read ? "Mark unread" : "Mark read"}
                           </ActionButton>
-                          {error ? (
-                            <span className="text-destructive">{error}</span>
-                          ) : null}
                         </>
                       )}
                     </div>
                   </div>
                 ) : null}
-              </li>
-            );
+              </li>,
+            ];
           })}
         </ul>
       )}
@@ -1054,7 +1111,27 @@ export function ArticleList({
             disabled={loadingMore}
             onClick={() => void loadOlder()}
           >
-            {loadingMore ? "Loading…" : "Load older articles"}
+            {loadingMore
+              ? "Loading…"
+              : readHistoryStarted
+                ? "Load older read articles"
+                : "Load older articles"}
+          </Button>
+        </div>
+      ) : canContinueReadHistory &&
+        !readHistoryStarted &&
+        !readHistoryChecked ? (
+        <div className="flex flex-col items-center gap-2 py-8 text-center">
+          <p className="text-sm text-muted-foreground">
+            You’re caught up with this feed.
+          </p>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={loadingMore}
+            onClick={() => void continueWithReadHistory()}
+          >
+            {loadingMore ? "Loading…" : "Continue with read history"}
           </Button>
         </div>
       ) : null}

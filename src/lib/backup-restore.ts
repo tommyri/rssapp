@@ -405,7 +405,6 @@ function restoredUserSettings(backup: BackupDocument) {
 function restoredSubscriptionSettings(raw: unknown): SubscriptionSettings {
   const settings = parseSubscriptionSettings(raw);
   return {
-    ...(settings.fullContent ? { fullContent: true } : {}),
     ...(settings.autoReadDays && settings.autoReadDays <= 3_650
       ? { autoReadDays: settings.autoReadDays }
       : {}),
@@ -609,10 +608,14 @@ export async function restoreBackup(
             if (!feedId) {
               throw new BackupRestoreError("Couldn't restore an article feed.");
             }
+            const url = safeHttpUrl(item.url);
+            const fullContentHtml = item.fullContentHtml
+              ? sanitizeArticleHtml(item.fullContentHtml, item.url)
+              : null;
             return {
               feedId,
               guid: item.guid,
-              url: safeHttpUrl(item.url),
+              url,
               canonicalUrl: canonicalizeUrl(
                 item.canonicalUrl ?? item.url ?? "",
               ),
@@ -621,8 +624,14 @@ export async function restoreBackup(
               contentHtml: item.contentHtml
                 ? sanitizeArticleHtml(item.contentHtml, item.url)
                 : null,
-              fullContentHtml: item.fullContentHtml
-                ? sanitizeArticleHtml(item.fullContentHtml, item.url)
+              fullContentHtml,
+              fullContentStatus: fullContentHtml
+                ? ("ready" as const)
+                : url
+                  ? ("pending" as const)
+                  : ("not_needed" as const),
+              fullContentExtractedAt: fullContentHtml
+                ? new Date(item.createdAt)
                 : null,
               audioUrl: safeHttpUrl(item.audioUrl),
               audioType: item.audioType,

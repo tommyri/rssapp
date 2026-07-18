@@ -4,10 +4,9 @@ This is the living product roadmap and concise release record. Every phase must 
 its own as a useful reader; the current rollout and next candidates are deliberately
 separate from shipped work.
 
-**Release status — 18 July 2026:** v0.1 and v1.0, plus their July expansion work, are
-shipped and in daily use. **2026.7.1 — Notifications & deliberate delivery** is the
-active calendar release: the rule-notification inbox is shipped, browser push is awaiting
-production validation, and email digests follow only after that validation succeeds.
+**Release status — 19 July 2026:** v0.1, v1.0, and **2026.7.1 — Notifications,
+full text & reading history** are shipped. **2026.7.2 — Email digests** is next; it is
+separate from the released notification inbox and optional browser push delivery.
 
 ## MVP (v0.1) — daily-drivable reader
 
@@ -70,7 +69,7 @@ July 2026.
 
 ### Reading & triage
 - **Save any link to read later** *(shipped July 2026)* — save an arbitrary web page by URL (not just items from subscribed feeds), the way Inoreader's read-later / save-web-page works: paste a blog-post link and it's kept for later. Captured from an in-app paste field at the top of Read later and a one-click bookmarklet (drag from Settings; `GET /save?url=…`). Saved pages get a Readability-extracted, sanitized copy (fetched immediately from the paste field, with the scheduler as a backstop for the bookmarklet) and fold into the **Read later** view alongside flagged feed items (unified, newest-saved-first), plus full-text search. Stored in a per-user `saved_pages` table — arbitrary URLs have no feed, so they don't fit the global `items` table.
-- **Keyboard shortcuts** *(shipped July 2026)* — the Google Reader canon (`j/k`, `space`, `m`, `s`, `v`, `c`, `Shift+A`, `o`, `g` then `a/s/u`, `/`, `?` help overlay; keymap in design-ux.md). Article actions live in `ArticleList`; search/add-feed focus and navigation in `ReaderGlobalKeyboard`.
+- **Keyboard shortcuts** *(shipped July 2026)* — the Google Reader canon (`j/k`, `space`, `m`, `s`, `v`, `Shift+A`, `o`, `g` then `a/s/u`, `/`, `?` help overlay; keymap in design-ux.md). Article actions live in `ArticleList`; search/add-feed focus and navigation in `ReaderGlobalKeyboard`.
 - **Mark-read older than the current article** (`o`) *(shipped July 2026)* — NetNewsWire's catch-up primitive, bound to `o` in the keyboard canon. Uses `markAllRead` with an `olderThan` cutoff at the current article's sort time.
 - **Per-feed sort & view defaults** *(shipped July 2026)* — oldest-first sort and a per-feed unread-only default via `subscriptions.settings` (`sortOrder`, `defaultUnreadOnly`). Editable in the sidebar feed menu and Manage feeds page; oldest-first applies only to single-feed views (folder/all stay newest-first). Feeds that default to showing all articles use `?show=unread` to filter back to unread-only.
 - **Duplicate filtering** *(shipped July 2026)* — collapse the same story arriving from multiple feeds into one row in the All and folder views, tagged "· also in *the other feeds*"; reading it marks every copy read. Matches on a normalized canonical URL (`canonicalizeUrl`, reused from saved links) stored on `items.canonical_url` at ingest and backfilled for older items at boot; the reader groups by it in a single window pass (`listItemsCollapsed` in `src/lib/reader.ts`), keeping the earliest copy as the representative. On by default, toggle in Settings → Reading. Single-feed, Starred, Read later and Search are never collapsed. We already dedup within a feed by GUID; this is the cross-feed case. Inoreader paywalls it, so it's a "free at ours" differentiator.
@@ -161,46 +160,81 @@ July 2026.
 - **Podcast / audio playback** *(shipped July 2026)* — recognizes audio attachments in RSS and JSON Feed entries, preserves native audio embedded in article content, and presents a native inline player when an expanded article has an episode to listen to. Each audio source resumes at its own last meaningful position across a person's signed-in devices, with a clear start-over control for enclosures. Feed media remains online-only; offline reading intentionally stores readable text rather than arbitrary audio files.
 - **Google Reader–compatible API** *(shipped July 2026)* — native reader apps can connect through a revocable app password to sync subscriptions, folders, article streams, unread counts, read/star/label state, and feed changes. The compatibility protocol is an adapter over the reader's internal model; a future rssapp mobile app can use a modern versioned sync surface without inheriting the legacy wire format. See [greader-api.md](greader-api.md).
 
-## 2026.7.1 — Notifications & deliberate delivery (current)
+## 2026.7.1 — Notifications, full text & reading history
+
+*Shipped 19 July 2026.*
 
 **Goal:** make rule-driven alerts dependable without turning the reader into a noisy
-attention machine.
+attention machine, while making both article text and a feed's earlier reading history
+available without reader configuration friction.
 
-1. **Validate browser push delivery in production.** The implementation is complete, but
-   it needs a deployed HTTPS origin, VAPID configuration, and real device/browser
-   delivery checks. The durable in-app inbox remains the fallback and source of truth.
-2. **Email digests from the notification inbox.** After push validation, add a
-   user-controlled daily or weekly summary of unread rule notifications. It will reuse
-   the existing transactional email delivery and scheduler, while adding a timezone,
-   schedule, delivery record/deduping, and an easy opt-out. It needs no inbound-email
-   server.
+1. **Browser push delivery.** Readers can opt individual devices into push notifications
+   for rule alerts. A deployment needs HTTPS and VAPID configuration; the durable in-app
+   inbox remains the fallback and source of truth.
+2. **Durable automatic full-text extraction.** Every newly ingested article with a usable
+   public link is queued for Readability extraction immediately. The feed body is visible
+   at once; the scheduler fetches the richer copy in a durable, restart-safe queue with
+   bounded global and per-host concurrency, retry/backoff, and a terminal fallback state.
+   Feed refreshes must never wait on or fail because a publisher page is slow or blocked.
+3. **Safe archive catch-up.** Existing retained articles without a full-text cache enter
+   the same queue, prioritizing unread, Read later, and starred material. Canonical
+   duplicates share an extraction result instead of re-fetching the same article.
+4. **One reading model.** Remove `Load full content`, the per-feed `Always load full
+   content` setting/chip, and the `c` shortcut. A failed extraction leaves feed-provided
+   content and **Open original** available, with a deliberate retry for transient cases.
+5. **Outbound-fetch hardening.** Validate URLs and redirects against private/local targets,
+   keep a strict timeout and response-size ceiling, honour publisher backoff, and retain
+   sanitization. Automatic extraction must not turn the reader into an unsafe crawler.
+6. **Continue into read history.** An individual feed still opens on its unread queue,
+   but reaching its end offers **Continue with read history** instead of a dead end. It
+   appends a clearly labelled, separately paginated read-only section without resetting
+   the unread list or changing the URL; subsequent pages keep loading older read articles.
+   The existing header-level **Show read** control remains the deliberate way to restart
+   the whole feed in a single chronological all-items view. Keyboard pagination can cross
+   the labelled boundary; `j`/smart `space` keep their current load-more behaviour.
 
-Nothing else is in scope for 2026.7.1. In particular, the newsletter-to-feed bridge is not
-part of this release.
+See [full-content-by-default.md](full-content-by-default.md) for the engineering model,
+failure semantics, and release verification.
+
+The newsletter-to-feed bridge is not part of this release.
+
+## 2026.7.2 — Email digests (next)
+
+**Goal:** deliver a calm, user-controlled summary of unread rule notifications without
+requiring readers to keep a browser open or enabling immediate push alerts.
+
+1. Add daily or weekly email digests sourced from the existing notification inbox, with
+   a reader timezone, schedule, delivery deduplication, and an easy opt-out. Reuse the
+   transactional email provider and scheduler; no inbound-email server is required.
 
 ## Later / version undecided
 
 These are useful product possibilities, but none has a release assignment or delivery
 promise. A later version gets a scoped goal before one of them becomes planned work.
 
-1. **Email newsletter → feed bridge** — a unique inbound address per feed. This is a
+1. **Brand, domain, email, and edge migration** — move the app from the personal
+   `rssapp.badask.no` deployment to a new product name and dedicated domain, with Resend
+   sender-domain verification and Cloudflare in front of the VPS. This is operational
+   product-readiness work, not a 2026.7.1 feature. It begins only when the name/domain
+   decision gate is settled; see [brand-domain-migration.md](brand-domain-migration.md).
+2. **Email newsletter → feed bridge** — a unique inbound address per feed. This is a
    paid-product-shaped differentiator, but is deliberately deferred to an undecided
    later version. It requires an inbound-email provider/webhook, opaque addresses,
    sender and size controls, spam/abuse protections, and safe failure handling before it
    is ready.
-2. **Text-to-speech (“Listen to this article”)** — defer browser `SpeechSynthesis`;
+3. **Text-to-speech (“Listen to this article”)** — defer browser `SpeechSynthesis`;
    revisit with a high-quality AI TTS provider, likely BYO-key, when we deliberately take
    on AI features.
-3. **AI daily digest / article summaries** — a companion to the reading workflow, also
+4. **AI daily digest / article summaries** — a companion to the reading workflow, also
    likely BYO-key so product costs stay explicit.
-4. **Snooze / resurface** — dismiss an article now and have it resurface to the top of
+5. **Snooze / resurface** — dismiss an article now and have it resurface to the top of
    the unread list later (tomorrow/weekend). Deferred: it overlaps our own reading
    process, where a post is either put in Read later (keep) or read (done, shouldn't
    come back), so the snooze middle-ground earns little here. Design was scoped
    (nullable `item_states.snoozed_until`, passive query-time hiding, resurface by
    sorting on the snooze time) — revisit if the triage/overload pressure ever makes a
    “not now, ask me later” state worth it.
-5. **Infinite scroll + list virtualization** — auto-load older articles on scroll
+6. **Infinite scroll + list virtualization** — auto-load older articles on scroll
    instead of the “Load older” button, and virtualize the list for large unread counts.
    Deferred: we don't hit long unread lists in practice, and the explicit button is
    predictable and keyboard-friendly; virtualization also fights the inline-accordion

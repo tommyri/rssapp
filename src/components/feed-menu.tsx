@@ -145,16 +145,6 @@ export function FeedMenu({
               />
             </div>
 
-            <label className="flex items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                name="fullContent"
-                defaultChecked={feed.fullContent}
-                className="accent-primary"
-              />
-              Always load full content
-            </label>
-
             <div className="space-y-2">
               <Label htmlFor={`menu-sort-${feed.feedId}`}>Sort order</Label>
               <select

@@ -1,5 +1,6 @@
 import { writeScheduledBackups } from "@/lib/backup";
 import { refreshDueFeeds } from "@/lib/feeds";
+import { sweepPendingFullContent } from "@/lib/feeds/full-content";
 import { sweepAutoRead } from "@/lib/reader";
 import { sweepPendingSavedPages } from "@/lib/saved-pages";
 
@@ -39,6 +40,12 @@ async function tick(): Promise<void> {
     if (summary.due > 0) {
       console.log(
         `[scheduler] refreshed ${summary.due} feed(s), +${summary.itemsAdded} item(s), ${summary.errors} error(s)`,
+      );
+    }
+    const fullContent = await sweepPendingFullContent();
+    if (fullContent.claimed > 0) {
+      console.log(
+        `[scheduler] full text: ${fullContent.extracted} extracted, ${fullContent.reused} reused, ${fullContent.retried} retrying, ${fullContent.unavailable} unavailable`,
       );
     }
     const swept = await sweepAutoRead();

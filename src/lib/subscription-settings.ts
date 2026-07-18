@@ -2,7 +2,6 @@
 export type SortOrder = "newest" | "oldest";
 
 export interface SubscriptionSettings {
-  fullContent?: boolean;
   autoReadDays?: number;
   /** When `'oldest'`, the feed view lists articles oldest-first. Default: newest. */
   sortOrder?: SortOrder;
@@ -25,7 +24,6 @@ export interface SubscriptionSettings {
 export const DEFAULT_SORT_ORDER: SortOrder = "newest";
 
 export function parseSubscriptionSettings(raw: unknown): {
-  fullContent: boolean;
   // null = no per-feed override; the global default applies.
   autoReadDays: number | null;
   sortOrder: SortOrder;
@@ -34,7 +32,6 @@ export function parseSubscriptionSettings(raw: unknown): {
 } {
   const s = (raw ?? {}) as SubscriptionSettings;
   return {
-    fullContent: s.fullContent === true,
     autoReadDays:
       typeof s.autoReadDays === "number" && s.autoReadDays >= 1
         ? s.autoReadDays
@@ -49,16 +46,17 @@ export function parseSubscriptionSettings(raw: unknown): {
 export function buildSubscriptionSettings(
   current: SubscriptionSettings,
   patch: {
-    fullContent: boolean;
     autoReadDays: number | null;
     sortOrder: SortOrder;
     defaultUnreadOnly: boolean;
   },
 ): SubscriptionSettings {
-  const next: SubscriptionSettings = {
-    ...current,
-    fullContent: patch.fullContent,
-  };
+  // Full text is now a reader-wide default. Discard the retired per-feed
+  // flag whenever a feed is saved, while retaining settings we don't own.
+  const { fullContent: _legacyFullContent, ...next } =
+    current as SubscriptionSettings & {
+      fullContent?: boolean;
+    };
 
   if (patch.autoReadDays) next.autoReadDays = patch.autoReadDays;
   else delete next.autoReadDays;

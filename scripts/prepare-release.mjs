@@ -55,7 +55,12 @@ if (!/^[-*] .+/m.test(notes)) {
   process.exit(65);
 }
 
-const date = new Date().toISOString().slice(0, 10);
+const now = new Date();
+const date = [
+  now.getFullYear(),
+  String(now.getMonth() + 1).padStart(2, "0"),
+  String(now.getDate()).padStart(2, "0"),
+].join("-");
 const releaseBlock = `## [${version}] - ${date}\n\n${notes}\n\n`;
 const updatedChangelog =
   changelog.slice(0, notesStart) +

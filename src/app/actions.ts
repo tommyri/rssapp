@@ -5,11 +5,8 @@ import { z } from "zod";
 import { signOut } from "@/auth";
 import { revokeAuthSessionById } from "@/lib/auth-sessions";
 import { getCurrentSessionId, getCurrentUserId } from "@/lib/current-user";
-import {
-  addFeedForUser,
-  getOrExtractFullContent,
-  refreshAllForSubscriber,
-} from "@/lib/feeds";
+import { addFeedForUser, refreshAllForSubscriber } from "@/lib/feeds";
+import { retryFullContentForUser } from "@/lib/feeds/full-content";
 import {
   OFFLINE_READ_LATER_DOWNLOAD_LIMIT,
   type OfflineArticle,
@@ -44,6 +41,7 @@ const viewSchema = z.object({
   readLater: z.boolean().optional(),
   labelId: z.number().int().positive().optional(),
   unreadOnly: z.boolean().optional(),
+  readOnly: z.boolean().optional(),
   sortOrder: z.enum(["newest", "oldest"]).optional(),
   highlight: z.boolean().optional(),
 });
@@ -225,16 +223,13 @@ export async function retrySavedPageAction(
 // They don't revalidate: the client updates optimistically and uses
 // router.refresh() to sync the sidebar counts.
 
-export async function loadFullContentAction(
+export async function retryFullContentAction(
   itemId: number,
-): Promise<{ ok: boolean; html?: string; error?: string }> {
+): Promise<{ ok: boolean; error?: string }> {
   if (!Number.isInteger(itemId))
     return { ok: false, error: "Invalid article." };
   const userId = await getCurrentUserId();
-  const result = await getOrExtractFullContent(userId, itemId);
-  return result.ok
-    ? { ok: true, html: result.html }
-    : { ok: false, error: result.error };
+  return retryFullContentForUser(userId, itemId);
 }
 
 export async function setItemReadAction(
@@ -317,13 +312,18 @@ export async function markAllReadAction(
 
 export async function fetchItemsAction(
   view: ClientView,
-  cursor: { ts: string; id: number },
+  cursor: { ts: string; id: number } | null,
   collapse = false,
 ): Promise<ItemsPage> {
   const parsedView = viewSchema.parse(view);
-  const parsedCursor = z
-    .object({ ts: z.coerce.date(), id: z.number().int().positive() })
-    .parse(cursor);
+  if (parsedView.readOnly && !parsedView.feedId) {
+    throw new Error("Read history is available for individual feeds only.");
+  }
+  const parsedCursor = cursor
+    ? z
+        .object({ ts: z.coerce.date(), id: z.number().int().positive() })
+        .parse(cursor)
+    : undefined;
   const userId = await getCurrentUserId();
   return listItems(userId, {
     ...parsedView,

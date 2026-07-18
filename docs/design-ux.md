@@ -37,7 +37,7 @@ Follow the NetNewsWire timeline recipe (the best-documented design reasoning in 
   primary `Button`; secondary actions use an existing secondary/outline
   variant; low-emphasis dismissals use a ghost or icon button. New one-off
   button styling needs a specific interaction reason, not merely local layout.
-- **Per-feed settings** live on the `subscriptions.settings` column. Shipped: full-content default, auto-read-days override, **sort order** (newest vs oldest first), and **unread-only by default** (feeds can open on all articles instead).
+- **Per-feed settings** live on the `subscriptions.settings` column. Shipped: auto-read-days override, **sort order** (newest vs oldest first), and **unread-only by default** (feeds can open on all articles instead).
 
 Sorting: newest-first globally and for folder/all views. A feed can opt into oldest-first so nothing gets buried; pagination follows the chosen order.
 
@@ -45,9 +45,10 @@ Sorting: newest-first globally and for folder/all views. A feed can opt into old
 
 - Article opens in place within a centered max-width column; generous margins. Opening an unread article auto-marks it read
 - **System font stack by default** — Feedbin deliberately moved off font-CDNs for privacy; we get the same result for free. Settings now offers reader text size, serif/sans body font, and narrow/normal/wide reading columns without changing that default
-- Sanitized article HTML; images constrained to column width; **full-content extraction** via a "Load full content" button in the expanded article, plus a per-feed "always load full content" default that extracts at ingest (the UX consensus across Miniflux `d`, Feedbin `c`, NNW Reader View)
+- Sanitized article HTML; images constrained to column width; **full-text extraction by default** runs in a durable background queue. Feed content renders immediately as the fallback, with a quiet preparing state and an unobtrusive retry only when a readable page cannot be obtained.
+- A single feed opens on its unread queue. At its end, **Continue with read history** appends a labelled section of older read articles; it does not silently change the current view or URL to “Show read.”
 - **Open original** is always one tap away (a link in the expanded article)
-- **Keyboard shortcuts** (shipped July 2026): the Google Reader canon — `j`/`k`, `space`, `m`, `s`, `v`, `c`, bulk-read keys, `g`-chords, `/`, `?` (full keymap below)
+- **Keyboard shortcuts** (shipped July 2026): the Google Reader canon — `j`/`k`, `space`, `m`, `s`, `v`, bulk-read keys, `g`-chords, `/`, `?` (full keymap below)
 
 ## Read later & saved links
 
@@ -78,7 +79,6 @@ The Google Reader inheritance is non-negotiable muscle memory for anyone migrati
 | `m` | toggle read/unread |
 | `s` | star |
 | `v` | open original in new tab |
-| `c` | toggle full-content extraction |
 | `Shift+A` | mark all read (with older-than options) |
 | `o` | mark older articles read |
 | `g` then `a`/`s`/`u` | go to all / starred / unread |
@@ -97,7 +97,7 @@ The Google Reader inheritance is non-negotiable muscle memory for anyone migrati
 
 Read by default, edit on demand: each feed is a compact two-line row — favicon + title
 + status badges (quiet / failing ×N / paused), then vitals (`4 unread of 212 · fetched
-12m ago`) with **non-default settings as chips** (`full content`, `oldest first`,
+12m ago`) with **non-default settings as chips** (`oldest first`,
 `auto-read 14d`; a default-configured feed shows none) — grouped under the sidebar's
 folder headers. The edit form (and the feed URL, and Unsubscribe) disclose per row
 behind **Edit**; the always-open six-control form was the clutter. Unsubscribe lives

@@ -27,7 +27,6 @@ import {
   youtubeFeedUrl,
 } from "./discover";
 import { type FetchResult, fetchUrl } from "./fetch";
-import { autoExtractForFeed } from "./full-content";
 import { parseFeed } from "./parse";
 import type { ParsedItem } from "./types";
 
@@ -94,18 +93,26 @@ async function upsertItems(
     candidates = [...dated, ...undated].slice(0, INITIAL_BACKFILL_ITEMS);
   }
 
-  const rows = candidates.map((item) => ({
-    feedId,
-    guid: item.guid,
-    url: item.url,
-    canonicalUrl: item.url ? canonicalizeUrl(item.url) : null,
-    title: item.title,
-    author: item.author,
-    contentHtml: item.contentHtml,
-    audioUrl: item.audioUrl,
-    audioType: item.audioType,
-    publishedAt: item.publishedAt,
-  }));
+  const rows = candidates.map((item) => {
+    const canonicalUrl = item.url ? canonicalizeUrl(item.url) : null;
+    return {
+      feedId,
+      guid: item.guid,
+      url: item.url,
+      canonicalUrl,
+      title: item.title,
+      author: item.author,
+      contentHtml: item.contentHtml,
+      audioUrl: item.audioUrl,
+      audioType: item.audioType,
+      publishedAt: item.publishedAt,
+      // Extraction is a durable background job. Ingest stays bounded even
+      // when a publisher is slow or a feed arrives with many new articles.
+      fullContentStatus: canonicalUrl
+        ? ("pending" as const)
+        : ("not_needed" as const),
+    };
+  });
 
   const inserted = await db
     .insert(itemsTable)
@@ -147,7 +154,6 @@ async function upsertItems(
   }
 
   await applyRulesToNewItems(feedId, inserted);
-  await autoExtractForFeed(feedId, inserted);
 
   return inserted.length;
 }

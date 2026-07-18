@@ -24,6 +24,7 @@ import {
   normalizeEmbedLoadingPreferences,
 } from "@/lib/embed-loading";
 import { normalizeStoredArticleHtml } from "@/lib/feeds";
+import type { FullContentStatus } from "@/lib/feeds/full-content-policy";
 import { getHighlightTarget } from "@/lib/highlights";
 import { labelsForTargets, type ReaderLabel } from "@/lib/labels";
 import { notificationItemId } from "@/lib/notifications";
@@ -56,7 +57,6 @@ export interface FeedSummary {
   /* Raw values for the per-feed edit menu: */
   customTitle: string | null;
   feedTitle: string | null;
-  fullContent: boolean;
   autoReadDays: number | null;
   sortOrder: SortOrder;
   defaultUnreadOnly: boolean;
@@ -83,7 +83,6 @@ export const listFeeds = cache(
         folderName: folders.name,
         customTitle: subscriptions.customTitle,
         feedTitle: feeds.title,
-        fullContent: sql<boolean>`coalesce(${subscriptions.settings}->>'fullContent', 'false') = 'true'`,
         autoReadDays: sql<
           number | null
         >`(${subscriptions.settings}->>'autoReadDays')::int`,
@@ -141,7 +140,6 @@ export interface ManagedFeed {
   customTitle: string | null;
   feedTitle: string | null;
   folderName: string | null;
-  fullContent: boolean;
   autoReadDays: number | null;
   sortOrder: SortOrder;
   defaultUnreadOnly: boolean;
@@ -168,7 +166,6 @@ export async function listManagedFeeds(userId: number): Promise<ManagedFeed[]> {
       customTitle: subscriptions.customTitle,
       feedTitle: feeds.title,
       folderName: folders.name,
-      fullContent: sql<boolean>`coalesce(${subscriptions.settings}->>'fullContent', 'false') = 'true'`,
       autoReadDays: sql<
         number | null
       >`(${subscriptions.settings}->>'autoReadDays')::int`,
@@ -224,6 +221,8 @@ export interface ReaderItem {
   author: string | null;
   contentHtml: string | null;
   fullContentHtml: string | null;
+  /** Background full-text extraction state for feed articles. */
+  fullContentStatus?: FullContentStatus;
   audioUrl: string | null;
   audioType: string | null;
   publishedAt: Date | null;
@@ -261,6 +260,11 @@ export interface ReaderView {
   starred?: boolean;
   readLater?: boolean;
   unreadOnly?: boolean;
+  /**
+   * The older, already-read continuation of a single feed's unread queue.
+   * This is intentionally separate from the normal “show all” view.
+   */
+  readOnly?: boolean;
   /** Oldest-first when viewing a single feed; ignored for folder/all views. */
   sortOrder?: SortOrder;
   /**
@@ -315,7 +319,9 @@ function viewConditions(userId: number, view: ReaderView) {
         and ${labels.userId} = ${userId}
     )`);
   }
-  if (view.unreadOnly) conditions.push(sql`${itemStates.read} is not true`);
+  if (view.readOnly) conditions.push(eq(itemStates.read, true));
+  else if (view.unreadOnly)
+    conditions.push(sql`${itemStates.read} is not true`);
   return conditions;
 }
 
@@ -412,6 +418,7 @@ export async function listItems(
       author: itemsTable.author,
       contentHtml: itemsTable.contentHtml,
       fullContentHtml: itemsTable.fullContentHtml,
+      fullContentStatus: itemsTable.fullContentStatus,
       audioUrl: itemsTable.audioUrl,
       audioType: itemsTable.audioType,
       publishedAt: itemsTable.publishedAt,
@@ -489,6 +496,7 @@ async function listItemsCollapsed(
       author: itemsTable.author,
       contentHtml: itemsTable.contentHtml,
       fullContentHtml: itemsTable.fullContentHtml,
+      fullContentStatus: itemsTable.fullContentStatus,
       audioUrl: itemsTable.audioUrl,
       audioType: itemsTable.audioType,
       publishedAt: itemsTable.publishedAt,
@@ -557,6 +565,7 @@ async function listItemsCollapsed(
       author: grouped.author,
       contentHtml: grouped.contentHtml,
       fullContentHtml: grouped.fullContentHtml,
+      fullContentStatus: grouped.fullContentStatus,
       audioUrl: grouped.audioUrl,
       audioType: grouped.audioType,
       publishedAt: grouped.publishedAt,
@@ -612,6 +621,7 @@ export async function searchItems(
       author: itemsTable.author,
       contentHtml: itemsTable.contentHtml,
       fullContentHtml: itemsTable.fullContentHtml,
+      fullContentStatus: itemsTable.fullContentStatus,
       audioUrl: itemsTable.audioUrl,
       audioType: itemsTable.audioType,
       publishedAt: itemsTable.publishedAt,

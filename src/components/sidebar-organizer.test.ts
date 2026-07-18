@@ -30,7 +30,6 @@ const feed: FeedSummary = {
   folderName: "News",
   customTitle: null,
   feedTitle: "Example feed",
-  fullContent: false,
   autoReadDays: null,
   sortOrder: "newest",
   defaultUnreadOnly: true,

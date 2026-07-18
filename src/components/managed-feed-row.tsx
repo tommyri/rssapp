@@ -41,7 +41,6 @@ export function ManagedFeedRow({
 
   // Only non-default settings earn a chip — a default-configured feed shows none.
   const chips: string[] = [];
-  if (feed.fullContent) chips.push("full content");
   if (feed.sortOrder === "oldest") chips.push("oldest first");
   if (!feed.defaultUnreadOnly) chips.push("shows all");
   if (feed.autoReadDays) chips.push(`auto-read ${feed.autoReadDays}d`);
@@ -197,14 +196,6 @@ export function ManagedFeedRow({
                 className="h-8 w-24"
               />
             </div>
-            <label className="flex h-8 items-center gap-2 text-xs text-muted-foreground">
-              <input
-                type="checkbox"
-                name="fullContent"
-                defaultChecked={feed.fullContent}
-              />
-              Always load full content
-            </label>
             <label className="flex h-8 items-center gap-2 text-xs text-muted-foreground">
               <input
                 type="checkbox"

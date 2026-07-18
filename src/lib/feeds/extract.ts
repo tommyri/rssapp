@@ -1,11 +1,16 @@
 import { Readability } from "@mozilla/readability";
 import { parseHTML } from "linkedom";
-import { fetchUrl } from "./fetch";
+import { fetchArticleUrl } from "./fetch";
 import { sanitizeArticleHtml } from "./sanitize";
 
 export type ExtractResult =
   | { status: "ok"; html: string }
-  | { status: "error"; error: string };
+  | {
+      status: "error";
+      error: string;
+      retryable?: boolean;
+      retryAfterAt?: Date;
+    };
 
 export type ReadablePage =
   | {
@@ -16,7 +21,12 @@ export type ReadablePage =
       siteName: string | null;
       excerpt: string | null;
     }
-  | { status: "error"; error: string };
+  | {
+      status: "error";
+      error: string;
+      retryable?: boolean;
+      retryAfterAt?: Date;
+    };
 
 /**
  * Inject a <base href> so the parsed document knows its own URL — Readability
@@ -41,9 +51,14 @@ const clean = (s: string | null | undefined): string | null =>
  * which have no feed-provided title/metadata of their own.
  */
 export async function extractReadablePage(url: string): Promise<ReadablePage> {
-  const res = await fetchUrl(url);
+  const res = await fetchArticleUrl(url);
   if (res.status === "error") {
-    return { status: "error", error: `Could not fetch page: ${res.error}` };
+    return {
+      status: "error",
+      error: `Could not fetch page: ${res.error}`,
+      retryable: res.retryable,
+      retryAfterAt: res.retryAfterAt,
+    };
   }
   if (res.status === "not-modified") {
     return { status: "error", error: "Unexpected 304 from article page" };
@@ -56,7 +71,7 @@ export async function extractReadablePage(url: string): Promise<ReadablePage> {
   }
 
   try {
-    const { document } = parseHTML(withBase(res.body, url));
+    const { document } = parseHTML(withBase(res.body, res.finalUrl ?? url));
     const article = new Readability(document, {
       // Feeds link to plenty of short posts; the 500-char default is too strict.
       charThreshold: 250,
@@ -91,5 +106,10 @@ export async function extractFullContent(url: string): Promise<ExtractResult> {
   const page = await extractReadablePage(url);
   return page.status === "ok"
     ? { status: "ok", html: page.html }
-    : { status: "error", error: page.error };
+    : {
+        status: "error",
+        error: page.error,
+        retryable: page.retryable,
+        retryAfterAt: page.retryAfterAt,
+      };
 }

@@ -206,6 +206,55 @@ npx web-push generate-vapid-keys --json
 Use the resulting subject, public key, and private key in that environment's file. Do not
 share staging keys with production.
 
+### Optional Google sign-in
+
+Google sign-in is optional. rssapp only enables its Google buttons when **both**
+`AUTH_GOOGLE_ID` and `AUTH_GOOGLE_SECRET` are present. It uses Google for identity only;
+no Google API needs to be enabled for this feature.
+
+1. In [Google Cloud Console](https://console.cloud.google.com/), create or select a
+   project, then open **Google Auth Platform**. Complete the branding and audience setup:
+   use **External** for ordinary Google accounts (or **Internal** only when every reader
+   belongs to the same Google Workspace organization). While the app is in testing, add
+   each allowed Google account as a test user.
+2. Open **Clients**, choose **Create client**, and select **Web application**. Do not use
+   a desktop, Android, or JavaScript client.
+3. Add this exact authorized redirect URI for production, replacing the hostname with the
+   canonical `APP_URL` hostname:
+
+   ```text
+   https://rss.example.com/api/auth/callback/google
+   ```
+
+   The scheme, hostname, path, and trailing slash behavior must match exactly. The
+   server-side flow does not need an authorized JavaScript origin. For local development,
+   add `http://localhost:3000/api/auth/callback/google` to a development-only client.
+   Create a separate OAuth client for staging and add its staging callback there; do not
+   put production and staging credentials in the same environment file.
+4. Copy the generated client ID and client secret immediately—Google only displays the
+   secret once—and add them to the relevant protected environment file:
+
+   ```dotenv
+   AUTH_GOOGLE_ID=<client-id>.apps.googleusercontent.com
+   AUTH_GOOGLE_SECRET=<client-secret>
+   ```
+
+   Never expose the secret through a `NEXT_PUBLIC_` variable, source control, browser
+   code, or a screenshot. After editing the environment file, redeploy the same selected
+   production image so the server receives the new values.
+
+   ```bash
+   sudo bash /opt/rssapp/scripts/deploy-image.sh production
+   ```
+
+5. Visit `/login` or `/signup` on the matching HTTPS domain and select **Continue with
+   Google**. A `redirect_uri_mismatch` error means the URI in Google Cloud does not exactly
+   equal `https://<APP_URL-host>/api/auth/callback/google`.
+
+Google identities are keyed by Google's stable account subject, never merely a matching
+email address. Someone who already has a password account must sign in normally and link
+Google from account settings; the app will not silently merge accounts.
+
 ## 5. First deployment and checks
 
 The deploy script starts the database if needed, creates a pre-deploy SQL backup for

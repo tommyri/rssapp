@@ -9,7 +9,6 @@ import {
 describe("parseSubscriptionSettings", () => {
   it("applies defaults for empty settings", () => {
     expect(parseSubscriptionSettings({})).toEqual({
-      fullContent: false,
       autoReadDays: null,
       sortOrder: "newest",
       defaultUnreadOnly: true,
@@ -20,14 +19,12 @@ describe("parseSubscriptionSettings", () => {
   it("reads stored overrides", () => {
     expect(
       parseSubscriptionSettings({
-        fullContent: true,
         autoReadDays: 14,
         sortOrder: "oldest",
         defaultUnreadOnly: false,
         paused: true,
       }),
     ).toEqual({
-      fullContent: true,
       autoReadDays: 14,
       sortOrder: "oldest",
       defaultUnreadOnly: false,
@@ -37,44 +34,40 @@ describe("parseSubscriptionSettings", () => {
 });
 
 describe("buildSubscriptionSettings", () => {
-  it("merges without dropping unrelated keys", () => {
+  it("merges without dropping unrelated keys and retires the legacy flag", () => {
     const next = buildSubscriptionSettings(
-      { autoReadDays: 7, sortOrder: "oldest" },
+      { autoReadDays: 7, sortOrder: "oldest", fullContent: true } as never,
       {
-        fullContent: true,
         autoReadDays: null,
         sortOrder: "newest",
         defaultUnreadOnly: true,
       },
     );
-    expect(next).toEqual({ fullContent: true });
+    expect(next).toEqual({});
   });
 
   it("preserves a pause through a Save (only setSubscriptionPaused writes it)", () => {
     const next = buildSubscriptionSettings(
       { paused: true, autoReadDays: 7 },
       {
-        fullContent: true,
         autoReadDays: null,
         sortOrder: "newest",
         defaultUnreadOnly: true,
       },
     );
-    expect(next).toEqual({ paused: true, fullContent: true });
+    expect(next).toEqual({ paused: true });
   });
 
   it("stores non-default sort and show-all preference", () => {
     const next = buildSubscriptionSettings(
       {},
       {
-        fullContent: false,
         autoReadDays: null,
         sortOrder: "oldest",
         defaultUnreadOnly: false,
       },
     );
     expect(next).toEqual({
-      fullContent: false,
       sortOrder: "oldest",
       defaultUnreadOnly: false,
     });

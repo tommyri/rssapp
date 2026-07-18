@@ -19,7 +19,6 @@ export async function updateFeedAction(formData: FormData): Promise<void> {
 
   const customTitle = String(formData.get("title") ?? "").trim() || null;
   const folderName = String(formData.get("folder") ?? "").trim() || null;
-  const fullContent = formData.get("fullContent") === "on";
   const autoReadRaw = Number(formData.get("autoReadDays"));
   const autoReadDays =
     Number.isInteger(autoReadRaw) && autoReadRaw >= 1 && autoReadRaw <= 365
@@ -33,7 +32,6 @@ export async function updateFeedAction(formData: FormData): Promise<void> {
   await updateSubscription(userId, feedId, {
     customTitle,
     folderName,
-    fullContent,
     autoReadDays,
     sortOrder,
     defaultUnreadOnly,

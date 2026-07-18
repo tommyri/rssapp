@@ -16,6 +16,7 @@ import {
 } from "drizzle-orm/pg-core";
 import type { ArticleListDensity } from "@/lib/article-list-density";
 import type { EmbedLoadingPreferences } from "@/lib/embed-loading";
+import type { FullContentStatus } from "@/lib/feeds/full-content-policy";
 
 const tsvector = customType<{ data: string }>({
   dataType: () => "tsvector",
@@ -455,6 +456,25 @@ export const items = pgTable(
     contentHtml: text("content_html"),
     // Readability-extracted article body (sanitized), cached once per item.
     fullContentHtml: text("full_content_html"),
+    // Full-text extraction is a durable, best-effort background job. Feed
+    // content remains readable while this progresses or if it cannot succeed.
+    fullContentStatus: text("full_content_status")
+      .notNull()
+      .default("pending")
+      .$type<FullContentStatus>(),
+    fullContentAttempts: integer("full_content_attempts").notNull().default(0),
+    fullContentNextAt: timestamp("full_content_next_at", {
+      withTimezone: true,
+    })
+      .notNull()
+      .defaultNow(),
+    fullContentLockedAt: timestamp("full_content_locked_at", {
+      withTimezone: true,
+    }),
+    fullContentLastError: text("full_content_last_error"),
+    fullContentExtractedAt: timestamp("full_content_extracted_at", {
+      withTimezone: true,
+    }),
     /** Podcast/audio enclosure discovered in the source feed. */
     audioUrl: text("audio_url"),
     audioType: text("audio_type"),
@@ -477,6 +497,12 @@ export const items = pgTable(
     index("items_canonical_url_idx")
       .on(t.canonicalUrl)
       .where(sql`${t.canonicalUrl} is not null`),
+    // The extraction worker only scans non-terminal work that is due.
+    index("items_full_content_queue_idx")
+      .on(t.fullContentNextAt, t.createdAt)
+      .where(
+        sql`${t.fullContentStatus} in ('pending', 'retrying', 'processing')`,
+      ),
   ],
 );
 

@@ -11,6 +11,8 @@ A self-hosted RSS reader web app: subscribe to feeds, get new articles pulled in
 - [greader-api.md](greader-api.md) — connect a Google Reader-compatible native client with a revocable app password
 - [design-ux.md](design-ux.md) — layout, list/reading-pane design, keyboard canon, overload handling, and anti-patterns to avoid
 - [deployment.md](deployment.md) — the complete VPS runbook: GitHub Actions, GHCR credentials, protected environment files, staging/production promotion, backups, and calendar-versioned GitHub Releases
+- [brand-domain-migration.md](brand-domain-migration.md) — the planned product-name, domain, Resend, and Cloudflare cutover; its decision gate must be complete before implementation
+- [full-content-by-default.md](full-content-by-default.md) — the shipped design and operating model for reliable, queued full-text extraction on every linked feed item
 
 ## Guiding principles
 

@@ -45,7 +45,6 @@ export async function updateSubscription(
   opts: {
     customTitle: string | null;
     folderName: string | null;
-    fullContent: boolean;
     autoReadDays: number | null;
     sortOrder: SortOrder;
     defaultUnreadOnly: boolean;
