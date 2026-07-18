@@ -1,41 +1,51 @@
 services:
   app:
-    build: .
+    # GitHub Actions publishes immutable images to GHCR. Local development adds
+    # `compose.dev.yaml`, which builds this same service from the working tree.
+    image: ${APP_IMAGE:?Set APP_IMAGE in the selected environment file}
     restart: unless-stopped
     environment:
-      DATABASE_URL: postgres://rssapp:rssapp@db:5432/rssapp
-      # Required in production — generate with `npx auth secret` and put
-      # AUTH_SECRET=... in a .env file next to this compose file. The app
-      # refuses to boot without it (src/instrumentation.ts).
-      AUTH_SECRET: ${AUTH_SECRET:-}
+      DATABASE_URL: ${DATABASE_URL:?Set DATABASE_URL in the selected environment file}
+      AUTH_SECRET: ${AUTH_SECRET:?Set AUTH_SECRET in the selected environment file}
+      APP_URL: ${APP_URL:-}
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
+      EMAIL_FROM: ${EMAIL_FROM:-}
+      AUTH_GOOGLE_ID: ${AUTH_GOOGLE_ID:-}
+      AUTH_GOOGLE_SECRET: ${AUTH_GOOGLE_SECRET:-}
+      VAPID_SUBJECT: ${VAPID_SUBJECT:-}
+      VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
+      VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:-}
       SCHEDULER_TICK_MS: ${SCHEDULER_TICK_MS:-60000}
-      # Daily portable JSON snapshots; tune schedule/retention from .env.
       BACKUP_DIR: /backups
       BACKUP_INTERVAL_HOURS: ${BACKUP_INTERVAL_HOURS:-24}
       BACKUP_RETENTION: ${BACKUP_RETENTION:-14}
-    ports:
-      - "${APP_PORT:-3000}:3000"
     depends_on:
       db:
         condition: service_healthy
     volumes:
       - backup-data:/backups
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "node -e \"fetch('http://127.0.0.1:3000/api/health').then((response) => process.exit(response.ok ? 0 : 1)).catch(() => process.exit(1))\"",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 15s
 
   db:
     image: postgres:17
     restart: unless-stopped
     environment:
-      POSTGRES_USER: rssapp
-      POSTGRES_PASSWORD: rssapp
-      POSTGRES_DB: rssapp
-    ports:
-      # 5433 on the host: a local Postgres already listens on 5432 (dev machine).
-      # Only the dev workflow needs this mapping; the app reaches db internally.
-      - "5433:5432"
+      POSTGRES_USER: ${POSTGRES_USER:-rssapp}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in the selected environment file}
+      POSTGRES_DB: ${POSTGRES_DB:-rssapp}
     volumes:
       - db-data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U rssapp -d rssapp"]
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 5s
       timeout: 3s
       retries: 10

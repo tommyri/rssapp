@@ -1,0 +1,75 @@
+name: Publish release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  release:
+    name: Publish GitHub Release and image tag
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - id: version
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          version="${TAG#v}"
+          if [[ "$TAG" != "v$version" ]] || ! [[ "$version" =~ ^[0-9]{4}\.(1[0-2]|[1-9])\.[1-9][0-9]*$ ]]; then
+            echo "Release tags must use vYYYY.M.N, for example v2026.7.1." >&2
+            exit 1
+          fi
+          if [[ "$(node -p "require('./package.json').version")" != "$version" ]]; then
+            echo "package.json version must match the release tag." >&2
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+      - id: notes
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          awk -v version="$VERSION" '
+            $0 ~ "^## \\[" version "\\]" { found = 1; next }
+            found && /^## / { exit }
+            found { print }
+            END { if (!found) exit 1 }
+          ' CHANGELOG.md > "$RUNNER_TEMP/release-notes.md"
+          if ! grep -q '[^[:space:]]' "$RUNNER_TEMP/release-notes.md"; then
+            echo "No changelog notes found for $VERSION." >&2
+            exit 1
+          fi
+      - uses: docker/setup-buildx-action@v4
+      - uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - env:
+          IMAGE: ghcr.io/${{ github.repository }}
+          SHA_IMAGE: ghcr.io/${{ github.repository }}:sha-${{ github.sha }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          docker buildx imagetools inspect "$SHA_IMAGE" >/dev/null
+          docker buildx imagetools create \
+            --tag "$IMAGE:$VERSION" \
+            --tag "$IMAGE:${GITHUB_REF_NAME}" \
+            "$SHA_IMAGE"
+      - env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          {
+            cat "$RUNNER_TEMP/release-notes.md"
+            printf '\n\nContainer image: `ghcr.io/%s:%s`\n' "$GITHUB_REPOSITORY" "$VERSION"
+          } > "$RUNNER_TEMP/github-release-notes.md"
+          gh release create "$TAG" \
+            --target "$GITHUB_SHA" \
+            --title "rssapp $VERSION" \
+            --notes-file "$RUNNER_TEMP/github-release-notes.md"

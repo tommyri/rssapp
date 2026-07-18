@@ -1,8 +1,13 @@
-# Features
+# Product roadmap
 
-Phased plan. Each phase should ship as a usable app — MVP alone should be good enough to replace a hosted reader for daily use.
+This is the living product roadmap and concise release record. Every phase must stand on
+its own as a useful reader; the current rollout and next candidates are deliberately
+separate from shipped work.
 
-**Status (July 2026):** MVP and v1 are built and in daily use. The "later / ideas" list below is the remaining backlog.
+**Release status — 18 July 2026:** v0.1 and v1.0, plus their July expansion work, are
+shipped and in daily use. **2026.7.1 — Notifications & deliberate delivery** is the
+active calendar release: the rule-notification inbox is shipped, browser push is awaiting
+production validation, and email digests follow only after that validation succeeds.
 
 ## MVP (v0.1) — daily-drivable reader
 
@@ -36,7 +41,7 @@ Phased plan. Each phase should ship as a usable app — MVP alone should be good
 - Responsive layout that works on a phone browser
 - Fast: article list paginates (load-older), no fetch-on-render for content we already have
 
-## v1 — comfort features
+## v1.0 — comfort features
 
 *Shipped.*
 
@@ -57,9 +62,11 @@ Phased plan. Each phase should ship as a usable app — MVP alone should be good
   alongside a one-feed field, a small curated starter list, and an explicit empty-reader
   path
 
-## v0.2 — planned (next up)
+## July 2026 product expansion (post-v1.0)
 
-*Planned, not yet built. This list will grow as we scope more features before building anything. Roughly ordered by value-for-effort; the platform/sync items are bigger and may span more than one release.*
+*Shipped.* This section was formerly labelled “v0.2 — planned.” It is retained as the
+grouped record of the substantial reader, account, platform, and sync work delivered in
+July 2026.
 
 ### Reading & triage
 - **Save any link to read later** *(shipped July 2026)* — save an arbitrary web page by URL (not just items from subscribed feeds), the way Inoreader's read-later / save-web-page works: paste a blog-post link and it's kept for later. Captured from an in-app paste field at the top of Read later and a one-click bookmarklet (drag from Settings; `GET /save?url=…`). Saved pages get a Readability-extracted, sanitized copy (fetched immediately from the paste field, with the scheduler as a backstop for the bookmarklet) and fold into the **Read later** view alongside flagged feed items (unified, newest-saved-first), plus full-text search. Stored in a per-user `saved_pages` table — arbitrary URLs have no feed, so they don't fit the global `items` table.
@@ -100,7 +107,7 @@ Phased plan. Each phase should ship as a usable app — MVP alone should be good
 ### Organization, rules & feed health
 - **Tags / labels** *(shipped July 2026)* — create, rename, and delete per-user labels; assign them to feed articles and saved web pages from the reading view; open a unified label view from the sidebar; and apply a label automatically through a matching rule. Deleting a label also deletes any rules that apply it.
 - **Rules v2** *(shipped July 2026)* — test an unsaved rule against a bounded recent sample, inspect matching articles and its resulting action before saving, then explicitly confirm a bounded apply-to-existing batch on a saved rule. New rules only affect future articles; applying to existing articles scans at most the newest 500 in the rule's scope and reports the result.
-- **Rule notifications & inbox** *(shipped July 2026)* — a rule can add each matching new article to a durable in-app inbox. The sidebar shows the unread count; opening an alert marks it read and opens its article directly, including muted matches. Matching is deduplicated per rule and article, and Settings → Notifications can silence inbox creation without disabling any existing automation. Readers can opt individual browser devices into VAPID-authenticated push delivery; a refresh with several matches becomes one concise alert, expired endpoints are pruned, and a single-article push click marks its matching inbox entry read before opening the source (a batch opens the inbox). Email digests can build on this inbox rather than creating a separate event system.
+- **Rule notifications & inbox** *(in-app inbox shipped July 2026; browser push in production validation)* — a rule can add each matching new article to a durable in-app inbox. The sidebar shows the unread count; opening an alert marks it read and opens its article directly, including muted matches. Matching is deduplicated per rule and article, and Settings → Notifications can silence inbox creation without disabling any existing automation. Readers can opt individual browser devices into VAPID-authenticated push delivery; a refresh with several matches becomes one concise alert, expired endpoints are pruned, and a single-article push click marks its matching inbox entry read before opening the source (a batch opens the inbox). Email digests can build on this inbox rather than creating a separate event system.
 - **Feed health: silent & paused feeds** *(shipped July 2026)* — Manage feeds flags **quiet** feeds ("last new article 5 months ago": fetches succeed but the newest stored article is older than 90 days — the site stopped publishing, or the feed moved and the URL is a husk) and adds **Pause/Resume**: pausing keeps the feed and its articles but stops fetching (the gentler alternative to unsubscribing a broken feed); paused feeds show a pause icon in the sidebar. Pause lives on `subscriptions.settings.paused` — per-subscription, so it's multi-tenant correct: the scheduler polls a feed while at least one non-paused subscription wants it, and manual refresh-all skips the user's paused feeds. Resuming marks the feed due so it fetches on the next tick. No migration needed; the Save form can't clobber a pause (pinned by a unit test).
 
 ### Accounts & recovery
@@ -154,16 +161,54 @@ Phased plan. Each phase should ship as a usable app — MVP alone should be good
 - **Podcast / audio playback** *(shipped July 2026)* — recognizes audio attachments in RSS and JSON Feed entries, preserves native audio embedded in article content, and presents a native inline player when an expanded article has an episode to listen to. Each audio source resumes at its own last meaningful position across a person's signed-in devices, with a clear start-over control for enclosures. Feed media remains online-only; offline reading intentionally stores readable text rather than arbitrary audio files.
 - **Google Reader–compatible API** *(shipped July 2026)* — native reader apps can connect through a revocable app password to sync subscriptions, folders, article streams, unread counts, read/star/label state, and feed changes. The compatibility protocol is an adapter over the reader's internal model; a future rssapp mobile app can use a modern versioned sync surface without inheriting the legacy wire format. See [greader-api.md](greader-api.md).
 
-## Later / ideas (not committed)
+## 2026.7.1 — Notifications & deliberate delivery (current)
 
-- Text-to-speech ("Listen to this article") — deferred deliberately: the browser's built-in `SpeechSynthesis` voices are too robotic to be pleasant. Do it with a high-quality AI TTS provider instead (likely BYO-key, matching the AI stance in business-option.md), so revisit when we take on AI features
-- Email newsletter → feed bridge (unique inbound address per "feed")
-- AI daily digest / article summaries
-- Snooze / resurface — dismiss an article now and have it resurface to the top of the unread list later (tomorrow/weekend). Deferred: it overlaps our own reading process, where a post is either put in Read later (keep) or read (done, shouldn't come back), so the snooze middle-ground earns little here. Design was scoped (nullable `item_states.snoozed_until`, passive query-time hiding, resurface by sorting on the snooze time) — revisit if the triage/overload pressure ever makes a "not now, ask me later" state worth it.
-- Infinite scroll + list virtualization — auto-load older articles on scroll instead of the "Load older" button, and virtualize the list for large unread counts. Deferred: we don't hit long unread lists in practice, and the explicit button is predictable and keyboard-friendly; virtualization also fights the inline-accordion expansion (variable row heights) and the scroll-mark IntersectionObserver.
+**Goal:** make rule-driven alerts dependable without turning the reader into a noisy
+attention machine.
+
+1. **Validate browser push delivery in production.** The implementation is complete, but
+   it needs a deployed HTTPS origin, VAPID configuration, and real device/browser
+   delivery checks. The durable in-app inbox remains the fallback and source of truth.
+2. **Email digests from the notification inbox.** After push validation, add a
+   user-controlled daily or weekly summary of unread rule notifications. It will reuse
+   the existing transactional email delivery and scheduler, while adding a timezone,
+   schedule, delivery record/deduping, and an easy opt-out. It needs no inbound-email
+   server.
+
+Nothing else is in scope for 2026.7.1. In particular, the newsletter-to-feed bridge is not
+part of this release.
+
+## Later / version undecided
+
+These are useful product possibilities, but none has a release assignment or delivery
+promise. A later version gets a scoped goal before one of them becomes planned work.
+
+1. **Email newsletter → feed bridge** — a unique inbound address per feed. This is a
+   paid-product-shaped differentiator, but is deliberately deferred to an undecided
+   later version. It requires an inbound-email provider/webhook, opaque addresses,
+   sender and size controls, spam/abuse protections, and safe failure handling before it
+   is ready.
+2. **Text-to-speech (“Listen to this article”)** — defer browser `SpeechSynthesis`;
+   revisit with a high-quality AI TTS provider, likely BYO-key, when we deliberately take
+   on AI features.
+3. **AI daily digest / article summaries** — a companion to the reading workflow, also
+   likely BYO-key so product costs stay explicit.
+4. **Snooze / resurface** — dismiss an article now and have it resurface to the top of
+   the unread list later (tomorrow/weekend). Deferred: it overlaps our own reading
+   process, where a post is either put in Read later (keep) or read (done, shouldn't
+   come back), so the snooze middle-ground earns little here. Design was scoped
+   (nullable `item_states.snoozed_until`, passive query-time hiding, resurface by
+   sorting on the snooze time) — revisit if the triage/overload pressure ever makes a
+   “not now, ask me later” state worth it.
+5. **Infinite scroll + list virtualization** — auto-load older articles on scroll
+   instead of the “Load older” button, and virtualize the list for large unread counts.
+   Deferred: we don't hit long unread lists in practice, and the explicit button is
+   predictable and keyboard-friendly; virtualization also fights the inline-accordion
+   expansion (variable row heights) and the scroll-mark `IntersectionObserver`.
 
 ## Explicitly out of scope
 
 - Social features (sharing, comments, recommendations)
 - Crawling sites that don't offer feeds (except v1 full-content extraction of subscribed articles)
-- Native mobile apps — the web app (and later the compat API + PWA) covers mobile
+- Native mobile apps — the PWA and deployed Reader-compatible sync API cover mobile;
+  reconsider a native client only if they stop meeting a concrete product need

@@ -1,0 +1,12 @@
+# Local-only conveniences. Keep production topology out of this file.
+services:
+  app:
+    build: .
+    ports:
+      - "${APP_PORT:-3000}:3000"
+
+  db:
+    ports:
+      # Bind to loopback so an existing local Postgres or the local network
+      # cannot reach this container. The app itself reaches `db` internally.
+      - "127.0.0.1:${POSTGRES_PORT:-5433}:5432"

@@ -1,4 +1,6 @@
 # Production image for the rssapp server (Next.js standalone output).
+ARG APP_VERSION=development
+
 FROM node:22-alpine AS deps
 WORKDIR /app
 COPY package.json package-lock.json ./
@@ -14,10 +16,12 @@ ENV NEXT_TELEMETRY_DISABLED=1
 RUN npm run build
 
 FROM node:22-alpine AS runner
+ARG APP_VERSION
 WORKDIR /app
 ENV NODE_ENV=production
 ENV PORT=3000
 ENV HOSTNAME=0.0.0.0
+ENV RSSAPP_VERSION=$APP_VERSION
 RUN addgroup -S nodejs && adduser -S nextjs -G nodejs
 RUN mkdir /backups && chown nextjs:nodejs /backups
 

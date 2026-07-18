@@ -1,0 +1,10 @@
+[Unit]
+Description=Deploy the latest rssapp staging image
+Wants=network-online.target
+After=network-online.target docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/rssapp
+ExecStart=/usr/bin/env bash /opt/rssapp/scripts/deploy-image.sh staging

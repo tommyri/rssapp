@@ -28,6 +28,7 @@ export const authConfig = {
         // credential. Let the route handler verify that credential instead of
         // redirecting a non-browser client to the interactive sign-in page.
         pathname.startsWith("/api/greader") ||
+        pathname === "/api/health" ||
         pathname === "/service-worker.js" ||
         pathname === "/manifest.webmanifest" ||
         pathname === "/icon" ||

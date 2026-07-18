@@ -1,9 +1,13 @@
-node_modules
-.next
+.env
+.env.*
 .git
 .claude
+.next
+node_modules
+coverage
+*.log
+.DS_Store
 docs
 *.md
-.env*
 Dockerfile
-compose.yaml
+compose*.yaml

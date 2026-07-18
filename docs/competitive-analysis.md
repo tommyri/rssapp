@@ -1,4 +1,4 @@
-# Competitive Analysis — RSS Readers (July 2026)
+# Competitive Analysis — RSS Readers (reviewed 18 July 2026)
 
 Purpose: know what "good" looks like, what people pay for, and where the gap is — both to make our v1 good enough to replace Inoreader, and to position the business option. Decision-oriented; raw research is summarized, sources noted at the end.
 
@@ -40,11 +40,11 @@ What paying users actually praise: rules/filters taming high-volume feeds, monit
 | Full-content extraction for truncated feeds | ✅ shipped |
 | Full-text search | ✅ shipped (free at Inoreader; Feedly paywalling it is resented) |
 | Dark mode | ✅ shipped (Auto/Light/Dark) |
-| Keyboard shortcuts | ⏳ deferred to "later" — nice-to-have for a single user, non-negotiable only if courting migrating power users |
-| Mobile: apps, great PWA, or GReader API for third-party clients | ⚠️ responsive web shipped; PWA "later" — acceptable for personal use, gating for business |
+| Keyboard shortcuts | ✅ shipped — Google Reader canon, command palette, and keyboard pagination |
+| Mobile: apps, great PWA, or GReader API for third-party clients | ✅ responsive PWA/offline reading and Google Reader-compatible sync shipped; browser push is in production validation |
 | YouTube channels as feeds | ✅ shipped (paste a channel URL → resolves its native RSS) |
-| Podcasts as feeds | ✅ audio enclosures play inline; richer podcast management remains later work |
-| Newsletter-to-feed | "later" — fine personally; near-expected on paid tiers commercially |
+| Podcasts as feeds | ✅ audio enclosures play inline and remember progress across signed-in devices; richer podcast management remains later work |
+| Newsletter-to-feed | Deferred to a later, undecided version — near-expected on paid tiers commercially, but requires deliberate inbound-email and abuse design |
 | Longevity signaling | Post-Pocket/Omnivore, "will this exist in 3 years" is an explicit purchase criterion — self-hosting answers it for us personally |
 
 ## What people pay for (willingness-to-pay signals)
@@ -59,13 +59,13 @@ Consistently paywalled across the market: feed-count caps, **rules/filters/autom
 4. **Android/mobile is chronically underserved** (Feedbin: no Android; FreshRSS: stale third-party clients; best UX is Apple-only). A great PWA + GReader API covers both cheaply.
 5. **Cloudflare/bot walls hurt single-IP self-hosted fetchers.** A hosted service's shared fetching infra is a real, defensible advantage — and a known risk for our own home-server fetcher (mitigations: good UA, conditional GET, backoff; accept some feeds may need workarounds).
 
-## Roadmap implications (applied to features.md)
+## Product decisions this research supports
 
-1. **Promote rules/filters from "later" to v1.** It's the #1 willingness-to-pay feature, the thing Inoreader power users actually pay for, and the core of the "clean + powerful" wedge. Even personally, it's how you keep high-volume feeds sane.
-2. **Add mark-read-on-scroll to MVP** — table stakes, and specifically praised Inoreader behavior.
-3. **Add YouTube-channel add-flow to v1** — paste a channel URL, we resolve the RSS feed. Nearly free, disproportionately appreciated.
-4. **Keep monitoring feeds, AI features, newsletters out of v1** — they're what makes Inoreader feel bloated; newsletters and AI summaries are business-tier candidates later (BYO-key AI, per Inoreader's April 2026 move, is the capital-efficient way).
-5. **Business framing:** the paywall table above defines a future free/paid split; pricing trust (simple, stable, no bait) is a stated differentiator. Noted in business-option.md.
+1. **Rules and notifications are core, not ornamental.** Rules/filters are the #1 willingness-to-pay feature and the core of the “clean UI, powerful underneath” wedge. The rule system and durable inbox are shipped; browser push is the current production rollout.
+2. **Fast, keyboard-friendly reading is table stakes.** Mark-read-on-scroll, the Google Reader keyboard canon, and keyboard pagination are all shipped rather than deferred.
+3. **Mobile is covered without a native-app commitment.** The PWA/offline reader and Reader-compatible sync API provide a credible web and third-party-client story. A native client must earn its own product case.
+4. **Keep monitoring, AI, and newsletter ingestion out of the core reader.** Newsletter-to-feed is deliberately deferred to a later, undecided version; it needs inbound-email and abuse design. AI summaries and TTS should be high-quality and likely BYO-key; monitoring feeds remain a separate media-monitoring product.
+5. **Business framing:** the paywall table above still defines a future free/paid split; pricing trust (simple, stable, no bait) is a stated differentiator. Noted in business-option.md.
 
 ## Sources & confidence
 

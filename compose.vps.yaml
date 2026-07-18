@@ -1,0 +1,7 @@
+# Assumes Nginx/Caddy runs on the VPS host and proxies to localhost. If the
+# reverse proxy is containerized, replace this mapping with a shared proxy
+# network instead; never publish the database service.
+services:
+  app:
+    ports:
+      - "127.0.0.1:${APP_PORT:-3000}:3000"

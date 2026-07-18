@@ -236,32 +236,18 @@ Starred, Read later and Search are never collapsed. On by default; toggle in
 
 ## Deployment (home server / VPS)
 
-The whole stack runs from the compose file — the app image builds from the
-[Dockerfile](Dockerfile) (Next.js standalone output), migrations apply automatically at
-boot, and the in-process poller starts with the server.
+GitHub Actions tests and builds the standalone Docker image, publishes it to GHCR, and
+lets a separate staging instance follow `main`. Production only pulls an immutable image
+that staging has already tested; it never compiles the app or carries uncommitted Compose
+changes. The app still applies database migrations during a successful container boot and
+starts its in-process poller normally.
+
+See the [deployment runbook](docs/deployment.md) for the complete first-time VPS setup:
+GitHub Actions permissions, a read-only GHCR token and Docker login, protected
+environment files, HTTPS proxy ports, staging automation, production promotion, backups,
+rollback boundaries, and calendar-versioned GitHub Releases. Docker-based local
+development starts with `cp .env.example .env` and:
 
 ```bash
-# once: create .env next to compose.yaml
-echo "AUTH_SECRET=$(npx auth secret --raw 2>/dev/null || openssl rand -base64 33)" > .env
-printf '\nAPP_URL=https://reader.example.com\nRESEND_API_KEY=re_...\nEMAIL_FROM="rssapp <accounts@reader.example.com>"\n' >> .env
-
-docker compose up -d --build    # app on http://<host>:3000 + Postgres
+docker compose -f compose.yaml -f compose.dev.yaml up -d --build
 ```
-
-- The app **refuses to boot without `AUTH_SECRET`** (it signs the session cookies).
-- `APP_PORT=8080` in `.env` changes the published port.
-- Upgrades: `git pull && docker compose up -d --build` — migrations run on boot.
-- Sign-up is public at `/signup`. New accounts verify their email before signing in, then
-  complete a short onboarding flow. Existing accounts are automatically marked complete
-  when the onboarding migration runs.
-- **Settings → Subscriptions & data** can download a complete, portable JSON backup
-  (account data, subscriptions, articles, states, saved pages, labels, rules, and
-  highlights; never passwords). A restore assistant validates a backup, compares it with
-  the account&apos;s current reader data, then requires explicit confirmation before
-  transactionally replacing that reader data. It never merges records and leaves the
-  account login alone.
-  Compose also writes daily snapshots to the `backup-data` volume, retaining 14 by
-  default. Tune `BACKUP_INTERVAL_HOURS` and `BACKUP_RETENTION` in `.env`, and copy
-  snapshots out with `docker compose cp app:/backups ./backups`.
-- Back up the `db-data` volume (or `pg_dump`) as well; it remains the canonical
-  database and is the recovery path for any data not yet supported by JSON restore.

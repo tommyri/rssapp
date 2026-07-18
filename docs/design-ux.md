@@ -44,7 +44,7 @@ Sorting: newest-first globally and for folder/all views. A feed can opt into old
 ## Reading (inline-expanded article)
 
 - Article opens in place within a centered max-width column; generous margins. Opening an unread article auto-marks it read
-- **System font stack by default** — Feedbin deliberately moved off font-CDNs for privacy; we get the same result for free. Text-size and font choice can come later
+- **System font stack by default** — Feedbin deliberately moved off font-CDNs for privacy; we get the same result for free. Settings now offers reader text size, serif/sans body font, and narrow/normal/wide reading columns without changing that default
 - Sanitized article HTML; images constrained to column width; **full-content extraction** via a "Load full content" button in the expanded article, plus a per-feed "always load full content" default that extracts at ingest (the UX consensus across Miniflux `d`, Feedbin `c`, NNW Reader View)
 - **Open original** is always one tap away (a link in the expanded article)
 - **Keyboard shortcuts** (shipped July 2026): the Google Reader canon — `j`/`k`, `space`, `m`, `s`, `v`, `c`, bulk-read keys, `g`-chords, `/`, `?` (full keymap below)
@@ -109,7 +109,8 @@ gets the destructive tint (action needed) — no amber; one accent is the system
 
 Master-detail: a category rail (desktop) / pills (mobile) on the left, and **one
 category's settings** rendered at a time — **Reading** (behavior), **Appearance**
-(presentation), **Subscriptions & data** (portability), **Account** (identity). The
+(presentation), **Notifications** (rule inbox and browser-device delivery),
+**Subscriptions & data** (portability), **Account** (identity). The
 selector is URL-driven (`/settings?section=appearance`, unknown values fall back to the
 first) so refresh, back-button, and the ⌘K palette (`Settings · Appearance`) all land
 on the right category; links pass `scroll={false}` so picking a category swaps the pane
@@ -119,8 +120,10 @@ selector, so it should select. Rejected: full sub-pages (1–3 cards each — ro
 ceremony for no gain; `?section=` gives the same addressability) and client-side tabs
 (state lost on refresh, invisible to the palette). Each category carries a scope tag —
 **Account** vs **This device** — since some settings live in Postgres and others in
-localStorage, and "will this follow me to my phone?" deserves a structural answer. The
-section list lives once in `src/lib/settings-sections.ts`.
+localStorage, and "will this follow me to my phone?" deserves a structural answer.
+Notifications is account-scoped: a rule can create a durable inbox entry, while each
+browser/device opts into push independently. The section list lives once in
+`src/lib/settings-sections.ts`.
 
 **Subscriptions & data** pairs interoperable OPML with a clear recovery path:
 **Download JSON backup** and **Restore a backup**. The download is deliberately complete
@@ -139,7 +142,7 @@ the card reports their availability without exposing a filesystem setting in a w
 
 ## Mobile web
 
-Feedbin proves a web reader can be the best phone experience ("the mobile site is so good it turns out to be the best app"). Requirements: comfortable tap targets, pull-to-refresh, mark-read-on-scroll working in the list. PWA installability stays "later" polish.
+Feedbin proves a web reader can be the best phone experience ("the mobile site is so good it turns out to be the best app"). Requirements: comfortable tap targets, pull-to-refresh, mark-read-on-scroll working in the list. The app is installable and supports a device-local offline library; browser push is a separate production rollout because it depends on deployed HTTPS and VAPID configuration.
 
 **Navigation** *(drawer since July 2026)*: below md the feed sidebar is a left-slide **drawer** behind a slim sticky top bar (menu · brand · refresh), so the article list is the primary surface instead of sitting below a full-height feed list. One app-shell layout — fixed viewport height, only the content pane scrolls — and the drawer is the *same* element that's the static sidebar at md+ (`md:static`), so nothing is duplicated. The drawer closes on navigation, Escape, or scrim tap (`src/components/mobile-shell.tsx`). Folder headers can be collapsed and their state persists per user; drag a folder or feed row directly to reorder it within its current list, with mouse, long-press touch, and keyboard sensors plus animated sorting feedback. This organization is stored in the existing user preferences rather than new tables or columns. Empty folders remain visible so a feed can be moved back into them from its menu.
 

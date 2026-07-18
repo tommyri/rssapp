@@ -41,6 +41,12 @@ describe("auth route exceptions", () => {
     ).toBe(true);
   });
 
+  it("keeps the deployment health probe reachable without a session", () => {
+    expect(authorized({ auth: null, request: request("/api/health") })).toBe(
+      true,
+    );
+  });
+
   it("carries a server-verifiable session handle in a newly issued JWT", async () => {
     const jwt = authConfig.callbacks.jwt;
     const session = authConfig.callbacks.session;
