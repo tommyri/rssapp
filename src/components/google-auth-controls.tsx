@@ -25,13 +25,18 @@ function GoogleSubmitButton({ label }: { label: string }) {
 export function GoogleAuthButton({
   mode,
   inviteToken,
+  returnTo,
 }: {
   mode: "login" | "signup";
   inviteToken?: string;
+  returnTo?: string;
 }) {
   if (mode === "login") {
     return (
       <form action={beginGoogleSignInAction}>
+        {returnTo ? (
+          <input type="hidden" name="returnTo" value={returnTo} />
+        ) : null}
         <GoogleSubmitButton label="Continue with Google" />
       </form>
     );

@@ -13,6 +13,7 @@ import { AccountSessionControls } from "@/components/account-session-controls";
 import { ApiAccessTokenControls } from "@/components/api-access-token-controls";
 import { BackLink } from "@/components/back-link";
 import { BackupControls } from "@/components/backup-controls";
+import { EmailDigestPreferencesForm } from "@/components/email-digest-preferences-form";
 import { GoogleAccountLink } from "@/components/google-auth-controls";
 import { NotificationPreferencesForm } from "@/components/notification-preferences-form";
 import { OpmlControls } from "@/components/opml-controls";
@@ -31,6 +32,7 @@ import {
   googleAccountSettingsNotice,
   isGoogleAuthEnabled,
 } from "@/lib/google-auth-config";
+import { getNotificationDigestPreferences } from "@/lib/notification-digests";
 import { getVapidPublicKey } from "@/lib/push-notifications";
 // Categorized settings (docs/design-ux.md): the rail/pills are a selector, not
 // a scroll shortcut — one category renders at a time, driven by ?section=, so
@@ -42,6 +44,7 @@ import {
   type SettingsSectionId,
   settingsSectionHref,
 } from "@/lib/settings-sections";
+import { isEmailDeliveryAvailable } from "@/lib/transactional-email";
 
 const escapeAttr = (s: string) =>
   s
@@ -99,6 +102,10 @@ export default async function SettingsPage({
   );
   const apiAccessTokens =
     active === "account" ? await listApiAccessTokens(userId) : [];
+  const digestPreferences =
+    active === "notifications"
+      ? await getNotificationDigestPreferences(userId)
+      : null;
 
   // Build an absolute bookmarklet from the request's own origin so it points at
   // this deployment wherever it's hosted.
@@ -164,6 +171,17 @@ export default async function SettingsPage({
           inAppRuleAlerts={user?.settings.inAppRuleAlerts ?? true}
         />
         <PushNotificationControl publicKey={getVapidPublicKey()} />
+        {digestPreferences ? (
+          <EmailDigestPreferencesForm
+            {...digestPreferences}
+            nextRunAt={digestPreferences.nextRunAt?.toISOString() ?? null}
+            lastSentAt={digestPreferences.lastSentAt?.toISOString() ?? null}
+            email={user?.email ?? ""}
+            emailVerified={Boolean(user?.emailVerifiedAt)}
+            emailAvailable={isEmailDeliveryAvailable()}
+            ruleNotificationsEnabled={user?.settings.inAppRuleAlerts ?? true}
+          />
+        ) : null}
       </div>
     ),
     data: (

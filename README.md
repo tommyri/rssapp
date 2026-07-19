@@ -185,6 +185,21 @@ Browser push is intentionally disabled in `next dev`, where the app unregisters 
 workers to prevent Turbopack's changing modules from becoming stale. Test it with a
 production build over HTTPS (or `localhost`).
 
+### Email notification digests
+
+Readers can schedule a daily or weekly summary of unread rule notifications from
+**Settings → Notifications**. Delivery uses the verified account address and the
+reader's selected IANA timezone. The scheduler stores exact digest membership before
+sending, retries transient failures with backoff, and supplies a stable provider
+idempotency key. Sending does not mark notifications read; opening an article from the
+email does. Each message includes a signed preferences link and RFC 8058 one-click
+unsubscribe endpoint.
+
+Digests reuse `APP_URL`, `RESEND_API_KEY`, `EMAIL_FROM`, and `AUTH_SECRET` from account
+email setup. `APP_URL` must be the public HTTPS origin in production because it is used
+for article and unsubscribe links. In local development without Resend credentials, test
+and scheduled messages are printed to the server log.
+
 ### Full-content extraction
 
 For truncated feeds, "Load full content" in the article view fetches the article page

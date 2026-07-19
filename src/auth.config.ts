@@ -23,7 +23,9 @@ export const authConfig = {
         pathname === "/forgot-password" ||
         pathname === "/reset-password" ||
         pathname === "/verify-email" ||
+        pathname.startsWith("/email-digests/") ||
         pathname.startsWith("/api/auth") ||
+        pathname === "/api/email-digests/unsubscribe" ||
         // Native reader clients authenticate each request with a revocable API
         // credential. Let the route handler verify that credential instead of
         // redirecting a non-browser client to the interactive sign-in page.

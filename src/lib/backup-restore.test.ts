@@ -113,6 +113,29 @@ describe("parseBackupDocument", () => {
     expect(backup.user.settings.inAppRuleAlerts).toBe(false);
   });
 
+  it("retains an email digest schedule while accepting older backups", () => {
+    const raw = validBackup();
+    const backup = parseBackupDocument({
+      ...raw,
+      notificationDigest: {
+        enabled: true,
+        cadence: "weekly",
+        timezone: "Europe/Oslo",
+        deliveryHour: 8,
+        deliveryMinute: 30,
+        weekday: 5,
+      },
+    });
+
+    expect(backup.notificationDigest).toMatchObject({
+      enabled: true,
+      cadence: "weekly",
+      timezone: "Europe/Oslo",
+      weekday: 5,
+    });
+    expect(parseBackupDocument(raw).notificationDigest).toBeNull();
+  });
+
   it("accepts notify rules from an exported backup", () => {
     const raw = validBackup();
     const backup = parseBackupDocument({

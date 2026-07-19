@@ -32,13 +32,23 @@ import {
   type EmbedLoadingPreferences,
   isEmbedLoadMode,
 } from "@/lib/embed-loading";
+import { isValidDigestTimezone } from "@/lib/notification-digest-schedule";
+import {
+  disableNotificationDigests,
+  NotificationDigestPreferenceError,
+  saveNotificationDigestPreferences,
+  sendTestNotificationDigest,
+} from "@/lib/notification-digests";
 import { hashPassword, verifyPassword } from "@/lib/password";
 import {
   parsePushSubscription,
   removePushSubscription,
   savePushSubscription,
 } from "@/lib/push-notifications";
-import { EmailDeliveryError } from "@/lib/transactional-email";
+import {
+  EmailDeliveryError,
+  isEmailDeliveryConfigured,
+} from "@/lib/transactional-email";
 
 export interface AccountActionState {
   ok: boolean;
@@ -48,6 +58,10 @@ export interface AccountActionState {
 export interface ApiAccessTokenActionState extends AccountActionState {
   /** Set only after creation; raw credentials are never stored server-side. */
   secret?: string;
+}
+
+export interface NotificationDigestActionState extends AccountActionState {
+  nextRunAt?: string | null;
 }
 
 const displayNameSchema = z.string().trim().max(80);
@@ -274,7 +288,7 @@ export async function updateNotificationPreferencesAction(
   _prev: AccountActionState,
   formData: FormData,
 ): Promise<AccountActionState> {
-  const inAppRuleAlerts = formData.get("inAppRuleAlerts") === "on";
+  const inAppRuleAlerts = formData.get("ruleNotificationsEnabled") === "on";
   const userId = await getCurrentUserId();
   const user = await db.query.users.findFirst({ where: eq(users.id, userId) });
   if (!user)
@@ -284,12 +298,100 @@ export async function updateNotificationPreferencesAction(
     .update(users)
     .set({ settings: { ...user.settings, inAppRuleAlerts } })
     .where(eq(users.id, userId));
+  if (!inAppRuleAlerts) await disableNotificationDigests(userId);
   revalidatePath("/");
   revalidatePath("/settings");
   return {
     ok: true,
-    message: inAppRuleAlerts ? "Rule alerts are on." : "Rule alerts are off.",
+    message: inAppRuleAlerts
+      ? "Rule notifications are on."
+      : "Rule notifications and email digests are off.",
   };
+}
+
+const digestPreferenceSchema = z.object({
+  mode: z.enum(["off", "daily", "weekly"]),
+  timezone: z.string().trim().min(1).max(100),
+  deliveryTime: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/),
+  weekday: z.coerce.number().int().min(1).max(7),
+});
+
+export async function updateNotificationDigestAction(
+  _prev: NotificationDigestActionState,
+  formData: FormData,
+): Promise<NotificationDigestActionState> {
+  const parsed = digestPreferenceSchema.safeParse({
+    mode: formData.get("mode"),
+    timezone: formData.get("timezone"),
+    deliveryTime: formData.get("deliveryTime"),
+    weekday: formData.get("weekday") ?? "1",
+  });
+  if (!parsed.success || !isValidDigestTimezone(parsed.data.timezone)) {
+    return { ok: false, message: "Choose a valid digest schedule." };
+  }
+  const userId = await getCurrentUserId();
+  const user = await db.query.users.findFirst({ where: eq(users.id, userId) });
+  if (!user) {
+    return { ok: false, message: "Your account is no longer available." };
+  }
+  const enabled = parsed.data.mode !== "off";
+  if (enabled && user.settings.inAppRuleAlerts === false) {
+    return {
+      ok: false,
+      message: "Turn on rule notifications before enabling an email digest.",
+    };
+  }
+  const [deliveryHour, deliveryMinute] = parsed.data.deliveryTime
+    .split(":")
+    .map(Number) as [number, number];
+  try {
+    const nextRunAt = await saveNotificationDigestPreferences({
+      userId,
+      enabled,
+      cadence: parsed.data.mode === "weekly" ? "weekly" : "daily",
+      timezone: parsed.data.timezone,
+      deliveryHour,
+      deliveryMinute,
+      weekday: parsed.data.weekday,
+    });
+    revalidatePath("/settings");
+    return {
+      ok: true,
+      message: enabled ? "Email digest scheduled." : "Email digest is off.",
+      nextRunAt: nextRunAt?.toISOString() ?? null,
+    };
+  } catch (error) {
+    if (error instanceof NotificationDigestPreferenceError) {
+      return { ok: false, message: error.message };
+    }
+    console.error("[digest] preference update failed:", error);
+    return { ok: false, message: "We could not save that digest schedule." };
+  }
+}
+
+export async function sendTestNotificationDigestAction(
+  _prev: AccountActionState,
+  _formData: FormData,
+): Promise<AccountActionState> {
+  const userId = await getCurrentUserId();
+  try {
+    await sendTestNotificationDigest(userId);
+    return {
+      ok: true,
+      message: isEmailDeliveryConfigured()
+        ? "Test digest sent. Check your inbox."
+        : "Test digest written to the local server log.",
+    };
+  } catch (error) {
+    if (
+      error instanceof NotificationDigestPreferenceError ||
+      error instanceof EmailDeliveryError
+    ) {
+      return { ok: false, message: error.message };
+    }
+    console.error("[digest] test delivery failed:", error);
+    return { ok: false, message: "We could not send the test digest." };
+  }
 }
 
 /** Save an explicit, browser-owned Web Push subscription for this device. */

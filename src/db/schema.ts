@@ -669,6 +669,144 @@ export const notifications = pgTable(
   ],
 );
 
+export const notificationDigestCadences = ["daily", "weekly"] as const;
+export type NotificationDigestCadence =
+  (typeof notificationDigestCadences)[number];
+
+export const notificationDigestDeliveryStatuses = [
+  "pending",
+  "processing",
+  "retrying",
+  "sent",
+  "skipped",
+  "failed",
+] as const;
+export type NotificationDigestDeliveryStatus =
+  (typeof notificationDigestDeliveryStatuses)[number];
+
+/**
+ * Queryable scheduling state lives outside users.settings so the scheduler can
+ * efficiently find due accounts without scanning JSON preferences.
+ */
+export const notificationDigestSettings = pgTable(
+  "notification_digest_settings",
+  {
+    userId: bigint("user_id", { mode: "number" })
+      .primaryKey()
+      .references(() => users.id, { onDelete: "cascade" }),
+    enabled: boolean("enabled").notNull().default(false),
+    cadence: text("cadence")
+      .notNull()
+      .default("daily")
+      .$type<NotificationDigestCadence>(),
+    timezone: text("timezone").notNull().default("UTC"),
+    deliveryHour: integer("delivery_hour").notNull().default(8),
+    deliveryMinute: integer("delivery_minute").notNull().default(0),
+    /** ISO weekday: Monday = 1, Sunday = 7. Used only for weekly digests. */
+    weekday: integer("weekday").notNull().default(1),
+    nextRunAt: timestamp("next_run_at", { withTimezone: true }),
+    lastSentAt: timestamp("last_sent_at", { withTimezone: true }),
+    lastTestSentAt: timestamp("last_test_sent_at", { withTimezone: true }),
+    createdAt: createdAt(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    check(
+      "notification_digest_settings_cadence_check",
+      sql`${t.cadence} in ('daily', 'weekly')`,
+    ),
+    check(
+      "notification_digest_settings_hour_check",
+      sql`${t.deliveryHour} between 0 and 23`,
+    ),
+    check(
+      "notification_digest_settings_minute_check",
+      sql`${t.deliveryMinute} between 0 and 59`,
+    ),
+    check(
+      "notification_digest_settings_weekday_check",
+      sql`${t.weekday} between 1 and 7`,
+    ),
+    index("notification_digest_settings_due_idx")
+      .on(t.nextRunAt)
+      .where(sql`${t.enabled} = true and ${t.nextRunAt} is not null`),
+  ],
+);
+
+/** A retryable, auditable send attempt for one scheduled digest slot. */
+export const notificationDigestDeliveries = pgTable(
+  "notification_digest_deliveries",
+  {
+    id: id(),
+    userId: bigint("user_id", { mode: "number" })
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    scheduledFor: timestamp("scheduled_for", { withTimezone: true }).notNull(),
+    status: text("status")
+      .notNull()
+      .default("pending")
+      .$type<NotificationDigestDeliveryStatus>(),
+    attemptCount: integer("attempt_count").notNull().default(0),
+    nextAttemptAt: timestamp("next_attempt_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    startedAt: timestamp("started_at", { withTimezone: true }),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+    providerMessageId: text("provider_message_id"),
+    lastError: text("last_error"),
+    /** Frozen before the first provider call so idempotent retries are identical. */
+    recipientEmail: text("recipient_email"),
+    emailSubject: text("email_subject"),
+    emailText: text("email_text"),
+    emailHtml: text("email_html"),
+    preparedAt: timestamp("prepared_at", { withTimezone: true }),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    check(
+      "notification_digest_deliveries_status_check",
+      sql`${t.status} in ('pending', 'processing', 'retrying', 'sent', 'skipped', 'failed')`,
+    ),
+    uniqueIndex("notification_digest_deliveries_slot_idx").on(
+      t.userId,
+      t.scheduledFor,
+    ),
+    index("notification_digest_deliveries_queue_idx")
+      .on(t.nextAttemptAt, t.createdAt)
+      .where(sql`${t.status} in ('pending', 'retrying', 'processing')`),
+    index("notification_digest_deliveries_user_created_idx").on(
+      t.userId,
+      t.createdAt,
+    ),
+  ],
+);
+
+/**
+ * Freezes exact membership before delivery. A notification can appear in only
+ * one scheduled digest, while a permanently failed delivery releases it.
+ */
+export const notificationDigestItems = pgTable(
+  "notification_digest_items",
+  {
+    deliveryId: bigint("delivery_id", { mode: "number" })
+      .notNull()
+      .references(() => notificationDigestDeliveries.id, {
+        onDelete: "cascade",
+      }),
+    notificationId: bigint("notification_id", { mode: "number" })
+      .notNull()
+      .references(() => notifications.id, { onDelete: "cascade" }),
+  },
+  (t) => [
+    primaryKey({ columns: [t.deliveryId, t.notificationId] }),
+    uniqueIndex("notification_digest_items_notification_idx").on(
+      t.notificationId,
+    ),
+  ],
+);
+
 /**
  * One Web Push endpoint per browser/device. The endpoint and encryption keys
  * are scoped to an account and removed if its push service reports it expired.

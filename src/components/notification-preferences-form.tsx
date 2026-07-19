@@ -14,7 +14,7 @@ import {
 
 const initial: AccountActionState = { ok: true, message: "" };
 
-/** Account-backed, debounced preference control — settings never need a Save button. */
+/** Account-backed master event switch; delivery channels consume these events. */
 export function NotificationPreferencesForm({
   inAppRuleAlerts,
 }: {
@@ -53,29 +53,28 @@ export function NotificationPreferencesForm({
     >
       <section className="space-y-4 rounded-lg border p-4">
         <div className="space-y-1">
-          <h3 className="font-medium">Rule alerts</h3>
+          <h3 className="font-medium">Rule notifications</h3>
           <p className="text-xs text-muted-foreground">
-            Let rules add matching articles to your in-app notifications. You
-            can still keep your mute, read, star, and label rules active when
-            alerts are off.
+            Let notify rules collect matching articles. The notification inbox,
+            browser push, and email digests all use this same collection.
           </p>
         </div>
 
         <label className="flex cursor-pointer items-start gap-3 rounded-md border border-border/70 px-3 py-3 transition-colors hover:bg-accent/40">
           <input
             type="checkbox"
-            name="inAppRuleAlerts"
+            name="ruleNotificationsEnabled"
             checked={enabled}
             onChange={(event) => setEnabled(event.target.checked)}
             className="mt-0.5 size-4 accent-primary"
           />
           <span>
             <span className="block text-sm font-medium">
-              In-app notifications
+              Collect rule notifications
             </span>
             <span className="mt-0.5 block text-xs text-muted-foreground">
-              See a dedicated inbox and unread badge whenever a notify rule
-              matches a new article.
+              Keep a durable notification inbox whenever a notify rule matches a
+              new article. Turning this off also stops email digests.
             </span>
           </span>
         </label>

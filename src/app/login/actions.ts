@@ -9,6 +9,7 @@ import {
   emailRateLimitKey,
   requestNetworkRateLimitKey,
 } from "@/lib/auth-rate-limit";
+import { safeReturnTo } from "@/lib/safe-return-to";
 
 export interface AuthActionState {
   error: string;
@@ -32,6 +33,7 @@ export async function loginAction(
   formData: FormData,
 ): Promise<AuthActionState> {
   const { email, password } = readCredentials(formData);
+  const returnTo = safeReturnTo(formData.get("returnTo"));
   if (!email || !password) return { error: "Enter your email and password." };
 
   const networkKey = await requestNetworkRateLimitKey();
@@ -49,7 +51,7 @@ export async function loginAction(
   }
 
   try {
-    await signIn("credentials", { email, password, redirectTo: "/" });
+    await signIn("credentials", { email, password, redirectTo: returnTo });
     return { error: "" };
   } catch (err) {
     // signIn throws a redirect on success — let it propagate.

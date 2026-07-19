@@ -11,6 +11,7 @@ import {
   itemStates,
   items,
   labels,
+  notificationDigestSettings,
   rules,
   savedPageLabels,
   savedPages,
@@ -68,6 +69,7 @@ export async function exportUserBackup(userId: number) {
     savedPageRows,
     savedPageLabelRows,
     highlightRows,
+    digestSettings,
   ] = await Promise.all([
     db
       .select({ name: folders.name, createdAt: folders.createdAt })
@@ -255,6 +257,9 @@ export async function exportUserBackup(userId: number) {
       .leftJoin(savedPages, eq(savedPages.id, highlights.savedPageId))
       .where(eq(highlights.userId, userId))
       .orderBy(asc(highlights.createdAt), asc(highlights.id)),
+    db.query.notificationDigestSettings.findFirst({
+      where: eq(notificationDigestSettings.userId, userId),
+    }),
   ]);
 
   const itemRecords = new Map(
@@ -341,6 +346,16 @@ export async function exportUserBackup(userId: number) {
       settings: user.settings,
       createdAt: iso(user.createdAt),
     },
+    notificationDigest: digestSettings
+      ? {
+          enabled: digestSettings.enabled,
+          cadence: digestSettings.cadence,
+          timezone: digestSettings.timezone,
+          deliveryHour: digestSettings.deliveryHour,
+          deliveryMinute: digestSettings.deliveryMinute,
+          weekday: digestSettings.weekday,
+        }
+      : null,
     folders: folderRows.map((folder) => ({
       name: folder.name,
       createdAt: iso(folder.createdAt),

@@ -4,10 +4,9 @@ This is the living product roadmap and concise release record. Every phase must 
 its own as a useful reader; the current rollout and next candidates are deliberately
 separate from shipped work.
 
-**Release status — 19 July 2026:** v0.1, v1.0, and **2026.7.1 — Notifications,
-full text & reading history** are shipped. **2026.7.2 — Deliberate read state** is the
-focused follow-up release. **2026.7.3 — Email digests** is next; it stays separate from
-this workflow-critical fix.
+**Release status — 19 July 2026:** v0.1, v1.0, **2026.7.1 — Notifications, full text &
+reading history**, and **2026.7.2 — Deliberate read state** are shipped. **2026.7.3 —
+Email digests & build identity** is in development.
 
 ## MVP (v0.1) — daily-drivable reader
 
@@ -120,7 +119,7 @@ July 2026.
 ### Organization, rules & feed health
 - **Tags / labels** *(shipped July 2026)* — create, rename, and delete per-user labels; assign them to feed articles and saved web pages from the reading view; open a unified label view from the sidebar; and apply a label automatically through a matching rule. Deleting a label also deletes any rules that apply it.
 - **Rules v2** *(shipped July 2026)* — test an unsaved rule against a bounded recent sample, inspect matching articles and its resulting action before saving, then explicitly confirm a bounded apply-to-existing batch on a saved rule. New rules only affect future articles; applying to existing articles scans at most the newest 500 in the rule's scope and reports the result.
-- **Rule notifications & inbox** *(in-app inbox shipped July 2026; browser push in production validation)* — a rule can add each matching new article to a durable in-app inbox. The sidebar shows the unread count; opening an alert marks it read and opens its article directly, including muted matches. Matching is deduplicated per rule and article, and Settings → Notifications can silence inbox creation without disabling any existing automation. Readers can opt individual browser devices into VAPID-authenticated push delivery; a refresh with several matches becomes one concise alert, expired endpoints are pruned, and a single-article push click marks its matching inbox entry read before opening the source (a batch opens the inbox). Email digests can build on this inbox rather than creating a separate event system.
+- **Rule notifications & inbox** *(in-app inbox shipped July 2026; browser push in production validation; email digests in 2026.7.3)* — a rule can add each matching new article to a durable in-app inbox. The sidebar shows the unread count; opening an alert marks it read and opens its article directly, including muted matches. Matching is deduplicated per rule and article, and Settings → Notifications can stop event collection without disabling other automation. Readers can opt individual browser devices into VAPID-authenticated push delivery or schedule a daily/weekly digest to their verified account email. All channels consume the same notification records rather than re-running rules.
 - **Feed health: silent & paused feeds** *(shipped July 2026)* — Manage feeds flags **quiet** feeds ("last new article 5 months ago": fetches succeed but the newest stored article is older than 90 days — the site stopped publishing, or the feed moved and the URL is a husk) and adds **Pause/Resume**: pausing keeps the feed and its articles but stops fetching (the gentler alternative to unsubscribing a broken feed); paused feeds show a pause icon in the sidebar. Pause lives on `subscriptions.settings.paused` — per-subscription, so it's multi-tenant correct: the scheduler polls a feed while at least one non-paused subscription wants it, and manual refresh-all skips the user's paused feeds. Resuming marks the feed due so it fetches on the next tick. No migration needed; the Save form can't clobber a pause (pinned by a unit test).
 
 ### Accounts & recovery
@@ -225,14 +224,27 @@ pagination are navigation, never read-state mutations.
    The collapsed-row swipe no longer offers an unread-to-read bypass. Rules and
    age-based retention remain separately configured automation.
 
-## 2026.7.3 — Email digests (next)
+## 2026.7.3 — Email digests & build identity (in development)
 
 **Goal:** deliver a calm, user-controlled summary of unread rule notifications without
-requiring readers to keep a browser open or enabling immediate push alerts.
+requiring readers to keep a browser open or enabling immediate push alerts, while making
+the exact deployed app version easy to identify.
 
-1. Add daily or weekly email digests sourced from the existing notification inbox, with
-   a reader timezone, schedule, delivery deduplication, and an easy opt-out. Reuse the
-   transactional email provider and scheduler; no inbound-email server is required.
+1. **Email digests (implemented; production soak pending).** Readers can schedule a
+   daily or weekly digest of unread rule notifications in their own IANA timezone and
+   send a rate-limited test to their verified account email. A durable delivery queue
+   freezes exact membership, claims work atomically, retries transient failures with
+   backoff, and uses provider idempotency. HTML and plain-text versions itemize the
+   newest 20 matches and link to the complete inbox; sending never marks an alert read,
+   while opening its signed link does. Signed confirmation and RFC 8058 one-click
+   unsubscribe paths turn off only the digest channel. The schedule survives JSON
+   backup/restore; historical delivery attempts do not.
+2. Add quiet **App information** metadata in Settings showing the calendar release
+   version and short source revision, with a clear local-development fallback. Bake both
+   values into the image during CI so they describe the running artifact rather than a
+   mutable deployment label. Return the same non-sensitive identity from `/api/health`
+   for deployment checks and support, and keep package metadata, the Settings display,
+   health response, and container labels consistent.
 
 ## Later / version undecided
 

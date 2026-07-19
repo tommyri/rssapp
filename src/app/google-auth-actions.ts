@@ -14,17 +14,22 @@ import {
   setGoogleOauthIntentCookie,
 } from "@/lib/google-auth";
 import { isGoogleAuthEnabled } from "@/lib/google-auth-config";
+import { safeReturnTo } from "@/lib/safe-return-to";
 
 async function requireGoogle(destination: "/login" | "/signup") {
   if (!isGoogleAuthEnabled()) redirect(`${destination}?google=unavailable`);
 }
 
-export async function beginGoogleSignInAction(): Promise<void> {
+export async function beginGoogleSignInAction(
+  formData: FormData,
+): Promise<void> {
   await requireGoogle("/login");
   // A stale signup/link handoff must never change the intent of an explicit
   // sign-in click.
   await clearGoogleOauthIntentCookie();
-  await signIn("google", { redirectTo: "/" });
+  await signIn("google", {
+    redirectTo: safeReturnTo(formData.get("returnTo")),
+  });
 }
 
 export async function beginGoogleSignupAction(

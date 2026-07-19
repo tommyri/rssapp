@@ -128,13 +128,23 @@ ceremony for no gain; `?section=` gives the same addressability) and client-side
 (state lost on refresh, invisible to the palette). Each category carries a scope tag —
 **Account** vs **This device** — since some settings live in Postgres and others in
 localStorage, and "will this follow me to my phone?" deserves a structural answer.
-Notifications is account-scoped: a rule can create a durable inbox entry, while each
-browser/device opts into push independently. The section list lives once in
-`src/lib/settings-sections.ts`.
+Notifications is account-scoped: a rule creates one durable event used by the inbox,
+each browser/device opts into immediate push independently, and the account can schedule
+one daily or weekly email digest to its verified address. Digest schedule changes save
+automatically like the other settings; the panel shows its next delivery, most recent
+outcome, timezone, and a rate-limited test-send action. Sending a digest does not mark
+anything read. The section list lives once in `src/lib/settings-sections.ts`.
+
+**App information** *(planned for 2026.7.3)* belongs quietly at the bottom of Settings,
+not in the reading chrome. It shows the calendar release version and a short source
+revision so a user or support conversation can identify the running build without
+guessing from deployment dates. These are artifact metadata, not editable settings or
+account data, and must match the identity returned by the health endpoint.
 
 **Subscriptions & data** pairs interoperable OPML with a clear recovery path:
 **Download JSON backup** and **Restore a backup**. The download is deliberately complete
-for reader-owned data but never contains credentials. Restore uploads a JSON document,
+for reader-owned data, including the email-digest schedule, but never contains
+credentials or past delivery attempts. Restore uploads a JSON document,
 shows a server-validated comparison with the current account, then requires explicit
 confirmation before transactionally replacing the account&apos;s reader data. It never has an
 ambiguous merge mode, clears this device&apos;s offline cache so queued state cannot return,

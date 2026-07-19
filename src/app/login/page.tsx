@@ -9,7 +9,12 @@ import {
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ notice?: string; owner?: string; google?: string }>;
+  searchParams: Promise<{
+    notice?: string;
+    owner?: string;
+    google?: string;
+    returnTo?: string;
+  }>;
 }) {
   // Already signed in? Go straight to the reader.
   // Use the same database-backed account check as the reader. A pre-lifecycle
@@ -31,6 +36,7 @@ export default async function LoginPage({
         mode="login"
         notice={notice}
         googleEnabled={isGoogleAuthEnabled()}
+        returnTo={params.returnTo}
       />
     </div>
   );

@@ -10,6 +10,7 @@ import {
   itemStates,
   items,
   labels,
+  notificationDigestSettings,
   notifications,
   rules,
   savedPageLabels,
@@ -21,6 +22,10 @@ import { normalizeArticleListDensity } from "@/lib/article-list-density";
 import { canonicalizeUrl } from "@/lib/canonical-url";
 import { normalizeEmbedLoadingPreferences } from "@/lib/embed-loading";
 import { sanitizeArticleHtml } from "@/lib/feeds/sanitize";
+import {
+  isValidDigestTimezone,
+  nextNotificationDigestRun,
+} from "@/lib/notification-digest-schedule";
 import { RULE_ACTIONS } from "@/lib/rules/engine";
 import {
   parseSubscriptionSettings,
@@ -77,6 +82,18 @@ const backupDocumentSchema = z.object({
     settings: userSettings,
     createdAt: timestamp,
   }),
+  notificationDigest: z
+    .object({
+      enabled: z.boolean(),
+      cadence: z.enum(["daily", "weekly"]),
+      timezone: z.string().min(1).max(100).refine(isValidDigestTimezone),
+      deliveryHour: z.number().int().min(0).max(23),
+      deliveryMinute: z.number().int().min(0).max(59),
+      weekday: z.number().int().min(1).max(7),
+    })
+    .nullable()
+    .optional()
+    .default(null),
   folders: z.array(z.object({ name: shortText.min(1), createdAt: timestamp })),
   subscriptions: z.array(
     z.object({
@@ -872,6 +889,37 @@ export async function restoreBackup(
       .update(users)
       .set({ settings: restoredUserSettings(backup) })
       .where(eq(users.id, userId));
+
+    if (backup.notificationDigest) {
+      const preference = backup.notificationDigest;
+      const enabled =
+        preference.enabled && backup.user.settings.inAppRuleAlerts !== false;
+      const nextRunAt = enabled
+        ? nextNotificationDigestRun(preference, new Date())
+        : null;
+      await tx
+        .insert(notificationDigestSettings)
+        .values({
+          userId,
+          ...preference,
+          enabled,
+          nextRunAt,
+          updatedAt: new Date(),
+        })
+        .onConflictDoUpdate({
+          target: notificationDigestSettings.userId,
+          set: {
+            ...preference,
+            enabled,
+            nextRunAt,
+            updatedAt: new Date(),
+          },
+        });
+    } else {
+      await tx
+        .delete(notificationDigestSettings)
+        .where(eq(notificationDigestSettings.userId, userId));
+    }
 
     return previewBackupRestore(backup);
   });

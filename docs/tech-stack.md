@@ -17,6 +17,7 @@ The stack in use, chosen for: one codebase, boring/durable choices, easy self-ho
 | Styling / UI | Tailwind CSS v4 + Radix UI (shadcn-style) | Fast to build, easy to customize |
 | Auth | Auth.js credentials + optional Google OAuth | Verified email, recovery, explicit provider linking, and active-account enforcement |
 | Browser push | Web Push + VAPID (`web-push`) | Per-device opt-in for rule-notification delivery; needs a deployed HTTPS origin |
+| Outbound email | Resend HTTP API + `@js-temporal/polyfill` scheduling | Verified-account mail, idempotent notification digests, and DST-safe local delivery times |
 | Validation | Zod | Server-action inputs, feed URL forms |
 | Testing | Vitest | Unit, route, service-worker, and parsing tests; browser E2E remains a future addition |
 | Lint/format | Biome | One tool instead of ESLint+Prettier |
@@ -105,6 +106,8 @@ once. Staff roles remain later work.
 - `saved_pages` — per-user "save any link to read later": arbitrary URL (unique per user), a Readability copy (content_html) with a `pending → ready | error` status, read state, and a generated `search_vector`. No feed, so it lives outside `items`; folds into the unified Read later view and search
 - `rules` — per-user automation: match by keyword/regex on title/content/author, scoped to one feed or all, action mute/mark_read/star/tag/notify
 - `notifications` — durable per-user inbox entries, deduplicated by rule and article; stores a rule-match snapshot so future delivery channels share one source of truth
+- `notification_digest_settings` — one indexed daily/weekly schedule per account, stored as an IANA timezone plus a local wall-clock preference and UTC next-run instant
+- `notification_digest_deliveries` + `notification_digest_items` — retryable delivery jobs and frozen notification membership; unique schedule slots and membership prevent concurrent schedulers or provider retries from duplicating a digest
 - `push_subscriptions` — per-account browser/device Web Push endpoints and their encrypted-payload keys; endpoints are unique globally so a shared browser is bound to its active account and expired endpoints can be pruned safely
 - `highlights` — per-user quote anchors and optional notes on feed items or saved pages; the stored quote is verified before rendering so a changed article cannot receive a misleading annotation
 - `fetch_log` — per-fetch outcome for the feed health view
@@ -120,9 +123,10 @@ One deliberate detail: primary keys are `bigint` identity columns, not UUIDs. Th
    image while production promotes an immutable SHA or calendar-version tag. Managed
    long-running Node platforms remain viable; pure serverless (for example Vercel)
    conflicts with the in-process scheduler.
-2. **Production push delivery validation** — browser push is implemented, but it must be
-   validated on a deployed HTTPS origin with real VAPID configuration and devices before
-   another notification channel is built.
+2. **Production notification delivery validation** — browser push and email digests are
+   implemented, but both need soak testing on the deployed HTTPS origin with real VAPID
+   and Resend configuration. Digest delivery state exposes retries and terminal failure
+   without logging message content or full recipient details.
 3. **Native sync evolution** — the Google Reader-compatible adapter is deliberately
    isolated from the internal reader model. If rssapp ever builds its own mobile client,
    define a modern versioned sync API rather than extending the legacy wire format.

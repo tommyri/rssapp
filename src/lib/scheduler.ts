@@ -1,6 +1,7 @@
 import { writeScheduledBackups } from "@/lib/backup";
 import { refreshDueFeeds } from "@/lib/feeds";
 import { sweepPendingFullContent } from "@/lib/feeds/full-content";
+import { sweepNotificationDigests } from "@/lib/notification-digests";
 import { sweepAutoRead } from "@/lib/reader";
 import { sweepPendingSavedPages } from "@/lib/saved-pages";
 
@@ -55,6 +56,12 @@ async function tick(): Promise<void> {
     const extracted = await sweepPendingSavedPages();
     if (extracted > 0) {
       console.log(`[scheduler] extracted ${extracted} saved page(s)`);
+    }
+    const digests = await sweepNotificationDigests();
+    if (digests.created > 0 || digests.claimed > 0) {
+      console.log(
+        `[scheduler] notification digests: ${digests.sent} sent, ${digests.skipped} skipped, ${digests.retrying} retrying, ${digests.failed} failed`,
+      );
     }
     const backups = await writeScheduledBackups();
     if (backups.written > 0 || backups.failed > 0) {

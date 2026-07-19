@@ -26,11 +26,13 @@ export function AuthForm({
   notice,
   inviteToken,
   googleEnabled,
+  returnTo,
 }: {
   mode: "login" | "signup";
   notice?: string;
   inviteToken?: string;
   googleEnabled: boolean;
+  returnTo?: string;
 }) {
   const isSignup = mode === "signup";
   const [state, formAction] = useActionState(
@@ -52,6 +54,9 @@ export function AuthForm({
       </div>
 
       <form action={formAction} className="space-y-4">
+        {!isSignup && returnTo ? (
+          <input type="hidden" name="returnTo" value={returnTo} />
+        ) : null}
         {isSignup && inviteToken ? (
           <input type="hidden" name="invite" value={inviteToken} />
         ) : null}
@@ -93,7 +98,11 @@ export function AuthForm({
             <span>or</span>
             <span className="h-px flex-1 bg-border" />
           </div>
-          <GoogleAuthButton mode={mode} inviteToken={inviteToken} />
+          <GoogleAuthButton
+            mode={mode}
+            inviteToken={inviteToken}
+            returnTo={returnTo}
+          />
         </div>
       ) : null}
       {!isSignup ? (
