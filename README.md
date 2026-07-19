@@ -257,6 +257,11 @@ that staging has already tested; it never compiles the app or carries uncommitte
 changes. The app still applies database migrations during a successful container boot and
 starts its in-process poller normally.
 
+Every published image carries the package calendar version and exact source revision in
+its runtime environment and OCI labels. The same identity is visible at the bottom of
+Settings and returned by `/api/health`, so a deployed artifact can be identified without
+relying on a mutable image tag.
+
 See the [deployment runbook](docs/deployment.md) for the complete first-time VPS setup:
 GitHub Actions permissions, a read-only GHCR token and Docker login, protected
 environment files, HTTPS proxy ports, staging automation, production promotion, backups,

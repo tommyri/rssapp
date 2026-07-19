@@ -283,8 +283,13 @@ curl --fail --show-error https://rss.example.com/api/health
 sudo docker logs --tail=200 rssapp-app-1
 ```
 
-The health response contains `status: "ok"` and the image's commit version. Container
-names can vary with the Docker Compose version; if a name differs, use
+The health response contains `status: "ok"`, the calendar `version`, the full source
+`revision`, and its `shortRevision`. The same version and short revision appear at the
+bottom of Settings and in the image's OCI metadata. Readiness failures return 503 but
+retain this non-sensitive identity, which helps distinguish a broken deployment from an
+old one. These values are baked into the image by GitHub Actions; do not add them to the
+VPS environment file. Container names can vary with the Docker Compose version; if a
+name differs, use
 `sudo docker compose --project-name rssapp-staging ps` or `--project-name rssapp ps` to
 find it.
 

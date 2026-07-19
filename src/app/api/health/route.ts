@@ -1,5 +1,6 @@
 import { sql } from "drizzle-orm";
 import { db } from "@/db";
+import { getBuildIdentity } from "@/lib/build-identity";
 
 // A readiness probe must exercise Postgres as well as the HTTP server. It is
 // intentionally public: reverse proxies and Docker call it before serving the
@@ -13,13 +14,14 @@ const headers = {
 };
 
 export async function GET() {
+  const identity = getBuildIdentity();
   try {
     await db.execute(sql`select 1`);
-    return Response.json(
-      { status: "ok", version: process.env.RSSAPP_VERSION ?? "development" },
-      { headers },
-    );
+    return Response.json({ status: "ok", ...identity }, { headers });
   } catch {
-    return Response.json({ status: "unavailable" }, { headers, status: 503 });
+    return Response.json(
+      { status: "unavailable", ...identity },
+      { headers, status: 503 },
+    );
   }
 }

@@ -135,11 +135,12 @@ automatically like the other settings; the panel shows its next delivery, most r
 outcome, timezone, and a rate-limited test-send action. Sending a digest does not mark
 anything read. The section list lives once in `src/lib/settings-sections.ts`.
 
-**App information** *(planned for 2026.7.3)* belongs quietly at the bottom of Settings,
-not in the reading chrome. It shows the calendar release version and a short source
-revision so a user or support conversation can identify the running build without
-guessing from deployment dates. These are artifact metadata, not editable settings or
-account data, and must match the identity returned by the health endpoint.
+**App information** belongs quietly at the bottom of every Settings category, not in the
+reading chrome. It shows the calendar release version and a short source revision so a
+user or support conversation can identify the running build without guessing from
+deployment dates. Local development says so instead of inventing a commit. These are
+artifact metadata, not editable settings or account data, and match the full identity
+returned by the health endpoint.
 
 **Subscriptions & data** pairs interoperable OPML with a clear recovery path:
 **Download JSON backup** and **Restore a backup**. The download is deliberately complete

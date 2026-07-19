@@ -239,12 +239,12 @@ the exact deployed app version easy to identify.
    while opening its signed link does. Signed confirmation and RFC 8058 one-click
    unsubscribe paths turn off only the digest channel. The schedule survives JSON
    backup/restore; historical delivery attempts do not.
-2. Add quiet **App information** metadata in Settings showing the calendar release
-   version and short source revision, with a clear local-development fallback. Bake both
-   values into the image during CI so they describe the running artifact rather than a
-   mutable deployment label. Return the same non-sensitive identity from `/api/health`
-   for deployment checks and support, and keep package metadata, the Settings display,
-   health response, and container labels consistent.
+2. **Build identity (implemented).** Quiet **App information** metadata at the bottom of
+   Settings shows the calendar release version and short source revision, with a clear
+   local-development fallback. CI bakes both values into the immutable image and its OCI
+   labels, rather than accepting mutable deployment configuration. `/api/health` returns
+   the same non-sensitive version and full revision even when database readiness fails,
+   so support and deployment checks can identify the exact running artifact.
 
 ## Later / version undecided
 

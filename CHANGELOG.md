@@ -5,6 +5,14 @@ version section verbatim, so this file is the release record rather than an afte
 
 ## [Unreleased]
 
+### Added
+
+- Daily or weekly email digests for unread rule notifications, with timezone-aware
+  scheduling, test delivery, retry-safe sending, and signed article and unsubscribe
+  links.
+- Quiet app version and source-revision metadata in Settings and the health endpoint,
+  backed by the same identity stored in published container images.
+
 ## [2026.7.2] - 2026-07-19
 
 ### Fixed

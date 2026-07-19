@@ -1,5 +1,6 @@
 # Production image for the rssapp server (Next.js standalone output).
 ARG APP_VERSION=development
+ARG SOURCE_REVISION=local
 
 FROM node:22-alpine AS deps
 WORKDIR /app
@@ -17,11 +18,15 @@ RUN npm run build
 
 FROM node:22-alpine AS runner
 ARG APP_VERSION
+ARG SOURCE_REVISION
 WORKDIR /app
 ENV NODE_ENV=production
 ENV PORT=3000
 ENV HOSTNAME=0.0.0.0
 ENV RSSAPP_VERSION=$APP_VERSION
+ENV RSSAPP_REVISION=$SOURCE_REVISION
+LABEL org.opencontainers.image.version=$APP_VERSION
+LABEL org.opencontainers.image.revision=$SOURCE_REVISION
 RUN addgroup -S nodejs && adduser -S nextjs -G nodejs
 RUN mkdir /backups && chown nextjs:nodejs /backups
 

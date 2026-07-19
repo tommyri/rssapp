@@ -11,6 +11,7 @@ import {
 } from "@/components/account-forms";
 import { AccountSessionControls } from "@/components/account-session-controls";
 import { ApiAccessTokenControls } from "@/components/api-access-token-controls";
+import { AppInformation } from "@/components/app-information";
 import { BackLink } from "@/components/back-link";
 import { BackupControls } from "@/components/backup-controls";
 import { EmailDigestPreferencesForm } from "@/components/email-digest-preferences-form";
@@ -25,6 +26,7 @@ import { users } from "@/db/schema";
 import { listApiAccessTokens } from "@/lib/api-access-tokens";
 import { normalizeArticleListDensity } from "@/lib/article-list-density";
 import { listActiveAuthSessions } from "@/lib/auth-sessions";
+import { getBuildIdentity } from "@/lib/build-identity";
 import { getCurrentSessionId, getCurrentUserId } from "@/lib/current-user";
 import { normalizeEmbedLoadingPreferences } from "@/lib/embed-loading";
 import { hasGoogleIdentity } from "@/lib/google-auth";
@@ -75,6 +77,7 @@ export default async function SettingsPage({
   searchParams: Promise<{ section?: string; google?: string }>;
 }) {
   const params = await searchParams;
+  const buildIdentity = getBuildIdentity();
   const active = parseSettingsSection(params.section);
   const activeLabel =
     SETTINGS_SECTIONS.find((s) => s.id === active)?.label ?? "Settings";
@@ -309,6 +312,7 @@ export default async function SettingsPage({
             </span>
           </div>
           <div className="space-y-4">{sectionContent[active]}</div>
+          <AppInformation identity={buildIdentity} />
         </div>
       </div>
     </div>
