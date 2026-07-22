@@ -18,6 +18,10 @@ on:
 permissions:
   contents: read
 
+env:
+  XCODEGEN_VERSION: "2.46.0"
+  XCODEGEN_SHA256: "4d9e34b62172d645eed6457cac13fc222569974098ef4ee9c3368bedf0196806"
+
 jobs:
   verify:
     name: Build and test
@@ -25,7 +29,21 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - name: Install project tools
-        run: brew install xcodegen swiftlint
+        run: |
+          brew install swiftlint
+
+          archive="$RUNNER_TEMP/xcodegen-$XCODEGEN_VERSION.zip"
+          source="$RUNNER_TEMP/xcodegen-$XCODEGEN_VERSION"
+          prefix="$RUNNER_TEMP/xcodegen-install"
+          curl --fail --location --retry 3 \
+            --output "$archive" \
+            "https://github.com/yonaskolb/XcodeGen/releases/download/$XCODEGEN_VERSION/xcodegen.zip"
+          printf '%s  %s\n' "$XCODEGEN_SHA256" "$archive" | shasum -a 256 --check
+          ditto -x -k "$archive" "$source"
+          mkdir -p "$prefix"
+          bash "$source/xcodegen/install.sh" "$prefix"
+          echo "$prefix/bin" >> "$GITHUB_PATH"
+          "$prefix/bin/xcodegen" --version
       - name: Verify generated Xcode project
         run: |
           xcodegen generate --spec apps/ios/project.yml
