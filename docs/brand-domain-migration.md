@@ -1,253 +1,285 @@
-# Brand, domain, email, and Cloudflare migration plan
+# Full product rebrand and clean deployment plan
 
-**Status:** planning — do not begin the cutover until the decisions in
-[Decision gate](#decision-gate) are complete.
+**Status:** planning — do not begin implementation or cutover until the pending choices
+in [Decision gate](#decision-gate) are complete.
 
 ## Outcome
 
-Move rssapp from the personal `rssapp.badask.no` deployment to a durable product identity:
+Replace RSS App with the Currentfold product identity across the entire active stack:
 
-- a new public product name and visual identity;
-- a dedicated, owned brand domain for the reader;
-- transactional email from a verified sender domain that is not tied to a personal zone;
-- Cloudflare in front of the public web origin for authoritative DNS, TLS, and measured
-  edge protection; and
-- a controlled origin migration that keeps the database and application deployment
-  reproducible.
+- the approved Currentfold name and visual identity;
+- a dedicated brand domain for the reader;
+- transactional email from a verified sender under that domain;
+- Cloudflare in front of the existing VPS for authoritative DNS, TLS, and measured edge
+  protection;
+- newly branded repository, package, image, deployment, database, storage, backup, and
+  protocol identifiers; and
+- a clean production deployment with no legacy-domain redirect or permanent
+  compatibility layer.
 
-This is a **single production cutover plan**, not a staging prerequisite. Staging remains
-useful later, but the work below should not be blocked on it.
+There are no external users to migrate. The owner is currently the only reader, so this
+is the right time to remove the temporary `rssapp` identity completely instead of
+carrying it into the product architecture.
 
-## Guiding decisions
+This is a single production cutover, not a staging prerequisite. Staging remains useful
+later but is deliberately deferred.
 
-1. **Product identity and operational identity are separate.** The public name, app
-   metadata, email copy, and user-facing files change. The GitHub repository, GHCR image,
-   Compose project, Postgres volume, backup schema, API token prefix, and service-worker
-   storage remain `rssapp` for this migration. Renaming them creates unnecessary data,
-   cache, and rollback risk.
-2. **Use one dedicated brand zone.** Prefer `<brand-domain>` as the app's canonical domain
-   and `send.<brand-domain>` as the Resend-verified sending subdomain. This separates mail
-   DNS from the personal `badask.no` zone without making the sender look unrelated to the
-   product.
-3. **Cloudflare is the edge, not the application runtime.** The existing VPS, Caddy/Nginx
-   reverse proxy, Docker Compose, Postgres, and GHCR deployment model remain. Adopt
-   Cloudflare DNS and proxy first; defer Workers, Tunnel, R2, and email-routing products
-   until they solve a concrete need.
-   Moving the domain's registrar is a separate administrative decision, not a cutover
-   prerequisite: the new brand zone can use Cloudflare authoritative DNS without changing
-   where it is registered.
-4. **Preserve the old domain temporarily.** Keep `rssapp.badask.no` serving a path and
-   query preserving redirect to the new origin for at least 90 days. This keeps old links
-   and bookmarks useful while people update native-client server addresses.
-5. **Make the browser-origin change explicit.** Cookies, installed PWA state, offline
-   data, and push subscriptions are origin-bound. Readers will sign in again, reinstall
-   the PWA if desired, and re-enable push on the new domain. This is expected, not a data
-   loss event.
+## Confirmed migration decisions
+
+1. **Rebrand the whole active stack.** Public strings and internal operational
+   identifiers both adopt the new product name. This includes the GitHub repository,
+   package, GHCR image, Compose project, database and role, Docker volume, filesystem
+   paths, backup format and filenames, app-password prefix, PWA storage, and service
+   identifiers.
+2. **Use a clean deployment boundary.** Create newly named infrastructure instead of
+   trying to rename Docker volumes or a running Postgres service in place. If the owner
+   wants to retain current reading data, move it once with a database dump and restore
+   into the newly named database. This does not require permanent legacy code.
+3. **Do not redirect the old domain.** After the new origin is validated,
+   `rssapp.badask.no` can be removed. Old bookmarks, sessions, email links, PWA state,
+   push subscriptions, and native-client configuration do not need compatibility.
+4. **Use one dedicated brand zone.** Prefer `<brand-domain>` as the canonical reader and
+   `send.<brand-domain>` as the Resend-verified sending subdomain.
+5. **Cloudflare is the edge, not the runtime.** Keep the VPS, Caddy/Nginx, Docker
+   Compose, Postgres, and image deployment model. Begin with Cloudflare DNS, proxy, TLS,
+   and a conservative security baseline; add Workers, Tunnel, R2, or email routing only
+   when they solve a concrete need.
+6. **Treat the browser origin as new.** Sign in again, reinstall the PWA if desired,
+   recreate offline browser data, enable push again, and reconnect native clients. The
+   reset is acceptable because there are no external users.
+
+Historical Git commits, existing release tags, and old backups remain historical
+evidence; do not rewrite Git history to erase the old name. They may be deleted after
+the rollback window where appropriate, but they are not active compatibility contracts.
+
+## Data transition
+
+The cutover supports two deliberate choices.
+
+### Fresh start
+
+Create an empty newly named database, run migrations, create the owner account, and
+re-import subscriptions through OPML. This is the cleanest option if reading state,
+saved pages, highlights, rules, and notification history are disposable.
+
+### One-time database transfer
+
+Stop writes briefly, take a final PostgreSQL dump, restore it into a newly named
+database owned by a newly named role and volume, run migrations, and validate important
+row counts. This preserves all existing data without retaining old database, Compose,
+backup-format, or application identifiers.
+
+The old database volume and final dump should remain read-only during a short rollback
+window, then be removed after the new deployment is proven. Application-level JSON
+backup compatibility is not the preferred migration mechanism because the new product
+can adopt a new backup format without carrying an old-format parser indefinitely.
 
 ## Target topology
 
 | Concern | Target | Notes |
-|---|---|---|
+| --- | --- | --- |
 | Canonical reader | `https://<brand-domain>` | Set as `APP_URL`; HTTPS only. |
-| Legacy reader | `https://rssapp.badask.no` | Full-path/query redirect to canonical domain; retain during transition. |
-| Transactional sender | `accounts@send.<brand-domain>` | Example display: `<Brand> <accounts@send.<brand-domain>>`. |
-| Outbound email | Resend | Verify the `send.<brand-domain>` DNS records before cutover. |
-| Authoritative DNS / edge | Cloudflare | Proxied web record; DNS-only mail and verification records. |
-| Origin | Existing VPS + Caddy/Nginx + Docker Compose | App remains loopback-bound; Postgres remains unpublished. |
-| Production image | `ghcr.io/tommyri/rssapp:sha-<tested-commit>` | Retain current immutable SHA as rollback point. |
+| Old reader | Removed after validation | No redirect or compatibility host. |
+| Transactional sender | `accounts@send.<brand-domain>` | Example: `<Brand> <accounts@send.<brand-domain>>`. |
+| Outbound email | Resend | Verify the new sending subdomain before cutover. |
+| DNS and edge | Cloudflare | Proxied web record; DNS-only mail and verification records. |
+| Origin | Existing VPS + Caddy/Nginx + Docker Compose | Application remains loopback-bound; Postgres remains unpublished. |
+| Source repository | `<owner>/<brand-slug>` | Rename the active GitHub repository and local remote. |
+| Production image | `ghcr.io/<owner>/<brand-slug>:sha-<tested-commit>` | New package; immutable SHA remains the deployment unit. |
+| Compose project | `<brand-slug>` | Produces newly named containers, networks, and volumes. |
+| Database | `<brand-db>` owned by `<brand-role>` | New credentials and a new named volume. |
+| VPS configuration | `/opt/<brand-slug>`, `/etc/<brand-slug>`, `/var/backups/<brand-slug>` | Replace current active paths and scripts. |
+
+The domain may use Cloudflare authoritative DNS without moving its registrar. Registrar
+transfer is a separate administrative choice.
 
 ### Cloudflare record policy
 
-- The reader's A/AAAA/CNAME record is **proxied** (orange cloud).
-- MX, SPF, DKIM, DMARC, Resend verification records, and any mail-service hostname are
-  **DNS-only**. Cloudflare's HTTP proxy does not carry SMTP/IMAP/POP3 and must not sit in
-  front of mail or third-party domain-verification targets.
-- Use Full (strict) TLS between Cloudflare and the VPS. Keep the existing origin TLS
-  termination in Caddy/Nginx; do not introduce a second application proxy or a Worker in
-  this migration.
-- Do not add a "cache everything" rule. Authenticated HTML and `/api/*` remain dynamic;
-  Cloudflare may cache normal static assets under the framework's headers.
+- Proxy the reader's A/AAAA/CNAME record.
+- Keep MX, SPF, DKIM, DMARC, Resend verification, and mail-service records DNS-only.
+- Use Full (strict) TLS between Cloudflare and the VPS.
+- Keep existing origin TLS termination in Caddy/Nginx.
+- Do not add a cache-everything rule: authenticated HTML and `/api/*` remain dynamic.
+- Configure the reverse proxy to trust Cloudflare visitor-IP headers only from
+  Cloudflare ranges and to overwrite untrusted forwarding headers before requests reach
+  application rate limiting.
 
-## What changes in the application
+## Full rename inventory
 
-### Public branding — change in the brand release
+### Product surfaces
 
-The code audit already identifies these user-visible surfaces:
+- root metadata, page titles, descriptions, and structured metadata;
+- PWA manifest, install name, icons, favicon, maskable icon, and theme colors;
+- reader, mobile, authentication, onboarding, settings, and account-administration UI;
+- verification, recovery, invitation, notification, digest, and push copy;
+- bookmarklet label, OPML title and filename, backup filename, user agent, and help text;
+- native-reader setup instructions and protocol-facing labels;
+- README, product documentation, release notes, and deployment documentation.
 
-- root metadata and browser title;
-- PWA manifest name, short name, description, and branded icon;
-- reader, mobile, login, signup, and onboarding wordmarks;
-- account, OAuth, verification, and recovery messages;
-- transactional email subject lines and body copy;
-- push-notification titles and copy;
-- bookmarklet label, OPML export title/filename, backup filename, application-user-agent,
-  and setup/help text;
-- new native-reader app-password display prefix and protocol-facing product labels;
-- README, product/roadmap docs, and Google Reader API help.
+The reviewable visual package is defined in [brand-identity.md](brand-identity.md):
+wordmark rules, source SVG, favicon and maskable PWA sources, colour tokens, typography,
+positioning, voice, and licence/source records. Raster exports and in-product replacement
+belong to Phase 1.
 
-The brand release also needs a small visual package: wordmark rules, an SVG/icon source,
-favicon/maskable PWA icon, favicon colors, and a concise product description. Record the
-source and licence of any visual asset so the product identity is durable and reviewable.
+### Internal and operational surfaces
 
-### Internal identifiers — preserve for compatibility
+- `package.json` package identity and default application metadata;
+- GitHub repository and Actions references;
+- GHCR package path and OCI image labels;
+- Dockerfile labels, Compose project/service/container/network/volume names;
+- database name, role, password variables, connection examples, and backup commands;
+- VPS application, environment, backup, and systemd/timer paths;
+- deployment and restore scripts, health-check examples, and runbooks;
+- backup document marker and generated filenames;
+- new native-reader app-password prefix and validation;
+- service-worker cache names, IndexedDB databases, local-storage keys, sync tags, and
+  scheduler globals where they contain the old identity;
+- application user agent, telemetry/health labels, and operational log names.
 
-Do **not** rename these in the same migration:
+Because this is a clean origin and stack, the new application does not need to accept
+old app passwords, old backup documents, old browser storage, or old service-worker
+caches. Existing source data, if retained, moves through the one-time database transfer.
 
-- `rssapp` GitHub repository, GHCR image name, Docker Compose project, systemd unit,
-  VPS configuration directory, database name/user/volume, or backup directory;
-- backup document format (`rssapp-backup`) and previously exported backup compatibility;
-- service-worker cache names, IndexedDB names, local-storage keys, background-sync tags,
-  scheduler globals, or legacy Reader API app-password prefix validation;
-- package name and existing release-tag history.
+## Integration reset matrix
 
-They are not reader-facing brand commitments, and keeping them makes old backups, old
-PWA state, deployment scripts, and rollback behavior safe. A future repository/registry
-rename can be a separate migration with its own compatibility plan.
-
-New app passwords may adopt a branded prefix, but authentication must accept the existing
-`rssapp_api_` prefix until every old password is revoked or has expired. Likewise, backup
-downloads may receive a branded filename while their `rssapp-backup` document format
-remains unchanged and restores continue to accept prior exports.
-
-## Origin and integration migration matrix
-
-| Surface | Required action | Expected reader effect |
-|---|---|---|
-| `APP_URL` | Set to `https://<brand-domain>` before the brand image deploys. | New account-email links point at the new origin. |
-| Reverse proxy | Add canonical host; keep legacy host redirecting paths and query strings. | Existing links continue to work during the transition. |
-| Session cookies | No unsafe cross-domain cookie migration. | Everyone signs in again at the new host. |
-| Google OAuth | Add `https://<brand-domain>/api/auth/callback/google` to the production OAuth client before cutover. | Google sign-in continues after a new authorization round. An in-flight sign-in begun on the old origin is restarted at the new origin. |
-| Resend | Verify `send.<brand-domain>` and set `EMAIL_FROM` to a valid sender at that exact domain. | New verification/reset/invitation emails carry the brand sender. |
-| Browser push | Generate a fresh VAPID key pair for the new domain, update the three VAPID variables, and ask readers to opt in again. | Existing subscriptions cannot transfer across origins. |
-| PWA/offline library | Publish the rebranded manifest/icon on the new host. | Install and offline data are new per-origin; source articles remain in the server database. |
-| Native reader apps | Announce the new Google Reader-compatible server URL. Keep the old host redirecting only if the client is confirmed to follow redirects; otherwise readers update it manually. | App passwords and server data remain valid. |
-| Account email links | Keep old host redirecting query strings for 90+ days. | Outstanding verification/reset links remain usable. |
-| Cloudflare visitor IP | Configure the host proxy to accept original visitor IPs only from Cloudflare and to pass a trustworthy `X-Forwarded-For`/real-IP value to the app. | Signup/sign-in rate limits continue to distinguish real visitors. |
+| Surface | Required action | Expected effect |
+| --- | --- | --- |
+| `APP_URL` | Set to `https://<brand-domain>`. | All newly generated links use the product domain. |
+| Reverse proxy | Add only the new canonical host for the new deployment. | The old host is removed after validation. |
+| Sessions | Generate/use the new deployment secret and sign in again. | Existing sessions end. |
+| Google OAuth | Update consent branding and add `https://<brand-domain>/api/auth/callback/google`. | Google sign-in starts fresh on the new origin. |
+| Resend | Verify `send.<brand-domain>` and set a sender at that exact domain. | New email carries only the new identity. |
+| Browser push | Generate a fresh VAPID pair and opt in again. | Old subscriptions are abandoned. |
+| PWA/offline data | Publish new manifest, assets, and storage identifiers. | Install and offline data start clean. |
+| Native reader apps | Use the new server URL and create a newly prefixed app password. | Old endpoint and password are not supported. |
+| Backups | Write a newly branded format and path. | Old exports are historical, not ongoing restore contracts. |
 
 ## Phased plan
 
-### Phase 0 — Decide and prepare
+### Phase 0 — Decide and inventory
 
-**Exit criteria:** every item in the Decision gate is settled; no public DNS or app setting
-has changed.
+**Exit criteria:** the decision gate is complete and exact old/new identifiers are
+recorded; nothing public has changed.
 
-1. Choose the product name, primary domain, and `send.` subdomain.
-2. Do a basic availability and trademark/confusion check before buying or announcing the
-   name.
-3. Decide whether the canonical app is the apex domain or `reader.<brand-domain>`.
-4. Record the current production image SHA, `APP_URL`, proxy configuration, Google OAuth
-   client, Resend domain, VAPID keys, and working health check as rollback references.
-5. Prepare the brand language and visual assets before changing code.
+1. Choose the product name, slug, primary domain, canonical hostname, and sender.
+2. Perform availability, trademark, and product-confusion checks before purchase or
+   announcement.
+3. Choose fresh start or one-time database transfer.
+4. Record every active `rssapp` identifier in code, GitHub, GHCR, Compose, Postgres,
+   systemd, VPS paths, DNS, Google, Resend, VAPID, backups, and browser storage.
+5. Record the current image SHA, database backup, environment, proxy configuration, and
+   health checks as rollback evidence.
+6. Complete the positioning and visual package.
 
-### Phase 1 — Build the brand release
+### Phase 1 — Build the fully branded release
 
-**Exit criteria:** all public product strings and assets are rebranded; no data migration
-or domain cutover has happened.
+**Exit criteria:** source, tests, documentation, automation, artifacts, and runtime
+defaults use the new identity; production has not changed.
 
-1. Replace public display-name surfaces from the audit above; retain internal identifiers.
-2. Issue new native-reader passwords with the branded prefix while accepting both old and
-   new prefixes; keep the backup document format and old restore support unchanged.
-3. Harden the network rate-limit helper before enabling the Cloudflare proxy: test that a
-   proxy-owned real-IP header takes precedence, retain a development fallback, and make
-   the production proxy overwrite—not forward—untrusted client headers.
-4. Add or update tests for manifest/metadata/email copy, app-password compatibility, and
-   rate-limit header precedence where they encode the chosen product name or proxy trust.
-5. Review PWA installation, mobile navigation, all account email templates, push copy,
-   OPML, backups, and the native-client setup guide.
-6. Add a concise `Brand & domain migration` release note and document the expected
-   sign-in/PWA/push transition.
-7. Build, lint, test, and publish an immutable image as usual. Do not deploy it yet.
+1. Replace all public product strings and assets.
+2. Rename active internal identifiers from the inventory, including backup format,
+   app-password prefix, browser storage, deployment examples, and package metadata.
+3. Rename the GitHub repository or create the final branded repository, update the local
+   remote, and publish to the newly named GHCR package.
+4. Update workflows, Compose, scripts, environment templates, database commands,
+   systemd examples, backup/restore commands, and documentation.
+5. Harden and test trusted visitor-IP handling before placing Cloudflare in front.
+6. Update tests that encode metadata, manifest, email/push copy, protocol labels,
+   backup format, and operational identifiers.
+7. Run lint, tests, build, and container checks; publish an immutable candidate image.
+   Do not deploy it yet.
 
-### Phase 2 — Establish the new DNS and mail domain
+### Phase 2 — Prepare domain, providers, and clean infrastructure
 
-**Exit criteria:** the new domain works at the origin, Resend marks the sender domain
-verified, and no production `APP_URL` has changed.
+**Exit criteria:** the new domain reaches a prepared origin, email is verified, provider
+integrations are configured, and the new stack can start without touching production.
 
-1. Add `<brand-domain>` to Cloudflare and change its registrar nameservers only after
-   exporting the existing DNS plan for reference.
-2. Create the VPS web-origin record as proxied. Configure Caddy/Nginx with a new host
-   block and valid origin TLS.
-3. Add the Resend-supplied records for `send.<brand-domain>` exactly as provided; leave
-   them DNS-only. Add SPF/DKIM and a deliberate DMARC policy.
-4. Create a production Resend sending-only API key scoped to the verified sending domain;
-   store it only in `/etc/rssapp/production.env`.
-5. Add the new canonical callback to the existing production Google OAuth client. Use a
-   separate client only when Google project ownership or consent branding needs to change;
-   the credentials remain server-only in either case.
-6. Configure the Cloudflare controls available on the selected plan: no inappropriate
-   cache rule, documented baseline security settings, and a narrow emergency mitigation
-   for abusive signup traffic. Turnstile is a later product decision, not a prerequisite
-   for this cutover.
-7. Verify real-client-IP handling at the Caddy/Nginx → app boundary before relying on
-   Cloudflare's proxy. The proxy must accept a Cloudflare visitor-IP header only from
-   Cloudflare address ranges, overwrite untrusted forwarding headers with a verified
-   real-IP value, and pass that value to the application. Do not rely on the current
-   header order without this review.
+1. Add the brand domain to Cloudflare and configure the proxied reader record.
+2. Configure Caddy/Nginx for the new host with valid Full (strict) origin TLS.
+3. Verify `send.<brand-domain>` in Resend with DNS-only SPF, DKIM, and deliberate DMARC
+   records; create a production sending key scoped as narrowly as possible.
+4. Update Google OAuth branding and callbacks.
+5. Generate new VAPID and application/session secrets.
+6. Create newly branded VPS directories, protected environment files, Compose project,
+   database role/name, volume, backup directory, and deployment service/timer names.
+7. Verify real-client-IP behavior through Cloudflare before relying on application rate
+   limits.
 
 ### Phase 3 — Cut over production
 
-**Exit criteria:** the canonical new domain is healthy; account email and Google sign-in
-work; the old domain safely redirects; monitoring shows no unexpected errors.
+**Exit criteria:** the new product origin and stack are healthy; the chosen data policy
+is complete; the old domain is no longer serving the app.
 
-1. Put the branded image's immutable SHA, new `APP_URL`, new `EMAIL_FROM`, Resend key,
-   Google credentials/callback, and fresh VAPID values in `/etc/rssapp/production.env`.
-2. Deploy with `scripts/deploy-image.sh production`; it creates a pre-deploy database
-   backup and waits for health.
-3. Validate, in order:
-   - `https://<brand-domain>/api/health`;
-   - password sign-up, verification email, verification link, and sign-in;
-   - password reset and invitation email;
-   - Google sign-in/linking;
-   - browser install, offline reading, push opt-in/delivery, and notification click;
-   - native-reader API authentication at the new URL;
-   - an unauthenticated visitor and two distinct visitor IPs through Cloudflare.
-4. Enable the old-domain full-path/query redirect only after the new domain checks pass.
-5. Announce the migration to existing readers through an in-app notification or a concise
-   account email, with the new URL and the expected PWA/push re-enrollment step.
+1. Stop writes to the old application and take a final compressed database dump.
+2. For a fresh start, migrate the empty new database and create the owner. For data
+   transfer, restore the final dump into the new database, run migrations, and validate
+   counts for accounts, subscriptions, items, saved pages, highlights, rules, and
+   notification settings.
+3. Deploy the tested branded image by immutable SHA with the new environment.
+4. Validate health, password and Google sign-in, verification/reset/invitation email,
+   feed refresh, full-content extraction, digests, push, PWA install/offline reading,
+   backup/restore, and native-reader authentication.
+5. Confirm Cloudflare visitor IPs and rate limiting with distinct clients.
+6. Remove the old `rssapp.badask.no` DNS/proxy host. Do not add a redirect.
 
-### Phase 4 — Observe, then retire legacy access
+### Phase 4 — Observe and remove the old stack
 
-**Exit criteria:** the legacy retention period has passed and all integrations use the new
-host.
+**Exit criteria:** the rollback window has passed and no active infrastructure uses the
+old identity.
 
-1. Watch origin logs, Cloudflare events, Resend delivery/rejection logs, sign-up error
-rates, and health checks for at least seven days.
-2. Keep the legacy redirect for at least 90 days. An old Google sign-in started before
-   cutover is deliberately restarted at the new origin rather than maintaining a fragile
-   cross-origin authentication callback.
-3. Remove the old DNS/proxy/OAuth callback only after native clients, old email links,
-   and reader communications no longer depend on it.
-4. Update the operational runbook with the final names, domains, sender, OAuth client,
-   VAPID key rotation date, and Cloudflare configuration summary.
+1. Monitor application/origin logs, Cloudflare events, Resend delivery, scheduler jobs,
+   backups, authentication errors, and health checks for at least seven days.
+2. Keep the final old database dump and stopped old volume read-only for the agreed
+   rollback window; do not keep the old application publicly reachable.
+3. After validation, remove the old Compose project, volumes, database role/name,
+   environment and backup paths, obsolete GHCR packages, provider records/keys, and VPS
+   service definitions.
+4. Update the operational runbook with the final names, domains, records, paths,
+   credentials ownership, validation results, and key-rotation dates.
 
-## Cutover rollback
+## Rollback
 
-The database schema and content do not change during this migration. If the new origin
-fails, restore the previous immutable app image and previous environment values
-(`APP_URL`, sender, OAuth, VAPID) and keep the old host serving. Do not restore the
-database merely to roll back branding or DNS.
+The clean deployment makes rollback explicit rather than mixing old and new identities.
+Until the rollback window ends, retain:
 
-Keep both host configurations active until the new origin is proven. The main irreversible
-reader effects are new-origin cookies/PWA/push state, which are safe to recreate and do
-not affect the server-side reader data.
+- the previous immutable image SHA;
+- the stopped old Compose project and database volume;
+- the final compressed database dump;
+- the previous protected environment and proxy configuration.
+
+If a critical failure appears, stop the new stack and temporarily restore the old stack
+and old hostname. This is emergency rollback, not a compatibility redirect. Do not copy
+partially written data between stacks without a separate recovery decision.
 
 ## Decision gate
 
-These choices must be made before Phase 1 implementation begins:
+### Preliminary Currentfold check — 2026-07-22
 
-| Decision | Current recommendation | Owner decision |
-|---|---|---|
-| Product name | A distinctive, pronounceable name with an available domain | Pending |
-| Canonical domain | `<brand-domain>` unless a product reason favors `reader.<brand-domain>` | Pending |
-| Sender | `accounts@send.<brand-domain>` | Pending |
-| Legacy-domain period | Minimum 90-day full-path/query redirect | Pending |
-| Cloudflare scope | DNS + proxied web host + TLS/WAF baseline; no Workers/Tunnel yet | Pending |
-| Public signup posture | Keep current policy; add Turnstile only when abuse/traffic justifies it | Pending |
-| Staging | Defer until the identity cutover is stable | Confirmed deferred |
+An exact-name web search found no meaningful software, reading-product, or company
+collision for **Currentfold**. RDAP returned `404` (no registered domain object) for
+`currentfold.com`, `currentfold.app`, `currentfold.io`, and `currentfold.no` at the time
+of checking. That is encouraging but transient: availability must be reconfirmed at the
+chosen registrar immediately before purchase. This is a preliminary product-confusion
+check, not legal trademark clearance.
+
+| Decision | Current recommendation | Status |
+| --- | --- | --- |
+| Rebrand scope | Rename all active public and internal identifiers | **Confirmed** |
+| Old domain | Remove after successful validation; no redirect | **Confirmed** |
+| Staging | Defer until after the identity cutover | **Confirmed** |
+| Product name and slug | **Currentfold** / `currentfold`; complete external availability and legal checks before purchase or announcement | Direction confirmed; check pending |
+| Visual identity | Folded-current C, Newsreader wordmark, paper/ink/coral system | **Confirmed and documented** |
+| Canonical domain | Brand apex unless a product reason favors `reader.<brand-domain>` | Pending |
+| Sender | `accounts@send.<brand-domain>` | Pending on name/domain |
+| Data transition | One-time PostgreSQL transfer if personal state matters; otherwise fresh start | Pending |
+| Rollback retention | Keep stopped old stack and final dump for 14 days | Pending |
+| Cloudflare scope | DNS + proxy + strict TLS + conservative WAF baseline | Pending confirmation |
+| Public signup | Keep controlled during early product validation | Pending |
 
 ## Runbook handoff
 
-Once the name, domains, and Cloudflare choices are decided, convert this plan into an
-operator runbook with exact record values, Caddy/Nginx host blocks, environment files,
-Cloudflare settings, validation commands, an accountable cutover checklist, and the
-rollback commands. Do not use placeholder values in the final runbook.
+Once the name, domain, data-transition choice, and Cloudflare scope are settled, convert
+this plan into an operator runbook with exact repository/image names, DNS records,
+Caddy/Nginx blocks, Compose identifiers, database commands, environment files,
+deployment and validation commands, cleanup steps, and rollback commands. The final
+runbook must contain no placeholder values.

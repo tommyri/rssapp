@@ -220,12 +220,11 @@ and scheduled messages are printed to the server log.
 
 ### Full-content extraction
 
-For truncated feeds, "Load full content" in the article view fetches the article page
-and extracts readable content (Readability + linkedom,
-`apps/web/src/lib/feeds/extract.ts`).
-Results are sanitized like feed content and cached per article. A per-feed
-"Always load full content" toggle on `/feeds` extracts automatically at ingest.
-The "Open original" link is always available as the escape hatch.
+Every linked feed article is queued for a readable copy automatically; feed refresh
+never waits for extraction. The background worker fetches and extracts content with
+Readability + linkedom (`apps/web/src/lib/feeds/extract.ts`), sanitizes the result, and
+caches it for every subscriber. Bounded retries and a terminal fallback leave the
+feed-provided body and **Open original** available when a publisher blocks extraction.
 
 ### Read later & saved links
 
@@ -286,6 +285,9 @@ authorization with PKCE instead of asking people to paste a credential. See
 - `npm test` — Vitest unit tests
 - `npm run brand:check` — verify generated web and Swift identity output
 - `npm run contract:check` — validate the first-party OpenAPI contract
+- `npm run ios:generate` — regenerate the checked-in Xcode project with XcodeGen
+- `npm run ios:lint` — lint Swift sources with SwiftLint
+- `npm run ios:test` — build and run native tests on an available iPhone Simulator
 
 ## Deployment (home server / VPS)
 

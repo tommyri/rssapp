@@ -1,6 +1,7 @@
-# RSS App — Product & Planning Docs
+# Currentfold — Product & Planning Docs
 
-A self-hosted RSS reader web app: subscribe to feeds, get new articles pulled in automatically, and read them in a fast, clean, keyboard-friendly interface.
+A focused reader for following, saving, and returning to the open web, with a
+self-hostable web application and a native-client foundation.
 
 ## Source of truth
 
@@ -10,9 +11,14 @@ A self-hosted RSS reader web app: subscribe to feeds, get new articles pulled in
 - [competitive-analysis.md](competitive-analysis.md) — the July 2026 reader market: what's table stakes, what people pay for, where the gap is
 - [greader-api.md](greader-api.md) — connect a Google Reader-compatible native client with a revocable app password
 - [design-ux.md](design-ux.md) — layout, list/reading-pane design, keyboard canon, overload handling, and anti-patterns to avoid
+- [brand-identity.md](brand-identity.md) — the approved Currentfold identity: positioning, name, logo assets, responsive use, typography, colour, voice, and production checks
+- [ADR 0001](adr/0001-product-monorepo-and-native-api.md) — why the web app, native iOS client, brand system, and API contract live in one product monorepo
+- [first-party-api.md](first-party-api.md) — the versioned Currentfold-owned client API, contract rules, initial routes, and authentication boundary
+- [iOS README](../apps/ios/README.md) — generate, build, lint, and test the native SwiftUI application
 - [deployment.md](deployment.md) — the complete VPS runbook: GitHub Actions, GHCR credentials, protected environment files, staging/production promotion, backups, and calendar-versioned GitHub Releases
-- [brand-domain-migration.md](brand-domain-migration.md) — the planned product-name, domain, Resend, and Cloudflare cutover; its decision gate must be complete before implementation
+- [brand-domain-migration.md](brand-domain-migration.md) — the planned full-stack rebrand and clean single-user cutover: product identity, repository/image, database/storage, domain, Resend, and Cloudflare
 - [full-content-by-default.md](full-content-by-default.md) — the shipped design and operating model for reliable, queued full-text extraction on every linked feed item
+- [durable-saved-copies.md](durable-saved-copies.md) — parked analysis for private, durable article copies, preserved assets, and portable exports that survive link rot
 
 ## Guiding principles
 

@@ -4,9 +4,9 @@ This is the living product roadmap and concise release record. Every phase must 
 its own as a useful reader; the current rollout and next candidates are deliberately
 separate from shipped work.
 
-**Release status — 19 July 2026:** v0.1, v1.0, **2026.7.1 — Notifications, full text &
+**Release status — 22 July 2026:** v0.1, v1.0, **2026.7.1 — Notifications, full text &
 reading history**, and **2026.7.2 — Deliberate read state** are shipped. **2026.7.3 —
-Email digests & build identity** is in development.
+Email digests, build identity & product foundations** is in development.
 
 ## MVP (v0.1) — daily-drivable reader
 
@@ -171,7 +171,7 @@ July 2026.
 - **PWA + offline reading** *(foundation + Read later download shipped July 2026)* — installable app shell and a device-local offline library. Choose **Keep offline** on an article or saved page, manually download the newest 50 readable **Read later** entries from `/offline`, or select an automatic device-local set of 25, 50, or 100 entries that refreshes when the library opens or reconnects. Automatic entries are reconciled to the selected bound while manually kept copies are retained. Where supported, a selected automatic set also refreshes after the next connection and on the browser's periodic background schedule; opening or reconnecting the library remains the reliable cross-browser fallback. The online reader also supports mobile pull-to-refresh, reusing the normal all-feeds refresh. While offline, locally saved articles can be marked read/unread, starred/unstarred, added/removed from Read later, or pasted into Read later as a web link; those queued changes replay after reconnecting, and browsers that support Background Sync can replay them without an open app. Then read their sanitized text without a connection. Deliberately not cached: dynamic authenticated reader pages, arbitrary images, and third-party embeds. Feed and account configuration remain online-only because their conflicts and destructive changes need immediate server confirmation.
 - **Full JSON export, replace restore + scheduled snapshots** *(shipped July 2026)* — Settings → Subscriptions & data downloads a per-user, portable JSON backup of account preferences, subscriptions, feed articles, reading state, saved pages, labels, rules, and highlights (never password hashes or other users' data). A restore assistant server-validates the uploaded document, previews it alongside the current account&apos;s reader data, then requires an acknowledgement before replacing that reader data in one transaction. There is no ambiguous merge mode; the account login remains untouched and device-local offline copies are cleared so queued changes cannot return old state. Docker Compose writes the same document daily to a separate `backup-data` volume with bounded retention; `BACKUP_INTERVAL_HOURS` and `BACKUP_RETENTION` tune it. External destinations (WebDAV/S3/Dropbox/etc.) remain later work because they need OAuth semantics.
 - **Podcast / audio playback** *(shipped July 2026)* — recognizes audio attachments in RSS and JSON Feed entries, preserves native audio embedded in article content, and presents a native inline player when an expanded article has an episode to listen to. Each audio source resumes at its own last meaningful position across a person's signed-in devices, with a clear start-over control for enclosures. Feed media remains online-only; offline reading intentionally stores readable text rather than arbitrary audio files.
-- **Google Reader–compatible API** *(shipped July 2026)* — native reader apps can connect through a revocable app password to sync subscriptions, folders, article streams, unread counts, read/star/label state, and feed changes. The compatibility protocol is an adapter over the reader's internal model; a future rssapp mobile app can use a modern versioned sync surface without inheriting the legacy wire format. See [greader-api.md](greader-api.md).
+- **Google Reader–compatible API** *(shipped July 2026)* — native reader apps can connect through a revocable app password to sync subscriptions, folders, article streams, unread counts, read/star/label state, and feed changes. The compatibility protocol remains an adapter over the reader's internal model; Currentfold-owned clients use the versioned first-party API instead of inheriting the legacy wire format. See [greader-api.md](greader-api.md).
 
 ## 2026.7.1 — Notifications, full text & reading history
 
@@ -224,7 +224,7 @@ pagination are navigation, never read-state mutations.
    The collapsed-row swipe no longer offers an unread-to-read bypass. Rules and
    age-based retention remain separately configured automation.
 
-## 2026.7.3 — Email digests & build identity (in development)
+## 2026.7.3 — Email digests, build identity & product foundations (in development)
 
 **Goal:** deliver a calm, user-controlled summary of unread rule notifications without
 requiring readers to keep a browser open or enabling immediate push alerts, while making
@@ -245,35 +245,72 @@ the exact deployed app version easy to identify.
    labels, rather than accepting mutable deployment configuration. `/api/health` returns
    the same non-sensitive version and full revision even when database readiness fails,
    so support and deployment checks can identify the exact running artifact.
+3. **Multi-client product foundation (implemented; internal validation pending).** The
+   repository is now an npm-workspace product monorepo: `apps/web` remains the deployed
+   Next.js service, `packages/brand` generates shared web and Swift identity assets, and
+   `packages/api-contract` owns an OpenAPI 3.1 contract plus cross-platform fixtures.
+   The first `/api/v1` slice covers service discovery, account identity,
+   subscriptions, cursor-paginated articles, and batched read-state changes. A native
+   SwiftUI iOS 17 shell consumes those packages with Keychain credential storage,
+   Library/Sources/Settings navigation, pagination, refresh, and native article detail.
+   It is an internal foundation, not an App Store release: browser authorization-code
+   + PKCE and complete offline reader workflows remain prerequisites for external
+   testing. See [ADR 0001](adr/0001-product-monorepo-and-native-api.md) and
+   [first-party-api.md](first-party-api.md).
 
 ## Later / version undecided
 
 These are useful product possibilities, but none has a release assignment or delivery
 promise. A later version gets a scoped goal before one of them becomes planned work.
 
-1. **Brand, domain, email, and edge migration** — move the app from the personal
-   `rssapp.badask.no` deployment to a new product name and dedicated domain, with Resend
-   sender-domain verification and Cloudflare in front of the VPS. This is operational
-   product-readiness work, not a 2026.7.1 feature. It begins only when the name/domain
-   decision gate is settled; see [brand-domain-migration.md](brand-domain-migration.md).
-2. **Email newsletter → feed bridge** — a unique inbound address per feed. This is a
+1. **Read-later extraction live refresh (next UX-fix candidate)** — an article saved
+   through the **Save to RSS app** bookmark currently remains on **Fetching a readable
+   copy…** until the reader manually reloads the page, even after extraction has
+   completed. The open article should detect the completed background fetch and replace
+   the pending state with the readable content automatically. A terminal extraction
+   failure should likewise replace the pending message with a clear failure state; no
+   manual reload should be required in either case.
+2. **Durable saved copies (parked)** — consider preserving an immutable, private
+   readable copy when a reader explicitly keeps an article, including selected local
+   assets so it survives source deletion or link rot. PDF should be an optional export,
+   not the canonical archive. This needs deliberate storage, quota, safety, commercial,
+   and legal decisions before it receives a release; see
+   [durable-saved-copies.md](durable-saved-copies.md).
+3. **Currentfold rebrand and clean deployment** — finish replacing the temporary RSS
+   App identity with the approved Currentfold name and visual system across the public
+   product and active internal stack: repository, package/image, Compose resources,
+   database/volume, VPS paths, backup format, browser storage, and protocol identifiers.
+   Deploy on a dedicated domain with a verified Resend subdomain and Cloudflare in front
+   of the VPS. There are no external users, so the old domain is retired without a
+   redirect and current personal data can move once through PostgreSQL dump/restore or
+   be discarded for a fresh start. Production cutover work begins after the remaining
+   domain/availability and data-transition decision gate is settled; see
+   [brand-identity.md](brand-identity.md) and
+   [brand-domain-migration.md](brand-domain-migration.md).
+4. **Native iOS productization** — grow the internal SwiftUI foundation into an
+   externally testable reader: browser authorization-code + PKCE, Read later and saved
+   pages, full article state/progress, resilient offline sync and queued mutations,
+   highlights/notes, accessibility and device testing, and a signed TestFlight build.
+   Build complete reader workflows through `/api/v1`; do not expose Drizzle records or
+   stretch the Google Reader adapter into a first-party product API.
+5. **Email newsletter → feed bridge** — a unique inbound address per feed. This is a
    paid-product-shaped differentiator, but is deliberately deferred to an undecided
    later version. It requires an inbound-email provider/webhook, opaque addresses,
    sender and size controls, spam/abuse protections, and safe failure handling before it
    is ready.
-3. **Text-to-speech (“Listen to this article”)** — defer browser `SpeechSynthesis`;
+6. **Text-to-speech (“Listen to this article”)** — defer browser `SpeechSynthesis`;
    revisit with a high-quality AI TTS provider, likely BYO-key, when we deliberately take
    on AI features.
-4. **AI daily digest / article summaries** — a companion to the reading workflow, also
+7. **AI daily digest / article summaries** — a companion to the reading workflow, also
    likely BYO-key so product costs stay explicit.
-5. **Snooze / resurface** — dismiss an article now and have it resurface to the top of
+8. **Snooze / resurface** — dismiss an article now and have it resurface to the top of
    the unread list later (tomorrow/weekend). Deferred: it overlaps our own reading
    process, where a post is either put in Read later (keep) or read (done, shouldn't
    come back), so the snooze middle-ground earns little here. Design was scoped
    (nullable `item_states.snoozed_until`, passive query-time hiding, resurface by
    sorting on the snooze time) — revisit if the triage/overload pressure ever makes a
    “not now, ask me later” state worth it.
-6. **Infinite scroll + list virtualization** — auto-load older articles on scroll
+9. **Infinite scroll + list virtualization** — auto-load older articles on scroll
    instead of the “Load older” button, and virtualize the list for large unread counts.
    Deferred: we don't hit long unread lists in practice, and the explicit button is
    predictable and keyboard-friendly; virtualization also fights the inline-accordion
@@ -283,5 +320,5 @@ promise. A later version gets a scoped goal before one of them becomes planned w
 
 - Social features (sharing, comments, recommendations)
 - Crawling sites that don't offer feeds (except v1 full-content extraction of subscribed articles)
-- Native mobile apps — the PWA and deployed Reader-compatible sync API cover mobile;
-  reconsider a native client only if they stop meeting a concrete product need
+- An Android client before the iOS product and first-party API have proven the native
+  workflow and sync model

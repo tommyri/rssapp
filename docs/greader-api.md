@@ -1,6 +1,6 @@
 # Native reader sync API
 
-rssapp exposes a Google Reader-compatible sync adapter for native RSS readers.
+Currentfold exposes a Google Reader-compatible sync adapter for native RSS readers.
 It is an interoperability layer over the same subscriptions, folders, article
 states, and labels used by the web reader; it does not create a separate copy
 of a person's library.
@@ -33,7 +33,7 @@ last used.
 - Article IDs are stable, opaque Google Reader-style hexadecimal IDs.
 - Read, starred, and article-label changes sync in both directions.
 - Muting, offline copies, highlights, notes, reading progress, audio progress,
-  rules, and account settings remain rssapp-specific features. They are not
+  rules, and account settings remain Currentfold-specific features. They are not
   translated into the legacy protocol.
 
 ## Endpoint coverage
@@ -44,6 +44,5 @@ item-content lookup, OPML export, feed add/edit/remove, mark-all-read, and
 read/star/label mutations (`edit-tag`). Responses are deliberately `no-store`:
 clients should own their local sync cache and revalidate it normally.
 
-This is a compatibility boundary. A future rssapp mobile app should use the
-versioned internal sync service rather than depend on the Google Reader wire
-format.
+This is a compatibility boundary. Currentfold-owned clients use the versioned
+first-party API rather than depend on the Google Reader wire format.

@@ -1,13 +1,19 @@
 # Tech Stack
 
-The stack in use, chosen for: one codebase, boring/durable choices, easy self-hosting, and a background fetcher that's a first-class citizen (the part most "just use serverless" setups get wrong).
+The stack in use, chosen for one product repository, boring and durable boundaries,
+easy self-hosting, native platform UX, and a background fetcher that is a first-class
+citizen.
 
 ## Summary
 
 | Layer | Choice | Notes |
 |---|---|---|
-| Language | TypeScript | End to end |
-| Framework | Next.js 16 (App Router) | UI + API in one app |
+| Web/server language | TypeScript | Next.js UI, API, scheduler, and domain operations |
+| Native language | Swift 6 | Native iOS UI, state, security, and networking |
+| Web framework | Next.js 16 (App Router) | Browser UI + server in one deployable app |
+| Native framework | SwiftUI, iOS 17+ | Platform navigation, accessibility, and controls |
+| First-party API | JSON `/api/v1` + OpenAPI 3.1 | Stable product boundary for Currentfold-owned clients |
+| Shared identity | DTCG design tokens + generated CSS/Swift/assets | Foundations are shared; UI components remain platform-native |
 | Database | PostgreSQL | Articles, feeds, state, full-text search |
 | ORM / migrations | Drizzle | Schema in TS, SQL-first, light |
 | Feed fetching | In-process Node worker | `setInterval` poller, see below |
@@ -19,14 +25,17 @@ The stack in use, chosen for: one codebase, boring/durable choices, easy self-ho
 | Browser push | Web Push + VAPID (`web-push`) | Per-device opt-in for rule-notification delivery; needs a deployed HTTPS origin |
 | Outbound email | Resend HTTP API + `@js-temporal/polyfill` scheduling | Verified-account mail, idempotent notification digests, and DST-safe local delivery times |
 | Validation | Zod | Server-action inputs, feed URL forms |
-| Testing | Vitest | Unit, route, service-worker, and parsing tests; browser E2E remains a future addition |
-| Lint/format | Biome | One tool instead of ESLint+Prettier |
+| Testing | Vitest + XCTest | Web unit/route/service-worker/parsing tests and native contract/unit tests |
+| Lint/format | Biome + SwiftLint | Platform-appropriate static checks |
 | Deployment | Docker Compose + GHCR images (app + Postgres) | GitHub builds immutable Linux images; VPS pulls them into separate staging/production Compose projects |
 
 ## Rationale for the non-obvious choices
 
-### Next.js over separate frontend + backend
-An RSS reader is mostly server-rendered lists with a bit of interactivity. One Next.js app gives us SSR for fast first paint, server actions/route handlers for the API, and one deployable unit. A split SPA + API adds operational overhead with no benefit at this size.
+### Next.js server over a separate web frontend and backend
+The browser reader is mostly server-rendered lists with a bit of interactivity. One
+Next.js deployable gives it SSR for fast first paint, server actions, route handlers,
+and the long-running scheduler. The native app uses the explicit `/api/v1` boundary;
+that does not require splitting the server into another deployment yet.
 
 ### Postgres over SQLite
 SQLite would honestly work for a personal reader, but Postgres buys us: proper full-text search for v1, no write-lock concerns between the web app and the fetcher, and no migration cliff if this grows (multi-user, compat API). Docker Compose makes running it trivial.
@@ -34,7 +43,10 @@ SQLite would honestly work for a personal reader, but Postgres buys us: proper f
 ### In-process worker over external job queue
 Feed polling is the one "always running" part. How it works today:
 
-- A `setInterval` scheduler (`src/lib/scheduler.ts`), started from `instrumentation.ts` — which only runs it in the Node runtime, never the Edge runtime or during builds, via `instrumentation-node.ts` — ticks every 60s (`SCHEDULER_TICK_MS`)
+- A `setInterval` scheduler (`apps/web/src/lib/scheduler.ts`), started from
+  `apps/web/src/instrumentation.ts` — which only runs it in the Node runtime, never the
+  Edge runtime or during builds, via `apps/web/src/instrumentation-node.ts` — ticks
+  every 60s (`SCHEDULER_TICK_MS`)
 - Each tick selects feeds due for refresh (`next_fetch_at <= now`), fetches a batch with a concurrency limit and conditional GET, parses and upserts items, applies rule effects for newly ingested articles, then runs the maintenance sweeps
 - Failure → backoff stored per feed (`consecutive_failures`, pushed-out `next_fetch_at`)
 
@@ -65,15 +77,15 @@ once. Staff roles remain later work.
 ## Architecture sketch
 
 ```
-                ┌─────────────────────────────────────────┐
-                │              Next.js app                │
-  Browser ──────┤  UI (RSC + client islands)              │
-                │  Route handlers / server actions (API)  │
-                │  Worker: scheduler → fetcher → parser ──┼──► The internet
-                └───────────────────┬─────────────────────┘      (feeds)
-                                    │
-                              PostgreSQL
+Browser UI ───── server actions ────┐
+iOS app ──────── /api/v1 ──────────┼──► reader domain operations ──► PostgreSQL
+Third-party apps  /api/greader ─────┘                 │
+                                                     └──► scheduler/fetcher ──► web
 ```
+
+The applications live in `apps/web` and `apps/ios`. Platform-neutral identity masters
+and API fixtures/contracts live in `packages/brand` and `packages/api-contract`.
+React and SwiftUI components are deliberately not shared.
 
 ### Core data model
 
