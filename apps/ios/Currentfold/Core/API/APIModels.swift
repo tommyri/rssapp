@@ -6,6 +6,46 @@ struct APIAccount: Decodable, Equatable, Sendable {
     let displayName: String?
 }
 
+struct APISessionCredential: Codable, Equatable, Sendable {
+    let accessToken: String
+    let accessTokenExpiresAt: String
+    let refreshToken: String
+    let refreshTokenExpiresAt: String
+}
+
+struct APIAuthenticationGrant: Decodable, Equatable, Sendable {
+    let account: APIAccount
+    let session: APISessionCredential
+}
+
+struct APIStatusMessage: Decodable, Equatable, Sendable {
+    let status: String?
+    let message: String
+}
+
+struct APIAuthProviders: Decodable, Equatable, Sendable {
+    let apple: Bool
+    let google: Bool
+}
+
+struct APIAppleChallenge: Decodable, Equatable, Sendable {
+    let challenge: String
+}
+
+enum APINativeProvider: String, Encodable, Sendable {
+    case apple
+    case google
+}
+
+struct APIProviderSignIn: Encodable, Sendable {
+    let provider: APINativeProvider
+    let identityToken: String
+    let challenge: String?
+    let displayName: String?
+    let deviceName: String
+    let inviteToken: String?
+}
+
 struct APIFeed: Decodable, Hashable, Sendable {
     let id: String
     let title: String

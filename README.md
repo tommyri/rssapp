@@ -272,11 +272,13 @@ stream, and idempotent batched read-state updates. Its OpenAPI 3.1 contract is m
 in `packages/api-contract/openapi.json` and served by every installation at
 `/api/v1/openapi.json`.
 
-For development, create a revocable app credential in **Settings → Account → Native
-reader apps** and send it as `Authorization: Bearer …`. This is an explicit bridge for
-the first native implementation; the production iOS sign-in flow will use browser-based
-authorization with PKCE instead of asking people to paste a credential. See
-[docs/first-party-api.md](docs/first-party-api.md).
+Currentfold for iOS signs in directly with an account password or native Apple/Google
+authorization, then stores a Currentfold-owned rotating device session in Keychain. It
+renews the short-lived access token without interrupting reading; provider tokens never
+become API credentials. Registration, verification, recovery, reset, and sign-out also
+have native flows. Manually created app credentials remain available for compatible
+third-party readers and command-line use; the Currentfold app never asks a person to
+create or paste one. See [docs/first-party-api.md](docs/first-party-api.md).
 
 ### Quality
 

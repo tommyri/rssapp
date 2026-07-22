@@ -15,6 +15,7 @@ describe("auth route exceptions", () => {
       "/forgot-password",
       "/reset-password",
       "/verify-email",
+      "/.well-known/apple-app-site-association",
     ]) {
       expect(authorized({ auth: null, request: request(pathname) })).toBe(true);
     }

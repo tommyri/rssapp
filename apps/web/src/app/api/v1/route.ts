@@ -12,6 +12,8 @@ export async function GET() {
       productVersion: getBuildIdentity().version,
       capabilities: [
         "account",
+        "nativeAuthentication",
+        "nativeProviderAuthentication",
         "subscriptions",
         "articleStream",
         "articleReadState",

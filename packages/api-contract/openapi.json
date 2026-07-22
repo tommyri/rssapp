@@ -20,6 +20,9 @@
       "name": "Account"
     },
     {
+      "name": "Authentication"
+    },
+    {
       "name": "Reader"
     }
   ],
@@ -59,6 +62,248 @@
               }
             }
           }
+        }
+      }
+    },
+    "/api/v1/auth/session": {
+      "post": {
+        "operationId": "createNativeSession",
+        "summary": "Sign in and create a native device session",
+        "tags": ["Authentication"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/NativeSignInRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "A new native device session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NativeSessionResponse"
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/InvalidRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/AccountUnavailable" },
+          "429": { "$ref": "#/components/responses/RateLimited" }
+        }
+      },
+      "delete": {
+        "operationId": "revokeNativeSession",
+        "summary": "Sign out this native device session",
+        "tags": ["Authentication"],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "204": { "description": "The local session may be discarded" }
+        }
+      }
+    },
+    "/api/v1/auth/session/refresh": {
+      "post": {
+        "operationId": "refreshNativeSession",
+        "summary": "Rotate a native refresh token",
+        "tags": ["Authentication"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/NativeRefreshRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "A rotated native credential pair",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NativeSessionResponse"
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/InvalidRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/api/v1/auth/providers": {
+      "get": {
+        "operationId": "listNativeAuthProviders",
+        "summary": "Discover native identity providers configured by this server",
+        "tags": ["Authentication"],
+        "responses": {
+          "200": {
+            "description": "Provider availability for this Currentfold installation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NativeAuthProvidersResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/providers/apple/challenge": {
+      "post": {
+        "operationId": "createNativeAppleChallenge",
+        "summary": "Create a one-time nonce for Sign in with Apple",
+        "tags": ["Authentication"],
+        "responses": {
+          "200": {
+            "description": "A short-lived one-time Apple authentication challenge",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NativeAppleChallengeResponse"
+                }
+              }
+            }
+          },
+          "404": { "$ref": "#/components/responses/AccountUnavailable" },
+          "429": { "$ref": "#/components/responses/RateLimited" }
+        }
+      }
+    },
+    "/api/v1/auth/provider-session": {
+      "post": {
+        "operationId": "createNativeProviderSession",
+        "summary": "Verify an Apple or Google identity and create a native device session",
+        "tags": ["Authentication"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NativeProviderSignInRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "A new native device session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NativeSessionResponse"
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/InvalidRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/AccountUnavailable" },
+          "409": { "$ref": "#/components/responses/AccountUnavailable" },
+          "429": { "$ref": "#/components/responses/RateLimited" }
+        }
+      }
+    },
+    "/api/v1/auth/registration": {
+      "post": {
+        "operationId": "registerNativeAccount",
+        "summary": "Create an account and send email verification",
+        "tags": ["Authentication"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NativeRegistrationRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "$ref": "#/components/responses/StatusMessage" },
+          "201": { "$ref": "#/components/responses/StatusMessage" },
+          "400": { "$ref": "#/components/responses/InvalidRequest" },
+          "403": { "$ref": "#/components/responses/AccountUnavailable" },
+          "409": { "$ref": "#/components/responses/AccountUnavailable" },
+          "429": { "$ref": "#/components/responses/RateLimited" }
+        }
+      }
+    },
+    "/api/v1/auth/verification": {
+      "post": {
+        "operationId": "resendNativeVerification",
+        "summary": "Request another email-verification link",
+        "tags": ["Authentication"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/EmailRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": { "$ref": "#/components/responses/StatusMessage" },
+          "400": { "$ref": "#/components/responses/InvalidRequest" }
+        }
+      },
+      "patch": {
+        "operationId": "verifyNativeEmail",
+        "summary": "Consume an email-verification link token",
+        "tags": ["Authentication"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/TokenRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": { "$ref": "#/components/responses/StatusMessage" },
+          "400": { "$ref": "#/components/responses/InvalidRequest" }
+        }
+      }
+    },
+    "/api/v1/auth/recovery": {
+      "post": {
+        "operationId": "requestNativePasswordReset",
+        "summary": "Request a password-reset link",
+        "tags": ["Authentication"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/EmailRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": { "$ref": "#/components/responses/StatusMessage" },
+          "400": { "$ref": "#/components/responses/InvalidRequest" }
+        }
+      },
+      "patch": {
+        "operationId": "resetNativePassword",
+        "summary": "Consume a reset token and set a new password",
+        "tags": ["Authentication"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NativePasswordResetRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "$ref": "#/components/responses/StatusMessage" },
+          "400": { "$ref": "#/components/responses/InvalidRequest" }
         }
       }
     },
@@ -243,7 +488,7 @@
       "bearerAuth": {
         "type": "http",
         "scheme": "bearer",
-        "description": "A revocable app credential created in Currentfold settings. Browser-based authorization with PKCE will replace manual credential entry in the first-party iOS app."
+        "description": "A short-lived native access token or a manually issued compatibility credential. First-party clients obtain and rotate native credentials through the authentication routes."
       }
     },
     "responses": {
@@ -270,6 +515,41 @@
           "application/json": {
             "schema": {
               "$ref": "#/components/schemas/ErrorResponse"
+            }
+          }
+        }
+      },
+      "AccountUnavailable": {
+        "description": "The account or registration state does not permit this operation.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            }
+          }
+        }
+      },
+      "RateLimited": {
+        "description": "The anonymous authentication attempt budget is exhausted.",
+        "headers": {
+          "Retry-After": {
+            "schema": { "type": "integer", "minimum": 1 }
+          }
+        },
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            }
+          }
+        }
+      },
+      "StatusMessage": {
+        "description": "The account operation was accepted.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/StatusMessageResponse"
             }
           }
         }
@@ -330,6 +610,187 @@
                 },
                 "additionalProperties": false
               }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      "NativeSignInRequest": {
+        "type": "object",
+        "required": ["email", "password"],
+        "properties": {
+          "email": { "type": "string", "format": "email" },
+          "password": { "type": "string", "minLength": 1, "maxLength": 1024 },
+          "deviceName": { "type": "string", "maxLength": 100 }
+        },
+        "additionalProperties": false
+      },
+      "NativeAuthProvidersResponse": {
+        "type": "object",
+        "required": ["data"],
+        "properties": {
+          "data": {
+            "type": "object",
+            "required": ["apple", "google"],
+            "properties": {
+              "apple": { "type": "boolean" },
+              "google": { "type": "boolean" }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      "NativeAppleChallengeResponse": {
+        "type": "object",
+        "required": ["data"],
+        "properties": {
+          "data": {
+            "type": "object",
+            "required": ["challenge"],
+            "properties": {
+              "challenge": {
+                "type": "string",
+                "pattern": "^currentfold_challenge_",
+                "maxLength": 128
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      "NativeProviderSignInRequest": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": ["provider", "identityToken", "challenge"],
+            "properties": {
+              "provider": { "const": "apple" },
+              "identityToken": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 16384
+              },
+              "challenge": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128
+              },
+              "displayName": { "type": "string", "maxLength": 100 },
+              "deviceName": { "type": "string", "maxLength": 100 },
+              "inviteToken": { "type": "string", "maxLength": 256 }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": ["provider", "identityToken"],
+            "properties": {
+              "provider": { "const": "google" },
+              "identityToken": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 16384
+              },
+              "deviceName": { "type": "string", "maxLength": 100 },
+              "inviteToken": { "type": "string", "maxLength": 256 }
+            },
+            "additionalProperties": false
+          }
+        ]
+      },
+      "NativeRegistrationRequest": {
+        "type": "object",
+        "required": ["email", "password"],
+        "properties": {
+          "email": { "type": "string", "format": "email" },
+          "password": { "type": "string", "minLength": 8, "maxLength": 1024 },
+          "inviteToken": { "type": "string" }
+        },
+        "additionalProperties": false
+      },
+      "EmailRequest": {
+        "type": "object",
+        "required": ["email"],
+        "properties": {
+          "email": { "type": "string", "format": "email" }
+        },
+        "additionalProperties": false
+      },
+      "TokenRequest": {
+        "type": "object",
+        "required": ["token"],
+        "properties": {
+          "token": { "type": "string", "minLength": 1 }
+        },
+        "additionalProperties": false
+      },
+      "NativeRefreshRequest": {
+        "type": "object",
+        "required": ["refreshToken"],
+        "properties": {
+          "refreshToken": { "type": "string", "minLength": 1 }
+        },
+        "additionalProperties": false
+      },
+      "NativePasswordResetRequest": {
+        "type": "object",
+        "required": ["token", "password"],
+        "properties": {
+          "token": { "type": "string", "minLength": 1 },
+          "password": { "type": "string", "minLength": 8, "maxLength": 1024 }
+        },
+        "additionalProperties": false
+      },
+      "NativeSessionResponse": {
+        "type": "object",
+        "required": ["data"],
+        "properties": {
+          "data": {
+            "type": "object",
+            "required": ["account", "session"],
+            "properties": {
+              "account": { "$ref": "#/components/schemas/Account" },
+              "session": {
+                "type": "object",
+                "required": [
+                  "accessToken",
+                  "accessTokenExpiresAt",
+                  "refreshToken",
+                  "refreshTokenExpiresAt"
+                ],
+                "properties": {
+                  "accessToken": { "type": "string" },
+                  "accessTokenExpiresAt": {
+                    "type": "string",
+                    "format": "date-time"
+                  },
+                  "refreshToken": { "type": "string" },
+                  "refreshTokenExpiresAt": {
+                    "type": "string",
+                    "format": "date-time"
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      "StatusMessageResponse": {
+        "type": "object",
+        "required": ["data"],
+        "properties": {
+          "data": {
+            "type": "object",
+            "required": ["message"],
+            "properties": {
+              "status": { "type": "string" },
+              "message": { "type": "string" }
             },
             "additionalProperties": false
           }

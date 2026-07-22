@@ -1,88 +1,126 @@
 import SwiftUI
 
-struct ConnectionView: View {
-    let isConnecting: Bool
-    let errorMessage: String?
-    let connect: @MainActor (String, String) async -> Void
-
-    @State private var serverAddress = ""
-    @State private var token = ""
+struct AuthenticationView: View {
+    @Environment(SessionStore.self) private var session
     @Environment(CurrentfoldTheme.self) private var theme
+    @State private var email = ""
+    @State private var password = ""
+    @State private var noticeMessage: String?
+    @FocusState private var focusedField: Field?
+
+    private enum Field: Hashable {
+        case email
+        case password
+    }
 
     var body: some View {
         NavigationStack {
             Form {
                 Section {
                     BrandHeader()
-                        .listRowInsets(EdgeInsets(top: 24, leading: 16, bottom: 20, trailing: 16))
+                        .listRowInsets(
+                            EdgeInsets(top: 28, leading: 16, bottom: 24, trailing: 16)
+                        )
                 }
 
-                Section {
-                    TextField("https://reader.example.com", text: $serverAddress)
-                        .textContentType(.URL)
+                Section("Sign in") {
+                    TextField("Email", text: $email)
+                        .textContentType(.username)
+                        .keyboardType(.emailAddress)
                         .textInputAutocapitalization(.never)
-                        .keyboardType(.URL)
                         .autocorrectionDisabled()
-                        .accessibilityLabel("Server address")
-                    SecureField("App credential", text: $token)
+                        .focused($focusedField, equals: .email)
+                        .submitLabel(.next)
+                        .onSubmit { focusedField = .password }
+
+                    SecureField("Password", text: $password)
                         .textContentType(.password)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
-                } header: {
-                    Text("Connect to your reader")
-                } footer: {
-                    Text(
-                        """
-                        For this development build, create a revocable app credential in \
-                        Settings on the web app. Browser sign-in with PKCE will replace \
-                        this step before external testing.
-                        """
-                    )
+                        .focused($focusedField, equals: .password)
+                        .submitLabel(.go)
+                        .onSubmit(signIn)
                 }
 
-                if let errorMessage {
+                if let message = session.authErrorMessage {
                     Section {
-                        Label(errorMessage, systemImage: "exclamationmark.circle")
+                        Label(message, systemImage: "exclamationmark.circle")
                             .foregroundStyle(.red)
-                            .accessibilityLabel("Connection error: \(errorMessage)")
+                            .accessibilityLabel("Sign-in error: \(message)")
+
+                        if session.needsEmailVerification, !email.isEmpty {
+                            Button("Send another verification email") {
+                                Task {
+                                    noticeMessage = await session.resendVerification(email: email)
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if let noticeMessage {
+                    Section {
+                        Label(noticeMessage, systemImage: "envelope")
+                            .foregroundStyle(.secondary)
                     }
                 }
 
                 Section {
-                    Button {
-                        Task { await connect(serverAddress, token) }
-                    } label: {
+                    Button(action: signIn) {
                         HStack {
                             Spacer()
-                            if isConnecting {
+                            if session.isConnecting {
                                 ProgressView()
                             } else {
-                                Text("Connect")
+                                Text("Sign In")
                                     .fontWeight(.semibold)
                             }
                             Spacer()
                         }
                     }
-                    .disabled(isConnecting || serverAddress.isEmpty || token.isEmpty)
+                    .disabled(session.isConnecting || email.isEmpty || password.isEmpty)
                     .buttonStyle(.borderedProminent)
                     .tint(theme.accent)
                 }
                 .listRowBackground(Color.clear)
+
+                NativeProviderSignInSection(inviteToken: nil)
+
+                Section {
+                    NavigationLink("Create an Account") {
+                        RegistrationView(prefilledEmail: email)
+                    }
+                    NavigationLink("Forgot Password?") {
+                        PasswordRecoveryView(prefilledEmail: email)
+                    }
+                }
             }
             .navigationTitle("Welcome")
+            .task { await session.loadAuthProviders() }
+            .onChange(of: email) { _, _ in clearFeedback() }
+            .onChange(of: password) { _, _ in clearFeedback() }
         }
+    }
+
+    private func signIn() {
+        guard !session.isConnecting, !email.isEmpty, !password.isEmpty else { return }
+        focusedField = nil
+        Task { await session.signIn(email: email, password: password) }
+    }
+
+    private func clearFeedback() {
+        noticeMessage = nil
+        session.clearAuthError()
     }
 }
 
-#Preview("Connect") {
-    ConnectionView(isConnecting: false, errorMessage: nil) { _, _ in }
-        .environment(CurrentfoldTheme())
-}
-
-#Preview("Connection error") {
-    ConnectionView(
-        isConnecting: false,
-        errorMessage: "That credential was not accepted."
-    ) { _, _ in }
+#Preview("Sign in") {
+    let credentials = KeychainCredentialStore()
+    AuthenticationView()
+        .environment(
+            SessionStore(
+                apiClient: PreviewFixtures.apiClient,
+                credentialStore: credentials,
+                serverURL: URL(string: "https://currentfold.example")!
+            )
+        )
         .environment(CurrentfoldTheme())
 }

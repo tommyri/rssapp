@@ -83,11 +83,10 @@ and settings as complete workflows.
 
 ### Native authentication
 
-The production iOS client will use browser-based authorization with an authorization
-code and PKCE, returning to the application through an associated callback. Tokens are
-revocable, scoped to the first-party API, short-lived where practical, and stored in the
-Keychain. The application never embeds a client secret and does not collect the website
-password inside a native imitation of the sign-in form.
+The native authentication decision originally recorded here has been superseded by
+[ADR 0002](0002-native-account-authentication.md). The iOS app uses a complete native
+account flow and exchanges credentials for a dedicated rotating device session; it does
+not ask the reader to authenticate through the web app or paste an app credential.
 
 Google Reader app passwords remain for compatibility clients. They are not the permanent
 first-party iOS authentication mechanism.

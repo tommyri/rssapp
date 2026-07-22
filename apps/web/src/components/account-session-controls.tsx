@@ -3,6 +3,7 @@
 import { useActionState } from "react";
 import {
   type AccountActionState,
+  revokeNativeSessionAction,
   revokeOtherSessionsAction,
   revokeSessionAction,
 } from "@/app/settings/actions";
@@ -24,9 +25,16 @@ function Message({ state }: { state: AccountActionState }) {
 
 export function AccountSessionControls({
   sessions,
+  nativeSessions,
   canManage,
 }: {
   sessions: Array<{ id: string; signedInAt: string; isCurrent: boolean }>;
+  nativeSessions: Array<{
+    id: string;
+    name: string;
+    signedInAt: string;
+    lastUsedAt: string | null;
+  }>;
   canManage: boolean;
 }) {
   const [sessionState, revokeSession, revokingSession] = useActionState(
@@ -37,7 +45,13 @@ export function AccountSessionControls({
     revokeOtherSessionsAction,
     initial,
   );
+  const [nativeState, revokeNative, revokingNative] = useActionState(
+    revokeNativeSessionAction,
+    initial,
+  );
   const otherSessions = sessions.filter((session) => !session.isCurrent);
+  const hasOtherSessions =
+    otherSessions.length > 0 || nativeSessions.length > 0;
 
   return (
     <section className="space-y-4 rounded-lg border p-4">
@@ -90,7 +104,50 @@ export function AccountSessionControls({
             ))}
           </ul>
 
-          {otherSessions.length ? (
+          {nativeSessions.length ? (
+            <div className="space-y-2">
+              <p className="text-xs font-medium text-muted-foreground">
+                Currentfold apps
+              </p>
+              <ul className="divide-y rounded-md border">
+                {nativeSessions.map((session) => (
+                  <li
+                    key={session.id}
+                    className="flex items-center justify-between gap-3 px-3 py-2.5"
+                  >
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium">
+                        {session.name}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {session.lastUsedAt
+                          ? `Last used ${session.lastUsedAt}`
+                          : `Signed in ${session.signedInAt}`}
+                      </p>
+                    </div>
+                    <form action={revokeNative}>
+                      <input
+                        type="hidden"
+                        name="sessionId"
+                        value={session.id}
+                      />
+                      <Button
+                        type="submit"
+                        variant="outline"
+                        size="sm"
+                        disabled={revokingNative}
+                      >
+                        {revokingNative ? "Signing out…" : "Sign out"}
+                      </Button>
+                    </form>
+                  </li>
+                ))}
+              </ul>
+              <Message state={nativeState} />
+            </div>
+          ) : null}
+
+          {hasOtherSessions ? (
             <form
               action={revokeOthers}
               className="flex flex-wrap items-center gap-3"

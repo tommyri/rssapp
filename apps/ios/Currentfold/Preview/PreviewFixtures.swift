@@ -2,11 +2,50 @@ import Foundation
 
 enum PreviewFixtures {
     static let connection = CurrentfoldConnection(
-        baseURL: URL(string: "https://reader.example.com")!,
-        token: "preview-token"
+        baseURL: URL(string: "https://reader.example.com")!
     )
 
     static let apiClient = CurrentfoldAPIClient(
+        fetchAuthProviders: { _ in APIAuthProviders(apple: true, google: true) },
+        createAppleChallenge: { _ in APIAppleChallenge(challenge: "preview-challenge") },
+        signIn: { _, _, _, _ in
+            APIAuthenticationGrant(
+                account: .fixture,
+                session: APISessionCredential(
+                    accessToken: "preview-access",
+                    accessTokenExpiresAt: "2026-07-22T12:15:00.000Z",
+                    refreshToken: "preview-refresh",
+                    refreshTokenExpiresAt: "2026-08-21T12:00:00.000Z"
+                )
+            )
+        },
+        providerSignIn: { _, _ in
+            APIAuthenticationGrant(
+                account: .fixture,
+                session: APISessionCredential(
+                    accessToken: "preview-access",
+                    accessTokenExpiresAt: "2026-07-22T12:15:00.000Z",
+                    refreshToken: "preview-refresh",
+                    refreshTokenExpiresAt: "2026-08-21T12:00:00.000Z"
+                )
+            )
+        },
+        register: { _, _, _, _ in
+            APIStatusMessage(status: "verification_required", message: "Check your email.")
+        },
+        resendVerification: { _, _ in
+            APIStatusMessage(status: nil, message: "Check your email.")
+        },
+        requestPasswordReset: { _, _ in
+            APIStatusMessage(status: nil, message: "Check your email.")
+        },
+        verifyEmail: { _, _ in
+            APIStatusMessage(status: "verified", message: "Email verified.")
+        },
+        resetPassword: { _, _, _ in
+            APIStatusMessage(status: nil, message: "Password reset.")
+        },
+        signOut: { _ in },
         fetchAccount: { _ in .fixture },
         fetchSubscriptions: { _ in [.fixture] },
         fetchArticles: { _, _ in

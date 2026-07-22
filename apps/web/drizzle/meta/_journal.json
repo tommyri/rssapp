@@ -225,6 +225,20 @@
       "when": 1784468013682,
       "tag": "0031_zippy_kulan_gath",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1784746896262,
+      "tag": "0032_military_baron_strucker",
+      "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1784748202386,
+      "tag": "0033_modern_king_bedlam",
+      "breakpoints": true
     }
   ]
 }

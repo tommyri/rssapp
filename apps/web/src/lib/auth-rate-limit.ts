@@ -26,6 +26,11 @@ export const AUTH_RATE_LIMITS = {
     maxAttempts: 30,
     windowMs: 15 * 60 * 1000,
   },
+  providerChallengeNetwork: {
+    bucket: "provider_challenge_network",
+    maxAttempts: 30,
+    windowMs: 15 * 60 * 1000,
+  },
   signUpEmail: {
     bucket: "sign_up_email",
     maxAttempts: 3,
@@ -78,13 +83,9 @@ export function emailRateLimitKey(email: string): string {
   return `email:${email.toLowerCase().trim()}`;
 }
 
-/**
- * Reverse proxies normally provide one of these headers. If none is present,
- * email-key limits still protect the endpoint without grouping every direct
- * connection into one destructive shared bucket.
- */
-export async function requestNetworkRateLimitKey(): Promise<string | null> {
-  const requestHeaders = await headers();
+export function networkRateLimitKeyFromHeaders(
+  requestHeaders: Headers,
+): string | null {
   const forwarded = requestHeaders
     .get("x-forwarded-for")
     ?.split(",")[0]
@@ -94,6 +95,15 @@ export async function requestNetworkRateLimitKey(): Promise<string | null> {
     requestHeaders.get("x-real-ip")?.trim() ||
     requestHeaders.get("cf-connecting-ip")?.trim();
   return network ? `network:${network}` : null;
+}
+
+/**
+ * Reverse proxies normally provide one of these headers. If none is present,
+ * email-key limits still protect the endpoint without grouping every direct
+ * connection into one destructive shared bucket.
+ */
+export async function requestNetworkRateLimitKey(): Promise<string | null> {
+  return networkRateLimitKeyFromHeaders(await headers());
 }
 
 function limitResult(

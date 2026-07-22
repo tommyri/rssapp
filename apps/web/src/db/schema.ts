@@ -110,6 +110,70 @@ export const authSessions = pgTable(
   ],
 );
 
+export const nativeAppTokenKinds = ["access", "refresh"] as const;
+export type NativeAppTokenKind = (typeof nativeAppTokenKinds)[number];
+
+/**
+ * A revocable sign-in on a first-party native Currentfold client. Access and
+ * refresh secrets live in the child table so rotation can invalidate one
+ * credential without changing the stable device-session identity.
+ */
+export const nativeAppSessions = pgTable(
+  "native_app_sessions",
+  {
+    id: text("id").primaryKey(),
+    userId: bigint("user_id", { mode: "number" })
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    sessionVersion: integer("session_version").notNull(),
+    deviceName: text("device_name").notNull(),
+    lastUsedAt: timestamp("last_used_at", { withTimezone: true }),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    revokedAt: timestamp("revoked_at", { withTimezone: true }),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    index("native_app_sessions_user_active_idx").on(
+      t.userId,
+      t.revokedAt,
+      t.expiresAt,
+    ),
+    index("native_app_sessions_expires_at_idx").on(t.expiresAt),
+  ],
+);
+
+/**
+ * Opaque native credentials. Only SHA-256 hashes reach Postgres; consumed
+ * refresh rows are retained until their session is cleaned up so replay is
+ * rejected even after a successful rotation.
+ */
+export const nativeAppSessionTokens = pgTable(
+  "native_app_session_tokens",
+  {
+    id: id(),
+    sessionId: text("session_id")
+      .notNull()
+      .references(() => nativeAppSessions.id, { onDelete: "cascade" }),
+    kind: text("kind").notNull().$type<NativeAppTokenKind>(),
+    tokenHash: text("token_hash").notNull(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    consumedAt: timestamp("consumed_at", { withTimezone: true }),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    uniqueIndex("native_app_session_tokens_hash_idx").on(t.tokenHash),
+    index("native_app_session_tokens_session_kind_idx").on(
+      t.sessionId,
+      t.kind,
+      t.expiresAt,
+    ),
+    check(
+      "native_app_session_tokens_kind_check",
+      sql`${t.kind} in ('access', 'refresh')`,
+    ),
+  ],
+);
+
 export const accountRoles = ["owner", "member"] as const;
 export type AccountRole = (typeof accountRoles)[number];
 
@@ -125,7 +189,7 @@ export const registrationModes = ["open", "invite_only", "closed"] as const;
 export type RegistrationMode = (typeof registrationModes)[number];
 
 /** External sign-in identities are kept separate from product accounts. */
-export const oauthIdentityProviders = ["google"] as const;
+export const oauthIdentityProviders = ["google", "apple"] as const;
 export type OAuthIdentityProvider = (typeof oauthIdentityProviders)[number];
 
 export const oauthIntentKinds = ["signup", "link"] as const;
@@ -201,7 +265,7 @@ export const accountInvites = pgTable(
 );
 
 /**
- * An external provider subject belongs to exactly one rssapp account. Email is
+ * An external provider subject belongs to exactly one Currentfold account. Email is
  * intentionally not part of this identity: addresses can change at either end
  * and must never trigger an automatic account merge.
  */
@@ -222,14 +286,17 @@ export const oauthIdentities = pgTable(
       t.providerAccountId,
     ),
     uniqueIndex("oauth_identities_user_provider_idx").on(t.userId, t.provider),
-    check("oauth_identities_provider_check", sql`${t.provider} in ('google')`),
+    check(
+      "oauth_identities_provider_check",
+      sql`${t.provider} in ('google', 'apple')`,
+    ),
   ],
 );
 
 /**
  * One-time handoffs between a local account action and an OAuth callback. The
  * browser receives only the raw secret in an HttpOnly cookie; Postgres holds
- * its hash, the intent's expiry, and no Google profile data.
+ * its hash, the intent's expiry, and no provider profile data.
  */
 export const oauthIntents = pgTable(
   "oauth_intents",
@@ -244,7 +311,7 @@ export const oauthIntents = pgTable(
     }),
     /** Binds a link handoff to the session generation that initiated it. */
     sessionVersion: integer("session_version"),
-    /** Hashed invite secret carried through an invitation-only Google signup. */
+    /** Hashed invite secret carried through an invitation-only provider signup. */
     invitationTokenHash: text("invitation_token_hash"),
     expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
     usedAt: timestamp("used_at", { withTimezone: true }),
@@ -253,7 +320,10 @@ export const oauthIntents = pgTable(
   (t) => [
     uniqueIndex("oauth_intents_token_hash_idx").on(t.tokenHash),
     index("oauth_intents_user_id_idx").on(t.userId),
-    check("oauth_intents_provider_check", sql`${t.provider} in ('google')`),
+    check(
+      "oauth_intents_provider_check",
+      sql`${t.provider} in ('google', 'apple')`,
+    ),
     check("oauth_intents_kind_check", sql`${t.kind} in ('signup', 'link')`),
   ],
 );

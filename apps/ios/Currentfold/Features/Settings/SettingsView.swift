@@ -11,23 +11,14 @@ struct SettingsView: View {
                 LabeledContent("Email", value: account.email)
             }
 
-            if let serverURL = session.connection?.baseURL {
-                Section("Server") {
-                    Text(serverURL.absoluteString)
-                        .font(.footnote.monospaced())
-                        .textSelection(.enabled)
-                }
-            }
-
             Section {
-                Button("Disconnect This Device", role: .destructive) {
-                    Task { await session.disconnect() }
+                Button("Sign Out", role: .destructive) {
+                    Task { await session.signOut() }
                 }
             } footer: {
                 Text(
                     """
-                    This removes the app credential from this device. It does not delete \
-                    the account or change your web sign-in.
+                    This securely removes this device session. It does not delete your account.
                     """
                 )
             }

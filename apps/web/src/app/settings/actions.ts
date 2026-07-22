@@ -32,6 +32,10 @@ import {
   type EmbedLoadingPreferences,
   isEmbedLoadMode,
 } from "@/lib/embed-loading";
+import {
+  revokeAllNativeAppSessions,
+  revokeNativeAppSessionById,
+} from "@/lib/native-app-sessions";
 import { isValidDigestTimezone } from "@/lib/notification-digest-schedule";
 import {
   disableNotificationDigests,
@@ -582,6 +586,34 @@ export async function revokeSessionAction(
   return { ok: true, message: "Session signed out." };
 }
 
+export async function revokeNativeSessionAction(
+  _prev: AccountActionState,
+  formData: FormData,
+): Promise<AccountActionState> {
+  const currentUser = await getCurrentUser();
+  if (!(await getCurrentSessionId())) {
+    return {
+      ok: false,
+      message: "Sign out and back in before managing your signed-in sessions.",
+    };
+  }
+
+  const revoked = await revokeNativeAppSessionById({
+    id: String(formData.get("sessionId") ?? ""),
+    userId: currentUser.id,
+    sessionVersion: currentUser.sessionVersion,
+  });
+  if (!revoked) {
+    return {
+      ok: false,
+      message: "That device session is no longer active.",
+    };
+  }
+
+  revalidatePath("/settings");
+  return { ok: true, message: "Device signed out." };
+}
+
 export async function revokeOtherSessionsAction(
   _prev: AccountActionState,
 ): Promise<AccountActionState> {
@@ -594,11 +626,18 @@ export async function revokeOtherSessionsAction(
     };
   }
 
-  const count = await revokeOtherAuthSessions({
-    currentSessionId,
-    userId: currentUser.id,
-    sessionVersion: currentUser.sessionVersion,
-  });
+  const [browserCount, nativeCount] = await Promise.all([
+    revokeOtherAuthSessions({
+      currentSessionId,
+      userId: currentUser.id,
+      sessionVersion: currentUser.sessionVersion,
+    }),
+    revokeAllNativeAppSessions({
+      userId: currentUser.id,
+      sessionVersion: currentUser.sessionVersion,
+    }),
+  ]);
+  const count = browserCount + nativeCount;
   revalidatePath("/settings");
   return {
     ok: true,

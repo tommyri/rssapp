@@ -35,7 +35,8 @@ export const authConfig = {
         pathname === "/service-worker.js" ||
         pathname === "/manifest.webmanifest" ||
         pathname === "/icon" ||
-        pathname === "/apple-icon"
+        pathname === "/apple-icon" ||
+        pathname === "/.well-known/apple-app-site-association"
       )
         return true;
       return !!auth?.user;

@@ -16,25 +16,45 @@ struct RootView: View {
                     apiClient: apiClient
                 )
                 .id(connection.baseURL)
-            } else if let connection = session.connection {
+            } else if session.connection != nil {
                 ConnectionUnavailableView(
-                    serverURL: connection.baseURL,
                     isRetrying: session.isConnecting,
-                    message: session.errorMessage,
+                    message: session.authErrorMessage,
                     retry: { await session.retry() },
-                    forget: { await session.disconnect() }
+                    signOut: { await session.signOut() }
                 )
             } else {
-                ConnectionView(
-                    isConnecting: session.isConnecting,
-                    errorMessage: session.errorMessage,
-                    connect: { address, token in
-                        await session.connect(serverAddress: address, token: token)
-                    }
-                )
+                AuthenticationView()
             }
         }
         .task { await session.restore() }
+        .onReceive(NotificationCenter.default.publisher(for: .currentfoldSessionExpired)) { _ in
+            Task { await session.expireSession() }
+        }
+        .onOpenURL { url in
+            if !GoogleNativeSignIn.handle(url) {
+                session.handleIncomingURL(url)
+            }
+        }
+        .sheet(item: authLinkBinding) { link in
+            switch link {
+            case let .verification(token):
+                VerificationLinkView(token: token)
+            case let .passwordReset(token):
+                PasswordResetLinkView(token: token)
+            case let .invitation(token):
+                NavigationStack {
+                    RegistrationView(prefilledEmail: "", inviteToken: token)
+                }
+            }
+        }
+    }
+
+    private var authLinkBinding: Binding<PendingAuthLink?> {
+        Binding(
+            get: { session.pendingAuthLink },
+            set: { if $0 == nil { session.dismissAuthLink() } }
+        )
     }
 }
 

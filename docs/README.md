@@ -13,6 +13,7 @@ self-hostable web application and a native-client foundation.
 - [design-ux.md](design-ux.md) — layout, list/reading-pane design, keyboard canon, overload handling, and anti-patterns to avoid
 - [brand-identity.md](brand-identity.md) — the approved Currentfold identity: positioning, name, logo assets, responsive use, typography, colour, voice, and production checks
 - [ADR 0001](adr/0001-product-monorepo-and-native-api.md) — why the web app, native iOS client, brand system, and API contract live in one product monorepo
+- [ADR 0002](adr/0002-native-account-authentication.md) — why native account flows use short-lived access tokens and rotating, revocable device sessions
 - [first-party-api.md](first-party-api.md) — the versioned Currentfold-owned client API, contract rules, initial routes, and authentication boundary
 - [iOS README](../apps/ios/README.md) — generate, build, lint, and test the native SwiftUI application
 - [deployment.md](deployment.md) — the complete VPS runbook: GitHub Actions, GHCR credentials, protected environment files, staging/production promotion, backups, and calendar-versioned GitHub Releases

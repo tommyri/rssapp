@@ -1,19 +1,16 @@
 import SwiftUI
 
 struct ConnectionUnavailableView: View {
-    let serverURL: URL
     let isRetrying: Bool
     let message: String?
     let retry: @MainActor () async -> Void
-    let forget: @MainActor () async -> Void
+    let signOut: @MainActor () async -> Void
 
     var body: some View {
         ContentUnavailableView {
-            Label("Couldn’t reach Currentfold", systemImage: "network.slash")
+            Label("Currentfold Is Unavailable", systemImage: "network.slash")
         } description: {
-            Text(message ?? "Check the server and try again.")
-            Text(serverURL.absoluteString)
-                .font(.caption.monospaced())
+            Text(message ?? "Check your internet connection and try again.")
         } actions: {
             Button("Try Again") {
                 Task { await retry() }
@@ -21,8 +18,8 @@ struct ConnectionUnavailableView: View {
             .buttonStyle(.borderedProminent)
             .disabled(isRetrying)
 
-            Button("Use Another Server") {
-                Task { await forget() }
+            Button("Sign Out") {
+                Task { await signOut() }
             }
             .buttonStyle(.bordered)
         }

@@ -251,11 +251,17 @@ the exact deployed app version easy to identify.
    `packages/api-contract` owns an OpenAPI 3.1 contract plus cross-platform fixtures.
    The first `/api/v1` slice covers service discovery, account identity,
    subscriptions, cursor-paginated articles, and batched read-state changes. A native
-   SwiftUI iOS 17 shell consumes those packages with Keychain credential storage,
-   Library/Sources/Settings navigation, pagination, refresh, and native article detail.
-   It is an internal foundation, not an App Store release: browser authorization-code
-   + PKCE and complete offline reader workflows remain prerequisites for external
-   testing. See [ADR 0001](adr/0001-product-monorepo-and-native-api.md) and
+   SwiftUI iOS 17 shell consumes those packages with native sign-in, registration,
+   verification and recovery; short-lived access tokens; rotating Keychain refresh
+   credentials; web-visible device-session revocation; Universal Link handoff;
+   Library/Sources/Settings navigation; pagination; refresh; and native article detail.
+   Native Apple/Google authorization now uses the platform/system surfaces, server-side
+   proof verification, stable provider subjects, and the same rotating device sessions;
+   unconfigured providers stay hidden. It remains an internal foundation, not an App
+   Store release: complete offline reader workflows, Apple deletion-time authorization
+   revocation, signed-device testing, and distribution setup remain prerequisites for
+   external testing. See [ADR 0001](adr/0001-product-monorepo-and-native-api.md),
+   [ADR 0002](adr/0002-native-account-authentication.md), and
    [first-party-api.md](first-party-api.md).
 
 ## Later / version undecided
@@ -288,9 +294,10 @@ promise. A later version gets a scoped goal before one of them becomes planned w
    [brand-identity.md](brand-identity.md) and
    [brand-domain-migration.md](brand-domain-migration.md).
 4. **Native iOS productization** — grow the internal SwiftUI foundation into an
-   externally testable reader: browser authorization-code + PKCE, Read later and saved
-   pages, full article state/progress, resilient offline sync and queued mutations,
-   highlights/notes, accessibility and device testing, and a signed TestFlight build.
+   externally testable reader: Read later and saved pages, full article state/progress,
+   resilient offline sync and queued mutations, highlights/notes, Apple
+   deletion-time authorization revocation, accessibility and device testing, and a
+   signed TestFlight build.
    Build complete reader workflows through `/api/v1`; do not expose Drizzle records or
    stretch the Google Reader adapter into a first-party product API.
 5. **Email newsletter → feed bridge** — a unique inbound address per feed. This is a

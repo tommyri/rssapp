@@ -173,6 +173,8 @@ RESEND_API_KEY=
 EMAIL_FROM=
 AUTH_GOOGLE_ID=
 AUTH_GOOGLE_SECRET=
+APPLE_NATIVE_CLIENT_ID=
+APPLE_TEAM_ID=
 VAPID_SUBJECT=mailto:admin@example.com
 VAPID_PUBLIC_KEY=
 VAPID_PRIVATE_KEY=
@@ -206,9 +208,44 @@ npx web-push generate-vapid-keys --json
 Use the resulting subject, public key, and private key in that environment's file. Do not
 share staging keys with production.
 
+### Optional native iOS Apple integration
+
+Currentfold's verification and password-reset links work as ordinary HTTPS pages with no
+Apple configuration. To open those same links directly in the installed iOS app, set
+`APPLE_TEAM_ID` to the 10-character Team ID shown in the Apple Developer account. The
+service then publishes `/.well-known/apple-app-site-association` for the
+`no.currentfold.reader` bundle identifier. The iOS build's
+`CURRENTFOLD_ASSOCIATED_DOMAIN` must match the hostname in `APP_URL`; change it in
+`apps/ios/project.yml`, regenerate the Xcode project, and sign with an App ID that has
+the Associated Domains capability.
+
+To also enable **Sign in with Apple**, enable that capability for the same App ID and
+set the server audience to the native bundle identifier:
+
+```dotenv
+APPLE_NATIVE_CLIENT_ID=no.currentfold.reader
+```
+
+After redeploying, `GET /api/v1/auth/providers` should report `"apple": true`. The
+native client fetches a one-time server challenge before presenting Apple's system
+authorization sheet. The server checks Apple's signature, issuer, audience, expiry,
+verified email, and nonce before issuing a Currentfold device session. No Apple client
+secret is shipped in the app. Before App Store distribution, complete the separately
+tracked deletion-time Apple authorization revocation flow.
+
+Verify the deployment before distributing a build:
+
+```bash
+curl -i https://rss.example.com/.well-known/apple-app-site-association
+```
+
+Expect `200`, `Content-Type: application/json`, and an `appID` beginning with the Apple
+Team ID. A `404` means `APPLE_TEAM_ID` is absent or malformed. Do not add redirects to
+this well-known route; Apple must receive the JSON document directly over HTTPS.
+
 ### Optional Google sign-in
 
-Google sign-in is optional. rssapp only enables its Google buttons when **both**
+Google sign-in is optional. The web app only enables its Google buttons when **both**
 `AUTH_GOOGLE_ID` and `AUTH_GOOGLE_SECRET` are present. It uses Google for identity only;
 no Google API needs to be enabled for this feature.
 
@@ -250,6 +287,26 @@ no Google API needs to be enabled for this feature.
 5. Visit `/login` or `/signup` on the matching HTTPS domain and select **Continue with
    Google**. A `redirect_uri_mismatch` error means the URI in Google Cloud does not exactly
    equal `https://<APP_URL-host>/api/auth/callback/google`.
+
+For native iOS Google sign-in, keep that Web application client as the token's server
+audience and create one additional **iOS** client for bundle ID
+`no.currentfold.reader`. Configure these public build settings in
+`apps/ios/project.yml` (or as Xcode build overrides), then run
+`npm run ios:generate`:
+
+```yaml
+CURRENTFOLD_GOOGLE_CLIENT_ID: <iOS client ID>
+CURRENTFOLD_GOOGLE_REVERSED_CLIENT_ID: <reversed iOS client ID>
+CURRENTFOLD_GOOGLE_SERVER_CLIENT_ID: <same value as AUTH_GOOGLE_ID>
+```
+
+The client secret remains server-only. The iOS Google button appears only when the
+server has `AUTH_GOOGLE_ID` and all client build settings are present. Confirm server
+discovery with:
+
+```bash
+curl https://rss.example.com/api/v1/auth/providers
+```
 
 Google identities are keyed by Google's stable account subject, never merely a matching
 email address. Someone who already has a password account must sign in normally and link

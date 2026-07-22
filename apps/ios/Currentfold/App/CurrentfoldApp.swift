@@ -7,9 +7,15 @@ struct CurrentfoldApp: App {
     @State private var theme = CurrentfoldTheme()
 
     init() {
-        let apiClient = CurrentfoldAPIClient.live()
+        let credentialStore = KeychainCredentialStore()
+        let apiClient = CurrentfoldAPIClient.live(credentialStore: credentialStore)
         self.apiClient = apiClient
-        _sessionStore = State(initialValue: SessionStore(apiClient: apiClient))
+        _sessionStore = State(
+            initialValue: SessionStore(
+                apiClient: apiClient,
+                credentialStore: credentialStore
+            )
+        )
     }
 
     var body: some Scene {

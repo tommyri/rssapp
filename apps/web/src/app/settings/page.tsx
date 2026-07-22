@@ -34,6 +34,7 @@ import {
   googleAccountSettingsNotice,
   isGoogleAuthEnabled,
 } from "@/lib/google-auth-config";
+import { listActiveNativeAppSessions } from "@/lib/native-app-sessions";
 import { getNotificationDigestPreferences } from "@/lib/notification-digests";
 import { getVapidPublicKey } from "@/lib/push-notifications";
 // Categorized settings (docs/design-ux.md): the rail/pills are a selector, not
@@ -95,6 +96,13 @@ export default async function SettingsPage({
   const accountSessions =
     active === "account" && user
       ? await listActiveAuthSessions({
+          userId,
+          sessionVersion: user.sessionVersion,
+        })
+      : [];
+  const nativeAppSessions =
+    active === "account" && user
+      ? await listActiveNativeAppSessions({
           userId,
           sessionVersion: user.sessionVersion,
         })
@@ -216,6 +224,14 @@ export default async function SettingsPage({
             id: session.id,
             signedInAt: sessionDate(session.createdAt),
             isCurrent: session.id === currentSessionId,
+          }))}
+          nativeSessions={nativeAppSessions.map((session) => ({
+            id: session.id,
+            name: session.deviceName,
+            signedInAt: sessionDate(session.createdAt),
+            lastUsedAt: session.lastUsedAt
+              ? sessionDate(session.lastUsedAt)
+              : null,
           }))}
         />
         <ApiAccessTokenControls

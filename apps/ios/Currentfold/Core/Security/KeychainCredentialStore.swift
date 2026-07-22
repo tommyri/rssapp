@@ -2,10 +2,10 @@ import Foundation
 import Security
 
 actor KeychainCredentialStore {
-    private let service = "no.currentfold.reader.api-token"
-    private let account = "currentfold-api"
+    private let service = "no.currentfold.reader.native-session"
+    private let account = "currentfold-session"
 
-    func readToken() throws -> String? {
+    func readSession() throws -> APISessionCredential? {
         var query = baseQuery
         query[kSecReturnData as String] = true
         query[kSecMatchLimit as String] = kSecMatchLimitOne
@@ -14,16 +14,19 @@ actor KeychainCredentialStore {
         let status = SecItemCopyMatching(query as CFDictionary, &result)
         if status == errSecItemNotFound { return nil }
         guard status == errSecSuccess,
-              let data = result as? Data,
-              let value = String(data: data, encoding: .utf8)
+              let data = result as? Data
         else {
             throw KeychainError.unexpectedStatus(status)
         }
-        return value
+        do {
+            return try JSONDecoder().decode(APISessionCredential.self, from: data)
+        } catch {
+            throw KeychainError.invalidCredential
+        }
     }
 
-    func saveToken(_ token: String) throws {
-        let data = Data(token.utf8)
+    func saveSession(_ session: APISessionCredential) throws {
+        let data = try JSONEncoder().encode(session)
         let status = SecItemUpdate(
             baseQuery as CFDictionary,
             [kSecValueData as String: data] as CFDictionary
@@ -43,8 +46,21 @@ actor KeychainCredentialStore {
         }
     }
 
-    func deleteToken() throws {
+    func deleteSession() throws {
         let status = SecItemDelete(baseQuery as CFDictionary)
+        guard status == errSecSuccess || status == errSecItemNotFound else {
+            throw KeychainError.unexpectedStatus(status)
+        }
+    }
+
+    /** Remove the internal-build app credential that predates native sign-in. */
+    func deleteLegacyCredential() throws {
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: "no.currentfold.reader.api-token",
+            kSecAttrAccount as String: "currentfold-api",
+        ]
+        let status = SecItemDelete(query as CFDictionary)
         guard status == errSecSuccess || status == errSecItemNotFound else {
             throw KeychainError.unexpectedStatus(status)
         }
@@ -61,8 +77,14 @@ actor KeychainCredentialStore {
 
 private enum KeychainError: LocalizedError {
     case unexpectedStatus(OSStatus)
+    case invalidCredential
 
     var errorDescription: String? {
-        "The secure credential store is unavailable."
+        switch self {
+        case .unexpectedStatus:
+            "The secure credential store is unavailable."
+        case .invalidCredential:
+            "The saved sign-in could not be read securely. Sign in again."
+        }
     }
 }
