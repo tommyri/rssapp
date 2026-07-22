@@ -129,6 +129,7 @@ One deliberate detail: primary keys are `bigint` identity columns, not UUIDs. Th
    implemented, but both need soak testing on the deployed HTTPS origin with real VAPID
    and Resend configuration. Digest delivery state exposes retries and terminal failure
    without logging message content or full recipient details.
-3. **Native sync evolution** — the Google Reader-compatible adapter is deliberately
-   isolated from the internal reader model. If rssapp ever builds its own mobile client,
-   define a modern versioned sync API rather than extending the legacy wire format.
+3. **Native sync evolution — decided.** The Google Reader-compatible adapter remains an
+   isolated compatibility surface. Currentfold's own mobile clients use a modern,
+   versioned `/api/v1` contract backed by shared reader-domain operations; see
+   [ADR 0001](adr/0001-product-monorepo-and-native-api.md).
