@@ -1,0 +1,34 @@
+{
+  "data": [
+    {
+      "id": "42",
+      "subscriptionId": "7",
+      "title": "A calmer way to follow the web",
+      "url": "https://example.com/currentfold",
+      "canonicalUrl": "https://example.com/currentfold",
+      "author": "Example Author",
+      "publishedAt": "2026-07-22T12:00:00.000Z",
+      "createdAt": "2026-07-22T12:01:00.000Z",
+      "feed": {
+        "id": "3",
+        "title": "Example Source",
+        "url": "https://example.com/feed.xml",
+        "siteUrl": "https://example.com"
+      },
+      "content": {
+        "html": "<p>A durable readable copy.</p>",
+        "source": "full"
+      },
+      "audio": null,
+      "state": {
+        "read": false,
+        "starred": false,
+        "readLater": false,
+        "readingProgress": null
+      }
+    }
+  ],
+  "pagination": {
+    "nextCursor": null
+  }
+}

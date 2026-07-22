@@ -265,11 +265,27 @@ keeps the earliest copy as the representative, and keyset-paginates on it. Singl
 Starred, Read later and Search are never collapsed. On by default; toggle in
 **Settings → Reading**.
 
+### First-party API
+
+Currentfold's native product API lives under `/api/v1`. The initial stable slice exposes
+service discovery, the current account, subscriptions, a cursor-paginated article
+stream, and idempotent batched read-state updates. Its OpenAPI 3.1 contract is maintained
+in `packages/api-contract/openapi.json` and served by every installation at
+`/api/v1/openapi.json`.
+
+For development, create a revocable app credential in **Settings → Account → Native
+reader apps** and send it as `Authorization: Bearer …`. This is an explicit bridge for
+the first native implementation; the production iOS sign-in flow will use browser-based
+authorization with PKCE instead of asking people to paste a credential. See
+[docs/first-party-api.md](docs/first-party-api.md).
+
 ### Quality
 
 - `npm run lint` — Biome check
 - `npm run format` — Biome format
 - `npm test` — Vitest unit tests
+- `npm run brand:check` — verify generated web and Swift identity output
+- `npm run contract:check` — validate the first-party OpenAPI contract
 
 ## Deployment (home server / VPS)
 

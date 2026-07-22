@@ -20,6 +20,7 @@
     "set-owner": "npm run set-owner --workspace @currentfold/web",
     "brand:generate": "npm run generate --workspace @currentfold/brand",
     "brand:check": "npm run check --workspace @currentfold/brand",
+    "contract:check": "npm run check --workspace @currentfold/api-contract",
     "release:prepare": "node scripts/prepare-release.mjs"
   }
 }

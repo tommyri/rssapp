@@ -39,6 +39,12 @@ describe("auth route exceptions", () => {
         request: request("/api/greader/reader/api/0/subscription/list"),
       }),
     ).toBe(true);
+    expect(
+      authorized({
+        auth: null,
+        request: request("/api/v1/articles"),
+      }),
+    ).toBe(true);
   });
 
   it("keeps the deployment health probe reachable without a session", () => {

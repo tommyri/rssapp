@@ -1,0 +1,628 @@
+{
+  "openapi": "3.1.0",
+  "jsonSchemaDialect": "https://json-schema.org/draft/2020-12/schema",
+  "info": {
+    "title": "Currentfold API",
+    "version": "1.0.0",
+    "description": "The stable first-party JSON API for Currentfold clients. Integer database keys are represented as opaque decimal strings on the wire."
+  },
+  "servers": [
+    {
+      "url": "/",
+      "description": "The Currentfold installation serving this document"
+    }
+  ],
+  "tags": [
+    {
+      "name": "Discovery"
+    },
+    {
+      "name": "Account"
+    },
+    {
+      "name": "Reader"
+    }
+  ],
+  "paths": {
+    "/api/v1": {
+      "get": {
+        "operationId": "getServiceMetadata",
+        "summary": "Discover this Currentfold API",
+        "tags": ["Discovery"],
+        "responses": {
+          "200": {
+            "description": "Service and capability metadata",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceMetadataResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/openapi.json": {
+      "get": {
+        "operationId": "getOpenApiContract",
+        "summary": "Download the OpenAPI contract",
+        "tags": ["Discovery"],
+        "responses": {
+          "200": {
+            "description": "OpenAPI 3.1 document",
+            "content": {
+              "application/vnd.oai.openapi+json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/me": {
+      "get": {
+        "operationId": "getCurrentAccount",
+        "summary": "Get the authenticated account",
+        "tags": ["Account"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The authenticated account",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccountResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/v1/subscriptions": {
+      "get": {
+        "operationId": "listSubscriptions",
+        "summary": "List the account's subscriptions",
+        "tags": ["Reader"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Subscriptions in folder and title order",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["data"],
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Subscription"
+                      }
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/v1/articles": {
+      "get": {
+        "operationId": "listArticles",
+        "summary": "List articles newest first",
+        "description": "Returns subscribed, non-muted articles. Pass nextCursor unchanged to continue from the prior page.",
+        "tags": ["Reader"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 50
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "description": "Opaque continuation returned by the previous response.",
+            "schema": {
+              "type": "string",
+              "maxLength": 512
+            }
+          },
+          {
+            "name": "unreadOnly",
+            "in": "query",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          },
+          {
+            "name": "subscriptionId",
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/OpaqueId"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A keyset-paginated article page",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ArticlePage"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/InvalidRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/v1/articles/read-state": {
+      "patch": {
+        "operationId": "updateArticleReadState",
+        "summary": "Set read state for an article batch",
+        "description": "This operation is idempotent. Every article must belong to a feed followed by the authenticated account.",
+        "tags": ["Reader"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReadStateUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The resulting state and affected article IDs",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReadStateResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/InvalidRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/ArticleNotFound"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "A revocable app credential created in Currentfold settings. Browser-based authorization with PKCE will replace manual credential entry in the first-party iOS app."
+      }
+    },
+    "responses": {
+      "Unauthorized": {
+        "description": "The bearer credential is absent, invalid, revoked, or belongs to an inactive account.",
+        "headers": {
+          "WWW-Authenticate": {
+            "schema": {
+              "type": "string"
+            }
+          }
+        },
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            }
+          }
+        }
+      },
+      "InvalidRequest": {
+        "description": "A query parameter or JSON body is invalid.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            }
+          }
+        }
+      },
+      "ArticleNotFound": {
+        "description": "At least one article is not available to this account.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            }
+          }
+        }
+      }
+    },
+    "schemas": {
+      "OpaqueId": {
+        "type": "string",
+        "pattern": "^[1-9][0-9]*$",
+        "examples": ["42"]
+      },
+      "ServiceMetadataResponse": {
+        "type": "object",
+        "required": ["data"],
+        "properties": {
+          "data": {
+            "type": "object",
+            "required": [
+              "name",
+              "apiVersion",
+              "productVersion",
+              "capabilities",
+              "links"
+            ],
+            "properties": {
+              "name": {
+                "const": "Currentfold"
+              },
+              "apiVersion": {
+                "const": "v1"
+              },
+              "productVersion": {
+                "type": "string"
+              },
+              "capabilities": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "links": {
+                "type": "object",
+                "required": ["openApi"],
+                "properties": {
+                  "openApi": {
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      "AccountResponse": {
+        "type": "object",
+        "required": ["data"],
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/Account"
+          }
+        },
+        "additionalProperties": false
+      },
+      "Account": {
+        "type": "object",
+        "required": ["id", "email", "displayName"],
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/OpaqueId"
+          },
+          "email": {
+            "type": "string",
+            "format": "email"
+          },
+          "displayName": {
+            "type": ["string", "null"]
+          }
+        },
+        "additionalProperties": false
+      },
+      "Feed": {
+        "type": "object",
+        "required": ["id", "title", "url", "siteUrl"],
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/OpaqueId"
+          },
+          "title": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string",
+            "format": "uri"
+          },
+          "siteUrl": {
+            "type": ["string", "null"],
+            "format": "uri"
+          }
+        },
+        "additionalProperties": false
+      },
+      "Subscription": {
+        "type": "object",
+        "required": ["id", "title", "feed", "folder", "unreadCount", "paused"],
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/OpaqueId"
+          },
+          "title": {
+            "type": "string"
+          },
+          "feed": {
+            "type": "object",
+            "required": ["id", "url", "siteUrl"],
+            "properties": {
+              "id": {
+                "$ref": "#/components/schemas/OpaqueId"
+              },
+              "url": {
+                "type": "string",
+                "format": "uri"
+              },
+              "siteUrl": {
+                "type": ["string", "null"],
+                "format": "uri"
+              }
+            },
+            "additionalProperties": false
+          },
+          "folder": {
+            "oneOf": [
+              {
+                "type": "object",
+                "required": ["id", "name"],
+                "properties": {
+                  "id": {
+                    "$ref": "#/components/schemas/OpaqueId"
+                  },
+                  "name": {
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "unreadCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "paused": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ArticleState": {
+        "type": "object",
+        "required": ["read", "starred", "readLater", "readingProgress"],
+        "properties": {
+          "read": {
+            "type": "boolean"
+          },
+          "starred": {
+            "type": "boolean"
+          },
+          "readLater": {
+            "type": "boolean"
+          },
+          "readingProgress": {
+            "type": ["number", "null"],
+            "minimum": 0,
+            "maximum": 1
+          }
+        },
+        "additionalProperties": false
+      },
+      "Article": {
+        "type": "object",
+        "required": [
+          "id",
+          "subscriptionId",
+          "title",
+          "url",
+          "canonicalUrl",
+          "author",
+          "publishedAt",
+          "createdAt",
+          "feed",
+          "content",
+          "audio",
+          "state"
+        ],
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/OpaqueId"
+          },
+          "subscriptionId": {
+            "$ref": "#/components/schemas/OpaqueId"
+          },
+          "title": {
+            "type": "string"
+          },
+          "url": {
+            "type": ["string", "null"],
+            "format": "uri"
+          },
+          "canonicalUrl": {
+            "type": ["string", "null"],
+            "format": "uri"
+          },
+          "author": {
+            "type": ["string", "null"]
+          },
+          "publishedAt": {
+            "type": ["string", "null"],
+            "format": "date-time"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "feed": {
+            "$ref": "#/components/schemas/Feed"
+          },
+          "content": {
+            "type": "object",
+            "required": ["html", "source"],
+            "properties": {
+              "html": {
+                "type": ["string", "null"]
+              },
+              "source": {
+                "type": "string",
+                "enum": ["full", "feed"]
+              }
+            },
+            "additionalProperties": false
+          },
+          "audio": {
+            "oneOf": [
+              {
+                "type": "object",
+                "required": ["url", "type"],
+                "properties": {
+                  "url": {
+                    "type": "string",
+                    "format": "uri"
+                  },
+                  "type": {
+                    "type": ["string", "null"]
+                  }
+                },
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "state": {
+            "$ref": "#/components/schemas/ArticleState"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ArticlePage": {
+        "type": "object",
+        "required": ["data", "pagination"],
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Article"
+            }
+          },
+          "pagination": {
+            "type": "object",
+            "required": ["nextCursor"],
+            "properties": {
+              "nextCursor": {
+                "type": ["string", "null"]
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      "ReadStateUpdate": {
+        "type": "object",
+        "required": ["articleIds", "read"],
+        "properties": {
+          "articleIds": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 100,
+            "items": {
+              "$ref": "#/components/schemas/OpaqueId"
+            }
+          },
+          "read": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ReadStateResponse": {
+        "type": "object",
+        "required": ["data"],
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/ReadStateUpdate"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "required": ["error"],
+        "properties": {
+          "error": {
+            "type": "object",
+            "required": ["code", "message"],
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "name": "@currentfold/api-contract",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "check": "node scripts/check-contract.mjs"
+  },
+  "files": [
+    "fixtures",
+    "openapi.json"
+  ],
+  "exports": {
+    "./openapi": "./openapi.json",
+    "./fixtures/*": "./fixtures/*"
+  }
+}

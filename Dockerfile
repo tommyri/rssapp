@@ -6,6 +6,7 @@ FROM node:22-alpine AS deps
 WORKDIR /app
 COPY package.json package-lock.json ./
 COPY apps/web/package.json ./apps/web/package.json
+COPY packages/api-contract/package.json ./packages/api-contract/package.json
 COPY packages/brand/package.json ./packages/brand/package.json
 # The lockfile is written by npm 11 (dev machines); the bundled npm 10 chokes
 # on its nested optional platform deps. Keep the installer in the same major.
