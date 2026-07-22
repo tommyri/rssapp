@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title">
+  <title id="title">Currentfold maskable app icon</title>
+  <defs>
+    <path id="folded-current" d="M83 12 74 31H62c-8 0-14 6-14 17s6 17 14 17h12l9 19H53C30 84 12 68 12 48S30 12 53 12Z"/>
+    <clipPath id="upper"><path d="M0 0h96v48H0z"/></clipPath>
+    <clipPath id="lower"><path d="M0 48h96v48H0z"/></clipPath>
+  </defs>
+  <path fill="#181512" d="M0 0h512v512H0z"/>
+  <g transform="translate(122 122) scale(2.8)">
+    <use href="#folded-current" fill="#EA7558" clip-path="url(#upper)"/>
+    <use href="#folded-current" fill="#FAF9F5" clip-path="url(#lower)"/>
+  </g>
+</svg>
