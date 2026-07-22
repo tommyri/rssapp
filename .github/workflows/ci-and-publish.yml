@@ -21,6 +21,7 @@ jobs:
       - run: npm ci
       - run: npm run brand:check
       - run: npm run contract:check
+      - run: npm run deploy:check
       - run: npm run lint
       - run: npm test
       - run: npm run build
