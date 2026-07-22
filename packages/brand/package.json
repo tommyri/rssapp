@@ -1,0 +1,20 @@
+{
+  "name": "@currentfold/brand",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "generate": "node scripts/generate.mjs",
+    "check": "node scripts/generate.mjs --check"
+  },
+  "files": [
+    "assets",
+    "dist",
+    "ios",
+    "tokens.json"
+  ],
+  "exports": {
+    "./tokens": "./tokens.json",
+    "./web": "./dist/currentfold.css",
+    "./assets/*": "./assets/*"
+  }
+}

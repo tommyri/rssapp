@@ -48,15 +48,16 @@ add page lines, arrows, waves, an RSS glyph, or another fold to explain it.
 
 | Asset | Purpose |
 | --- | --- |
-| [`currentfold-mark.svg`](../public/brand/currentfold-mark.svg) | Primary symbol on paper or other light surfaces. |
-| [`currentfold-mark-reversed.svg`](../public/brand/currentfold-mark-reversed.svg) | Symbol on deep ink/dark surfaces. |
-| [`currentfold-mark-mono.svg`](../public/brand/currentfold-mark-mono.svg) | One-colour printing, embossing, or constrained contexts. |
-| [`currentfold-lockup.svg`](../public/brand/currentfold-lockup.svg) | Portable primary horizontal lockup with the wordmark converted to paths. |
-| [`currentfold-lockup-reversed.svg`](../public/brand/currentfold-lockup-reversed.svg) | Portable horizontal lockup for deep ink/dark surfaces. |
-| [`currentfold-app-icon.svg`](../public/brand/currentfold-app-icon.svg) | Rounded source for previews and conventional application icons. |
-| [`currentfold-app-icon-maskable.svg`](../public/brand/currentfold-app-icon-maskable.svg) | Full-bleed PWA source with the symbol inside the mask-safe area. |
+| [`currentfold-mark.svg`](../packages/brand/assets/currentfold-mark.svg) | Primary symbol on paper or other light surfaces. |
+| [`currentfold-mark-reversed.svg`](../packages/brand/assets/currentfold-mark-reversed.svg) | Symbol on deep ink/dark surfaces. |
+| [`currentfold-mark-mono.svg`](../packages/brand/assets/currentfold-mark-mono.svg) | One-colour printing, embossing, or constrained contexts. |
+| [`currentfold-lockup.svg`](../packages/brand/assets/currentfold-lockup.svg) | Portable primary horizontal lockup with the wordmark converted to paths. |
+| [`currentfold-lockup-reversed.svg`](../packages/brand/assets/currentfold-lockup-reversed.svg) | Portable horizontal lockup for deep ink/dark surfaces. |
+| [`currentfold-app-icon.svg`](../packages/brand/assets/currentfold-app-icon.svg) | Rounded source for previews and conventional application icons. |
+| [`currentfold-app-icon-maskable.svg`](../packages/brand/assets/currentfold-app-icon-maskable.svg) | Full-bleed PWA source with the symbol inside the mask-safe area. |
 
-The SVGs are the editable masters. Generate raster favicon and PWA sizes from them during
+The SVGs and portable tokens live in `packages/brand` as the platform-neutral source of
+truth. Generate raster favicon and PWA sizes from them during
 the branded-release implementation; do not hand-edit independent PNG variants.
 
 ### Responsive use

@@ -1,0 +1,10 @@
+/* Generated from packages/brand/tokens.json. Do not edit directly. */
+:root {
+  --currentfold-color-paper: #FAF9F5;
+  --currentfold-color-ink: #1C1917;
+  --currentfold-color-current: #EA7558;
+  --currentfold-color-stone: #78716C;
+  --currentfold-color-deep-ink: #181512;
+  --currentfold-font-editorial: "Newsreader", ui-serif, Georgia, serif;
+  --currentfold-font-interface: "Geist", ui-sans-serif, system-ui, sans-serif;
+}

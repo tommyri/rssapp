@@ -1,6 +1,19 @@
-# rssapp
+# Currentfold
 
-A self-hosted RSS reader web app. See [docs/](docs/README.md) for the full plan: features, tech stack, design/UX decisions, competitive analysis, and business posture.
+A focused reader for following, saving, and returning to the open web. See
+[docs/](docs/README.md) for the product plan, design decisions, architecture, operations,
+and business posture.
+
+## Repository layout
+
+- `apps/web` — the existing Next.js reader, API, scheduler, and database access.
+- `apps/ios` — the native SwiftUI reader (introduced incrementally).
+- `packages/brand` — approved identity masters and platform-neutral design tokens.
+- `packages/api-contract` — the first-party API contract and shared fixtures.
+- `docs` — product, design, architecture, and operations documentation.
+
+Root npm commands forward to the appropriate workspace, so existing development and
+deployment commands remain stable as more product surfaces are added.
 
 ## Stack
 
@@ -21,15 +34,17 @@ verify their email before their first sign-in, then get a short setup flow for i
 OPML, adding a source, choosing a starter feed, or starting empty. Existing reader data
 remains scoped to the signed-in account.
 
-The dev database URL defaults to the compose credentials (see `src/db/config.ts`); set
+The dev database URL defaults to the compose credentials (see
+`apps/web/src/db/config.ts`); set
 `DATABASE_URL` in a `.env` file to override.
 
 ### Auth
 
 Auth.js (credentials, with optional Google OAuth). Config is split for edge compatibility:
-`src/auth.config.ts` (edge-safe, drives the route-protecting proxy in `src/proxy.ts` —
-Next 16's successor to `middleware.ts`) and `src/auth.ts` (the providers, which
-read the DB). `getCurrentUserId()` in `src/lib/current-user.ts` is the single place a
+`apps/web/src/auth.config.ts` (edge-safe, drives the route-protecting proxy in
+`apps/web/src/proxy.ts` — Next 16's successor to `middleware.ts`) and
+`apps/web/src/auth.ts` (the providers, which read the DB). `getCurrentUserId()` in
+`apps/web/src/lib/current-user.ts` is the single place a
 JWT becomes a current, active account: it also rejects suspended accounts and sessions
 invalidated by a password reset.
 
@@ -117,14 +132,16 @@ docker compose exec app node scripts/reset-password.mjs   # production container
 
 ### Database
 
-- Schema lives in `src/db/schema.ts`; the client in `src/db/index.ts`
+- Schema lives in `apps/web/src/db/schema.ts`; the client in
+  `apps/web/src/db/index.ts`
 - `npm run db:generate` — generate a migration after schema changes
 - `npm run db:migrate` — apply migrations
 - `npm run db:studio` — browse the database
 
 ### Background polling
 
-An in-process scheduler (`src/lib/scheduler.ts`, started from `src/instrumentation.ts`)
+An in-process scheduler (`apps/web/src/lib/scheduler.ts`, started from
+`apps/web/src/instrumentation.ts`)
 ticks every 60s, refreshes any feed whose `next_fetch_at` has passed, and reschedules
 it. The poll "queue" is just the `feeds.next_fetch_at` column — no Redis/queue. Tune the
 tick with `SCHEDULER_TICK_MS` (milliseconds); it runs only in the Node server, not during
@@ -154,7 +171,8 @@ label, or add them to the in-app notification inbox.
 Rules run at ingest (new items arrive with state already applied). A saved rule can
 also be explicitly confirmed against a bounded batch of existing articles; creating a
 rule never mutates older items. Muted items vanish from lists and unread counts entirely.
-The pure matching engine lives in `src/lib/rules/engine.ts` with unit tests alongside.
+The pure matching engine lives in `apps/web/src/lib/rules/engine.ts` with unit tests
+alongside.
 
 ### Browser push notifications
 
@@ -203,7 +221,8 @@ and scheduled messages are printed to the server log.
 ### Full-content extraction
 
 For truncated feeds, "Load full content" in the article view fetches the article page
-and extracts readable content (Readability + linkedom, `src/lib/feeds/extract.ts`).
+and extracts readable content (Readability + linkedom,
+`apps/web/src/lib/feeds/extract.ts`).
 Results are sanitized like feed content and cached per article. A per-feed
 "Always load full content" toggle on `/feeds` extracts automatically at ingest.
 The "Open original" link is always available as the escape hatch.
@@ -214,17 +233,19 @@ The "Open original" link is always available as the escape hatch.
 unified view: flagged feed articles (`item_states.read_later`) and **saved web pages**
 merged newest-saved-first. Save any link two ways:
 
-- Paste a URL into the field at the top of Read later (`SaveLinkForm` → `saveLinkAction`),
+- Paste a URL into the field at the top of Read later (`SaveLinkForm` →
+  `saveLinkAction`),
   which extracts a readable copy right away.
 - Drag the **bookmarklet** from Settings to your bookmarks bar; clicking it on any page
-  hits `GET /save?url=…` (`src/app/save/route.ts`), saves the link, and bounces to Read
+  hits `GET /save?url=…` (`apps/web/src/app/save/route.ts`), saves the link, and bounces to Read
   later. Extraction runs in the background — the scheduler's `sweepPendingSavedPages` tick
   is the backstop.
 
 Saved pages live in a per-user `saved_pages` table (arbitrary URLs have no feed, so they
 don't fit `items`). Each gets a Readability-extracted, sanitized copy (`extractReadablePage`
-in `src/lib/feeds/extract.ts`) with a `pending → ready | error` lifecycle, and is indexed
-into full-text search alongside feed articles. Domain logic is in `src/lib/saved-pages.ts`.
+in `apps/web/src/lib/feeds/extract.ts`) with a `pending → ready | error` lifecycle, and is indexed
+into full-text search alongside feed articles. Domain logic is in
+`apps/web/src/lib/saved-pages.ts`.
 
 ### Duplicate filtering
 
@@ -237,8 +258,9 @@ shown row also marks its duplicates read.
 Matching is by a normalized **canonical URL** (`canonicalizeUrl` — lowercased host,
 tracking params and fragment dropped; the same normalization used for saved links),
 stored on `items.canonical_url` at ingest and backfilled for older items at boot
-(`backfillCanonicalUrls`, run from `instrumentation-node.ts` after migrations). The
-reader groups by it in a single window pass (`listItemsCollapsed` in `src/lib/reader.ts`),
+(`backfillCanonicalUrls`, run from `apps/web/src/instrumentation-node.ts` after
+migrations). The reader groups by it in a single window pass (`listItemsCollapsed` in
+`apps/web/src/lib/reader.ts`),
 keeps the earliest copy as the representative, and keyset-paginates on it. Single-feed,
 Starred, Read later and Search are never collapsed. On by default; toggle in
 **Settings → Reading**.

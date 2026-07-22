@@ -2,7 +2,7 @@
 .env.*
 .git
 .claude
-.next
+**/.next
 node_modules
 coverage
 *.log

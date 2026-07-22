@@ -17,13 +17,16 @@ if (!match || month < 1 || month > 12 || sequence < 1) {
 
 const root = process.cwd();
 const packagePath = resolve(root, "package.json");
+const webPackagePath = resolve(root, "apps/web/package.json");
 const lockPath = resolve(root, "package-lock.json");
 const changelogPath = resolve(root, "CHANGELOG.md");
-const [packageSource, lockSource, changelog] = await Promise.all([
-  readFile(packagePath, "utf8"),
-  readFile(lockPath, "utf8"),
-  readFile(changelogPath, "utf8"),
-]);
+const [packageSource, webPackageSource, lockSource, changelog] =
+  await Promise.all([
+    readFile(packagePath, "utf8"),
+    readFile(webPackagePath, "utf8"),
+    readFile(lockPath, "utf8"),
+    readFile(changelogPath, "utf8"),
+  ]);
 
 const releaseHeader = new RegExp(
   `^## \\[${version.replaceAll(".", "\\.")}\\]`,
@@ -69,17 +72,21 @@ const updatedChangelog =
   (nextRelease === -1 ? "" : changelog.slice(nextRelease + 1));
 
 const packageJson = JSON.parse(packageSource);
+const webPackageJson = JSON.parse(webPackageSource);
 const packageLock = JSON.parse(lockSource);
 packageJson.version = version;
+webPackageJson.version = version;
 packageLock.version = version;
 packageLock.packages[""].version = version;
+packageLock.packages["apps/web"].version = version;
 
 await Promise.all([
   writeFile(packagePath, `${JSON.stringify(packageJson, null, 2)}\n`),
+  writeFile(webPackagePath, `${JSON.stringify(webPackageJson, null, 2)}\n`),
   writeFile(lockPath, `${JSON.stringify(packageLock, null, 2)}\n`),
   writeFile(changelogPath, updatedChangelog),
 ]);
 
 console.log(
-  `Prepared rssapp ${version}. Review the changelog, then commit and tag v${version}.`,
+  `Prepared Currentfold ${version}. Review the changelog, then commit and tag v${version}.`,
 );
