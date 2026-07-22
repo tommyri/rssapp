@@ -1,0 +1,14 @@
+included:
+  - Currentfold
+  - CurrentfoldTests
+
+line_length:
+  warning: 120
+  ignores_comments: true
+  ignores_urls: true
+
+identifier_name:
+  min_length: 2
+
+disabled_rules:
+  - trailing_comma

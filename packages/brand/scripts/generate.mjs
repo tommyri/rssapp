@@ -1,6 +1,7 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import sharp from "sharp";
 
 const packageRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
 const tokens = JSON.parse(
@@ -77,6 +78,30 @@ const reversedMark = await readFile(
   join(packageRoot, "assets/currentfold-mark-reversed.svg"),
   "utf8",
 );
+const appIconSource = await readFile(
+  join(packageRoot, "assets/currentfold-app-icon.svg"),
+);
+const appIcon = await sharp(appIconSource)
+  .resize(1024, 1024)
+  .flatten({ background: color("deepInk").hex })
+  .png()
+  .toBuffer();
+
+const appIconContents = `${JSON.stringify(
+  {
+    images: [
+      {
+        filename: "CurrentfoldAppIcon.png",
+        idiom: "universal",
+        platform: "ios",
+        size: "1024x1024",
+      },
+    ],
+    info: { author: "xcode", version: 1 },
+  },
+  null,
+  2,
+)}\n`;
 
 const outputs = new Map([
   ["dist/currentfold.css", css],
@@ -97,21 +122,27 @@ const outputs = new Map([
     "ios/Sources/CurrentfoldBrand/Resources/Media.xcassets/CurrentfoldMark.imageset/currentfold-mark-reversed.svg",
     reversedMark,
   ],
+  ["ios/AppAssets.xcassets/Contents.json", assetCatalogContents],
+  ["ios/AppAssets.xcassets/AppIcon.appiconset/Contents.json", appIconContents],
+  ["ios/AppAssets.xcassets/AppIcon.appiconset/CurrentfoldAppIcon.png", appIcon],
 ]);
 
 const stale = [];
 
 for (const [relativePath, expected] of outputs) {
   const path = join(packageRoot, relativePath);
+  const expectedBuffer = Buffer.isBuffer(expected)
+    ? expected
+    : Buffer.from(expected);
 
   if (checkOnly) {
-    const actual = await readFile(path, "utf8").catch(() => null);
-    if (actual !== expected) stale.push(relativePath);
+    const actual = await readFile(path).catch(() => null);
+    if (!actual?.equals(expectedBuffer)) stale.push(relativePath);
     continue;
   }
 
   await mkdir(dirname(path), { recursive: true });
-  await writeFile(path, expected);
+  await writeFile(path, expectedBuffer);
 }
 
 if (stale.length > 0) {

@@ -6,7 +6,8 @@ Currentfold's platform-neutral identity source package.
 - `tokens.json` contains the portable brand foundations in the Design Tokens Community
   Group 2025.10 format.
 - `dist/currentfold.css` is the generated web token output.
-- `ios/` is a local Swift package with generated Swift tokens and bundled vector assets.
+- `ios/` is a local Swift package with generated Swift tokens and bundled vector assets,
+  plus the generated app-target icon catalog.
 
 Web, iOS, email, and marketing surfaces should generate their platform-specific assets
 from this package. Do not maintain independent logo geometry or hard-coded brand colours

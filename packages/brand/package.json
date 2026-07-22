@@ -6,6 +6,9 @@
     "generate": "node scripts/generate.mjs",
     "check": "node scripts/generate.mjs --check"
   },
+  "devDependencies": {
+    "sharp": "^0.34.5"
+  },
   "files": [
     "assets",
     "dist",

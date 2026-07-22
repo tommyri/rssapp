@@ -21,6 +21,9 @@
     "brand:generate": "npm run generate --workspace @currentfold/brand",
     "brand:check": "npm run check --workspace @currentfold/brand",
     "contract:check": "npm run check --workspace @currentfold/api-contract",
+    "ios:generate": "xcodegen generate --spec apps/ios/project.yml",
+    "ios:lint": "swiftlint lint --config apps/ios/.swiftlint.yml --strict --no-cache",
+    "ios:test": "apps/ios/scripts/test.sh",
     "release:prepare": "node scripts/prepare-release.mjs"
   }
 }

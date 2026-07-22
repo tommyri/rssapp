@@ -1,0 +1,36 @@
+name: Verify iOS
+
+on:
+  pull_request:
+    paths:
+      - "apps/ios/**"
+      - "packages/api-contract/**"
+      - "packages/brand/**"
+      - ".github/workflows/ios.yml"
+  push:
+    branches: [main]
+    paths:
+      - "apps/ios/**"
+      - "packages/api-contract/**"
+      - "packages/brand/**"
+      - ".github/workflows/ios.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Build and test
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v6
+      - name: Install project tools
+        run: brew install xcodegen swiftlint
+      - name: Verify generated Xcode project
+        run: |
+          xcodegen generate --spec apps/ios/project.yml
+          git diff --exit-code -- apps/ios/Currentfold.xcodeproj
+      - name: Lint Swift
+        run: swiftlint lint --config apps/ios/.swiftlint.yml --strict --no-cache
+      - name: Run iOS tests
+        run: apps/ios/scripts/test.sh
