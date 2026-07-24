@@ -16,6 +16,7 @@ self-hostable web application and a native-client foundation.
 - [ADR 0002](adr/0002-native-account-authentication.md) — why native account flows use short-lived access tokens and rotating, revocable device sessions
 - [first-party-api.md](first-party-api.md) — the versioned Currentfold-owned client API, contract rules, initial routes, and authentication boundary
 - [iOS README](../apps/ios/README.md) — generate, build, lint, and test the native SwiftUI application
+- [sign-in-with-apple.md](sign-in-with-apple.md) — deferred production-readiness checklist covering Apple membership, signing, credential revocation, private email relay, deployment, and validation
 - [deployment.md](deployment.md) — the complete VPS runbook: GitHub Actions, GHCR credentials, protected environment files, staging/production promotion, backups, and calendar-versioned GitHub Releases
 - [brand-domain-migration.md](brand-domain-migration.md) — the planned full-stack rebrand and clean single-user cutover: product identity, repository/image, database/storage, domain, Resend, and Cloudflare
 - [full-content-by-default.md](full-content-by-default.md) — the shipped design and operating model for reliable, queued full-text extraction on every linked feed item

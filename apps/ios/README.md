@@ -50,6 +50,13 @@ Domains entitlement. The same HTTPS pages remain the fallback when the app is ab
 
 ### Apple provider setup
 
+Production activation is deliberately deferred until a paid Apple Developer Program
+membership and the permanent Currentfold domain are ready. Do not enable the provider
+only by setting its environment variables: authorization-code exchange, deletion-time
+Apple token revocation, Private Email Relay, signed-device testing, and distribution
+setup must also be completed. The source-of-truth checklist is
+[`docs/sign-in-with-apple.md`](../../docs/sign-in-with-apple.md).
+
 1. Enable **Sign in with Apple** and **Associated Domains** for the
    `no.currentfold.reader` App ID in the Apple Developer portal.
 2. Set `APPLE_NATIVE_CLIENT_ID=no.currentfold.reader` and `APPLE_TEAM_ID=<10-character

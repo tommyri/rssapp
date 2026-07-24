@@ -257,10 +257,13 @@ the exact deployed app version easy to identify.
    Library/Sources/Settings navigation; pagination; refresh; and native article detail.
    Native Apple/Google authorization now uses the platform/system surfaces, server-side
    proof verification, stable provider subjects, and the same rotating device sessions;
-   unconfigured providers stay hidden. It remains an internal foundation, not an App
-   Store release: complete offline reader workflows, Apple deletion-time authorization
-   revocation, signed-device testing, and distribution setup remain prerequisites for
-   external testing. See [ADR 0001](adr/0001-product-monorepo-and-native-api.md),
+   unconfigured providers stay hidden. Sign in with Apple is deliberately disabled
+   until a paid Apple Developer Program membership is active and its complete credential
+   lifecycle is production-ready. It remains an internal foundation, not an App Store
+   release: complete offline reader workflows, signed-device testing, and distribution
+   setup remain prerequisites for external testing. See
+   [Sign in with Apple readiness](sign-in-with-apple.md),
+   [ADR 0001](adr/0001-product-monorepo-and-native-api.md),
    [ADR 0002](adr/0002-native-account-authentication.md), and
    [first-party-api.md](first-party-api.md).
 
@@ -299,7 +302,10 @@ promise. A later version gets a scoped goal before one of them becomes planned w
    deletion-time authorization revocation, accessibility and device testing, and a
    signed TestFlight build.
    Build complete reader workflows through `/api/v1`; do not expose Drizzle records or
-   stretch the Google Reader adapter into a first-party product API.
+   stretch the Google Reader adapter into a first-party product API. Sign in with Apple
+   remains a version-undecided, membership-blocked part of this work; its external,
+   server-lifecycle, email-relay, deployment, and validation tasks are tracked in
+   [sign-in-with-apple.md](sign-in-with-apple.md).
 5. **Email newsletter → feed bridge** — a unique inbound address per feed. This is a
    paid-product-shaped differentiator, but is deliberately deferred to an undecided
    later version. It requires an inbound-email provider/webhook, opaque addresses,

@@ -210,6 +210,12 @@ share staging keys with production.
 
 ### Optional native iOS Apple integration
 
+This integration is intentionally disabled until the paid Apple membership and the full
+[Sign in with Apple production-readiness checklist](sign-in-with-apple.md) are complete.
+Do not expose the provider merely by setting its environment variables: the Apple token
+revocation lifecycle, private email relay, signed build, and real-device validation are
+part of the activation gate.
+
 Currentfold's verification and password-reset links work as ordinary HTTPS pages with no
 Apple configuration. To open those same links directly in the installed iOS app, set
 `APPLE_TEAM_ID` to the 10-character Team ID shown in the Apple Developer account. The
