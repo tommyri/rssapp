@@ -247,7 +247,7 @@ export default async function Home({
       <PwaRegister userId={userId} />
       <MobileShell>
         {/* Brand + refresh: desktop only — on mobile these live in the top bar. */}
-        <div className="hidden items-center justify-between px-4 pt-5 pb-3 md:flex">
+        <div className="hidden shrink-0 items-center justify-between px-4 pt-5 pb-3 md:flex">
           <Link
             href="/"
             className="font-serif text-2xl font-bold tracking-tight"
@@ -257,100 +257,104 @@ export default async function Home({
           <RefreshButton />
         </div>
 
-        <div className="px-4 pb-4">
+        <div className="shrink-0 px-4 pb-4">
           <SearchForm query={query} />
         </div>
 
-        <nav className="flex-1 space-y-0.5 px-2 pb-4">
-          <FeedLink
-            href="/"
-            active={
-              !feedId &&
-              !folderId &&
-              !starred &&
-              !readLater &&
-              !highlightsView &&
-              !notificationsView &&
-              !activeLabel &&
-              !isSearch
-            }
-            label="All articles"
-            count={totalUnread}
-          />
-          <FeedLink
-            href="/?view=starred"
-            active={starred}
-            label="Starred"
-            marker={<StarIcon className="size-4" />}
-            count={saved.starred}
-          />
-          <FeedLink
-            href="/?view=later"
-            active={readLater}
-            label="Read later"
-            marker={<BookmarkIcon className="size-4" />}
-            count={saved.readLater}
-          />
-          <FeedLink
-            href="/?view=highlights"
-            active={highlightsView}
-            label="Highlights"
-            marker={<HighlighterIcon className="size-4" />}
-            count={highlightCount}
-          />
-          <FeedLink
-            href="/?view=notifications"
-            active={notificationsView}
-            label="Notifications"
-            marker={<BellIcon className="size-4" />}
-            count={notificationCount}
-          />
+        <nav className="flex min-h-0 flex-1 flex-col px-2 pb-4">
+          <div className="shrink-0 space-y-0.5">
+            <FeedLink
+              href="/"
+              active={
+                !feedId &&
+                !folderId &&
+                !starred &&
+                !readLater &&
+                !highlightsView &&
+                !notificationsView &&
+                !activeLabel &&
+                !isSearch
+              }
+              label="All articles"
+              count={totalUnread}
+            />
+            <FeedLink
+              href="/?view=starred"
+              active={starred}
+              label="Starred"
+              marker={<StarIcon className="size-4" />}
+              count={saved.starred}
+            />
+            <FeedLink
+              href="/?view=later"
+              active={readLater}
+              label="Read later"
+              marker={<BookmarkIcon className="size-4" />}
+              count={saved.readLater}
+            />
+            <FeedLink
+              href="/?view=highlights"
+              active={highlightsView}
+              label="Highlights"
+              marker={<HighlighterIcon className="size-4" />}
+              count={highlightCount}
+            />
+            <FeedLink
+              href="/?view=notifications"
+              active={notificationsView}
+              label="Notifications"
+              marker={<BellIcon className="size-4" />}
+              count={notificationCount}
+            />
 
-          {labels.length > 0 ? (
-            <div className="pt-3">
-              <div className="flex items-center justify-between px-2 py-1 text-[11px] font-semibold tracking-[0.08em] text-muted-foreground uppercase">
-                <span>Labels</span>
-                <Link
-                  href="/labels"
-                  className="font-normal tracking-normal normal-case hover:text-foreground"
-                >
-                  Manage
-                </Link>
+            {labels.length > 0 ? (
+              <div className="pt-3">
+                <div className="flex items-center justify-between px-2 py-1 text-[11px] font-semibold tracking-[0.08em] text-muted-foreground uppercase">
+                  <span>Labels</span>
+                  <Link
+                    href="/labels"
+                    className="font-normal tracking-normal normal-case hover:text-foreground"
+                  >
+                    Manage
+                  </Link>
+                </div>
+                {labels.map((label) => (
+                  <FeedLink
+                    key={label.id}
+                    href={`/?label=${label.id}`}
+                    active={activeLabel?.id === label.id}
+                    label={label.name}
+                    count={label.count}
+                    marker={<TagIcon className="size-4" />}
+                  />
+                ))}
               </div>
-              {labels.map((label) => (
-                <FeedLink
-                  key={label.id}
-                  href={`/?label=${label.id}`}
-                  active={activeLabel?.id === label.id}
-                  label={label.name}
-                  count={label.count}
-                  marker={<TagIcon className="size-4" />}
-                />
-              ))}
-            </div>
-          ) : null}
+            ) : null}
+          </div>
 
-          <SidebarOrganizer
-            folderGroups={folderGroups.map(([id, group]) => ({
-              id,
-              name: group.name,
-              feeds: group.feeds,
-            }))}
-            ungrouped={ungrouped}
-            folderNames={folderNames}
-            activeFeedId={feedId}
-            activeFolderId={folderId}
-            sidebarPreferences={sidebarPreferences}
-          />
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain [scrollbar-gutter:stable]">
+            <SidebarOrganizer
+              folderGroups={folderGroups.map(([id, group]) => ({
+                id,
+                name: group.name,
+                feeds: group.feeds,
+              }))}
+              ungrouped={ungrouped}
+              folderNames={folderNames}
+              activeFeedId={feedId}
+              activeFolderId={folderId}
+              sidebarPreferences={sidebarPreferences}
+            />
 
-          {feeds.length === 0 ? (
-            <p className="px-2 py-4 text-sm text-muted-foreground">
-              No feeds yet — pick a starter on the right, or add one below.
-            </p>
-          ) : null}
+            {feeds.length === 0 ? (
+              <p className="px-2 py-4 text-sm text-muted-foreground">
+                No feeds yet — pick a starter on the right, or add one below.
+              </p>
+            ) : null}
+          </div>
         </nav>
 
-        <div className="space-y-3 border-t border-sidebar-border px-4 py-4">
+        <div className="shrink-0 space-y-3 border-t border-sidebar-border px-4 py-4">
           <AddFeedForm />
           <div className="space-y-1.5">
             <div className="grid grid-cols-2 gap-1.5">

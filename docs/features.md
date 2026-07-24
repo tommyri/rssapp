@@ -291,11 +291,13 @@ assigned a version until their product shape and priority are agreed.
    already signalled they care about, not become an opaque recommendation algorithm or
    a dump of every unread feed item. Decide section controls, scheduling, eligibility,
    ordering, and migration from the current notification-only digest before building it.
-4. **Progressively disclose long source lists.** In each expanded sidebar source group,
-   show a small useful initial set—approximately five rows—then a clear **Show N more**
-   control and a way to collapse it again. Keep the active source visible, retain folder
-   collapse and drag ordering, and avoid hiding unread totals or making keyboard
-   navigation unpredictable.
+4. **Use the available sidebar height for source lists (implemented; release
+   pending).** The primary views and utility actions remain fixed while the source
+   region fills all space between them. It renders every source, shows as many rows as
+   the current viewport can hold, and becomes independently scrollable only when
+   necessary. Opening a source scrolls its active row into view. Folder collapse,
+   unread totals, source ordering, and mouse, touch, and keyboard drag behavior remain
+   intact.
 
 ## Later / version undecided
 

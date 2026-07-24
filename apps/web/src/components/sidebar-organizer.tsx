@@ -29,7 +29,13 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { type CSSProperties, useEffect, useState, useTransition } from "react";
+import {
+  type CSSProperties,
+  useEffect,
+  useRef,
+  useState,
+  useTransition,
+} from "react";
 import {
   reorderFeedsAction,
   reorderFoldersAction,
@@ -170,6 +176,7 @@ function SortableFeedRow({
   return (
     <li
       ref={setNodeRef}
+      data-sidebar-feed-id={feed.feedId}
       style={style}
       {...attributes}
       {...listeners}
@@ -214,6 +221,40 @@ function SortableFeedRow({
         </span>
       </div>
     </li>
+  );
+}
+
+function SortableFeedList({
+  feeds,
+  folderId,
+  folderNames,
+  activeFeedId,
+  pending,
+}: {
+  feeds: FeedSummary[];
+  folderId: number | null;
+  folderNames: string[];
+  activeFeedId?: number;
+  pending: boolean;
+}) {
+  return (
+    <SortableContext
+      items={feeds.map((feed) => sortableId("feed", feed.feedId))}
+      strategy={verticalListSortingStrategy}
+    >
+      <ul className="m-0 list-none p-0">
+        {feeds.map((feed) => (
+          <SortableFeedRow
+            key={feed.feedId}
+            feed={feed}
+            folderId={folderId}
+            folderNames={folderNames}
+            active={activeFeedId === feed.feedId}
+            pending={pending}
+          />
+        ))}
+      </ul>
+    </SortableContext>
   );
 }
 
@@ -301,23 +342,13 @@ function SortableFolderGroup({
       </div>
 
       {!collapsed ? (
-        <SortableContext
-          items={group.feeds.map((feed) => sortableId("feed", feed.feedId))}
-          strategy={verticalListSortingStrategy}
-        >
-          <ul className="m-0 list-none p-0">
-            {group.feeds.map((feed) => (
-              <SortableFeedRow
-                key={feed.feedId}
-                feed={feed}
-                folderId={group.id}
-                folderNames={folderNames}
-                active={activeFeedId === feed.feedId}
-                pending={pending}
-              />
-            ))}
-          </ul>
-        </SortableContext>
+        <SortableFeedList
+          feeds={group.feeds}
+          folderId={group.id}
+          folderNames={folderNames}
+          activeFeedId={activeFeedId}
+          pending={pending}
+        />
       ) : null}
     </li>
   );
@@ -340,6 +371,7 @@ export function SidebarOrganizer({
   sidebarPreferences: SidebarPreferences;
 }) {
   const router = useRouter();
+  const organizerRef = useRef<HTMLDivElement>(null);
   const [folderGroups, setFolderGroups] = useState(
     () =>
       organizeSidebar(initialFolderGroups, initialUngrouped, sidebarPreferences)
@@ -375,6 +407,13 @@ export function SidebarOrganizer({
     setUngrouped(organized.ungrouped);
     setCollapsed(new Set(sidebarPreferences.collapsedFolderIds));
   }, [initialFolderGroups, initialUngrouped, sidebarPreferences]);
+
+  useEffect(() => {
+    if (!activeFeedId) return;
+    organizerRef.current
+      ?.querySelector<HTMLElement>(`[data-sidebar-feed-id="${activeFeedId}"]`)
+      ?.scrollIntoView({ block: "nearest" });
+  }, [activeFeedId]);
 
   function persist(work: () => Promise<boolean>) {
     startTransition(async () => {
@@ -468,7 +507,7 @@ export function SidebarOrganizer({
       onDragCancel={() => setActiveDrag(null)}
       onDragEnd={handleDragEnd}
     >
-      <div aria-busy={pending}>
+      <div ref={organizerRef} aria-busy={pending}>
         <SortableContext
           items={folderGroups.map((group) => sortableId("folder", group.id))}
           strategy={verticalListSortingStrategy}
@@ -496,23 +535,13 @@ export function SidebarOrganizer({
                 Feeds
               </div>
             ) : null}
-            <SortableContext
-              items={ungrouped.map((feed) => sortableId("feed", feed.feedId))}
-              strategy={verticalListSortingStrategy}
-            >
-              <ul className="m-0 list-none p-0">
-                {ungrouped.map((feed) => (
-                  <SortableFeedRow
-                    key={feed.feedId}
-                    feed={feed}
-                    folderId={null}
-                    folderNames={folderNames}
-                    active={activeFeedId === feed.feedId}
-                    pending={pending}
-                  />
-                ))}
-              </ul>
-            </SortableContext>
+            <SortableFeedList
+              feeds={ungrouped}
+              folderId={null}
+              folderNames={folderNames}
+              activeFeedId={activeFeedId}
+              pending={pending}
+            />
           </section>
         ) : null}
       </div>

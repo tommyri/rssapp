@@ -74,14 +74,14 @@ export function MobileShell({ children }: { children: ReactNode }) {
         data-reader-navigation
         aria-label="Feeds and navigation"
         className={cn(
-          "z-50 flex w-[85%] max-w-xs shrink-0 flex-col overflow-y-auto border-r border-sidebar-border bg-sidebar text-sidebar-foreground",
+          "z-50 flex w-[85%] max-w-xs shrink-0 flex-col overflow-hidden border-r border-sidebar-border bg-sidebar text-sidebar-foreground",
           "fixed inset-y-0 left-0 shadow-xl transition-transform duration-200 ease-out",
           open ? "translate-x-0" : "-translate-x-full",
           "md:static md:z-auto md:w-72 md:max-w-none md:translate-x-0 md:shadow-none md:transition-none",
         )}
       >
         {/* Mobile-only drawer header — the shared content's brand row is md+ only. */}
-        <div className="flex items-center justify-between px-4 pt-4 pb-1 md:hidden">
+        <div className="flex shrink-0 items-center justify-between px-4 pt-4 pb-1 md:hidden">
           <span className="font-serif text-xl font-bold tracking-tight">
             rssapp<span className="text-primary">.</span>
           </span>

@@ -15,6 +15,9 @@ version section verbatim, so this file is the release record rather than an afte
 
 - New rules now default to **Star**, with **Add to notifications** immediately after it
   in the action list.
+- The sidebar source list now uses all available height above its fixed action area,
+  showing as many sources as fit and scrolling only when the list is longer. Opening a
+  source keeps its active row in view.
 
 ## [2026.7.3] - 2026-07-24
 
