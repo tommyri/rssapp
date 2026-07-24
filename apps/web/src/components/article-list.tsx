@@ -68,6 +68,7 @@ import {
 } from "@/lib/offline-library";
 import type { ReaderItem } from "@/lib/reader";
 import { readerFocusActive } from "@/lib/reader-focus";
+import { reconcileReaderSnapshot } from "@/lib/reader-freshness";
 import {
   getReaderScrollContainer,
   hasRemainingReaderScroll,
@@ -174,6 +175,21 @@ export function ArticleList({
   const pendingHighlightChangesRef = useRef<
     Map<number, ArticleHighlight | null>
   >(new Map());
+  const pendingReaderStateKeysRef = useRef(new Set<string>());
+  const freshnessContextRef = useRef({
+    readHistoryStarted,
+    oldestFirst: view.sortOrder === "oldest",
+    unreadOnly: Boolean(view.unreadOnly),
+    starredOnly: Boolean(view.starred),
+    readLaterOnly: Boolean(view.readLater),
+  });
+  freshnessContextRef.current = {
+    readHistoryStarted,
+    oldestFirst: view.sortOrder === "oldest",
+    unreadOnly: Boolean(view.unreadOnly),
+    starredOnly: Boolean(view.starred),
+    readLaterOnly: Boolean(view.readLater),
+  };
 
   // Patch entries by composite key so a feed item and a saved page that happen
   // to share a numeric id in the Read later view don't clobber each other.
@@ -212,6 +228,26 @@ export function ArticleList({
   useEffect(() => {
     if (expandedItem === null) setFocusRequested(false);
   }, [expandedItem]);
+
+  useEffect(() => {
+    const context = freshnessContextRef.current;
+    const currentLength = itemsRef.current.length;
+    setItems((current) =>
+      reconcileReaderSnapshot(current, initialItems, {
+        freshHasMore: initialHasMore,
+        oldestFirst: context.oldestFirst,
+        preserveMissing: context.readHistoryStarted,
+        protectedKey: expandedIdRef.current,
+        pendingStateKeys: pendingReaderStateKeysRef.current,
+        unreadOnly: context.unreadOnly,
+        starredOnly: context.starredOnly,
+        readLaterOnly: context.readLaterOnly,
+      }),
+    );
+    if (!context.readHistoryStarted && currentLength <= initialItems.length) {
+      setHasMore(initialHasMore);
+    }
+  }, [initialHasMore, initialItems]);
 
   useEffect(() => {
     if (
@@ -262,11 +298,19 @@ export function ArticleList({
 
   // Read state lives in different tables per kind; route to the right action.
   function persistRead(item: ReaderItem, read: boolean) {
+    const key = keyOf(item);
+    pendingReaderStateKeysRef.current.add(key);
     const call =
       item.kind === "page"
         ? setSavedPageReadAction(item.id, read)
         : setItemReadAction(item.id, read, collapse);
-    void call.then(() => router.refresh());
+    void call
+      .then(() => router.refresh())
+      .catch(() => {
+        setStatusMsg("Couldn't update read state.");
+        router.refresh();
+      })
+      .finally(() => pendingReaderStateKeysRef.current.delete(key));
   }
   const persistReadRef = useRef(persistRead);
   persistReadRef.current = persistRead;
@@ -300,17 +344,29 @@ export function ArticleList({
   }
 
   function toggleStarred(item: ReaderItem) {
+    const key = keyOf(item);
+    pendingReaderStateKeysRef.current.add(key);
     setEntryState([keyOf(item)], { starred: !item.starred });
-    void setItemStarredAction(item.id, !item.starred).then(() =>
-      router.refresh(),
-    );
+    void setItemStarredAction(item.id, !item.starred)
+      .then(() => router.refresh())
+      .catch(() => {
+        setStatusMsg("Couldn't update star.");
+        router.refresh();
+      })
+      .finally(() => pendingReaderStateKeysRef.current.delete(key));
   }
 
   function toggleReadLater(item: ReaderItem) {
+    const key = keyOf(item);
+    pendingReaderStateKeysRef.current.add(key);
     setEntryState([keyOf(item)], { readLater: !item.readLater });
-    void setItemReadLaterAction(item.id, !item.readLater).then(() =>
-      router.refresh(),
-    );
+    void setItemReadLaterAction(item.id, !item.readLater)
+      .then(() => router.refresh())
+      .catch(() => {
+        setStatusMsg("Couldn't update Read later.");
+        router.refresh();
+      })
+      .finally(() => pendingReaderStateKeysRef.current.delete(key));
   }
 
   function updateItemLabels(

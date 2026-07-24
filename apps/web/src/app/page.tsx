@@ -16,6 +16,7 @@ import { MobileShell } from "@/components/mobile-shell";
 import { NotificationLibrary } from "@/components/notification-library";
 import { PullToRefresh } from "@/components/pull-to-refresh";
 import { PwaRegister } from "@/components/pwa-register";
+import { ReaderFreshness } from "@/components/reader-freshness";
 import { ReaderGlobalKeyboard } from "@/components/reader-global-keyboard";
 import { RefreshButton } from "@/components/refresh-button";
 import { SearchForm } from "@/components/search-form";
@@ -245,6 +246,7 @@ export default async function Home({
       className="flex h-dvh flex-col overflow-hidden md:flex-row"
     >
       <PwaRegister userId={userId} />
+      <ReaderFreshness />
       <MobileShell>
         {/* Brand + refresh: desktop only — on mobile these live in the top bar. */}
         <div className="hidden shrink-0 items-center justify-between px-4 pt-5 pb-3 md:flex">

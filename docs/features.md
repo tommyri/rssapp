@@ -275,12 +275,14 @@ the exact deployed app version easy to identify.
 These observations came from production use of 2026.7.3. They are intentionally not
 assigned a version until their product shape and priority are agreed.
 
-1. **Complete native read-state parity and freshness.** The native article toolbar now
-   exposes a tested **Mark unread** / **Mark read** reversal alongside the existing list
-   swipe. A write made in iOS already persists and appears after reloading the web app;
-   the remaining work is for the open web client to refresh cross-client state on window
-   focus and at a restrained visible-page interval, without requiring a full real-time
-   socket system.
+1. **Complete native read-state parity and freshness (implemented; release pending).**
+   The native article toolbar exposes a tested **Mark unread** / **Mark read** reversal
+   alongside the existing list swipe. The open web reader now catches up after a
+   meaningful return to the tab and once per minute while it remains visible and online,
+   without a permanent real-time connection or background-page work. Fresh server
+   snapshots reconcile into the live article list as well as the sidebar: locally loaded
+   pages, an article currently being read, in-flight optimistic changes, reading
+   position, and audio playback progress remain intact.
 2. **Put the most useful rule actions first (implemented; release pending).** A new rule
    now defaults to **Star**, with **Add to notifications** immediately after it in the
    action list. Testing a rule continues to preserve the draft action and pattern.

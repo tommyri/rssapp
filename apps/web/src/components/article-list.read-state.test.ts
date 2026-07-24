@@ -113,6 +113,24 @@ const unreadItem: ReaderItem = {
   audioProgress: {},
 };
 
+function readerProps(
+  initialItems: ReaderItem[] = [unreadItem],
+): React.ComponentProps<typeof ArticleList> {
+  return {
+    initialItems,
+    initialHasMore: false,
+    view: { unreadOnly: true },
+    title: "Unread",
+    toggleHref: "/?show=all",
+    showingAll: false,
+    unreadCount: initialItems.filter((item) => !item.read).length,
+    density: "comfortable",
+    embedLoading: { defaultMode: "defer", providers: {} },
+    offlineUserId: 1,
+    availableLabels: [],
+  };
+}
+
 async function withReaderDom(
   run: (context: {
     mount: HTMLElement;
@@ -183,21 +201,7 @@ async function withReaderDom(
   let root: Root | null = createRoot(mount);
   try {
     await act(async () => {
-      root?.render(
-        createElement(ArticleList, {
-          initialItems: [unreadItem],
-          initialHasMore: false,
-          view: { unreadOnly: true },
-          title: "Unread",
-          toggleHref: "/?show=all",
-          showingAll: false,
-          unreadCount: 1,
-          density: "comfortable",
-          embedLoading: { defaultMode: "defer", providers: {} },
-          offlineUserId: 1,
-          availableLabels: [],
-        }),
-      );
+      root?.render(createElement(ArticleList, readerProps()));
     });
     await run({
       mount,
@@ -260,6 +264,19 @@ describe("ArticleList deliberate read state", () => {
       });
 
       expect(mocks.setItemReadAction).toHaveBeenCalledWith(42, true, false);
+    });
+  });
+
+  it("reconciles an external read change from a refreshed server snapshot", async () => {
+    await withReaderDom(async ({ mount, root }) => {
+      expect(mount.textContent).toContain("An unread article");
+
+      await act(async () => {
+        root.render(createElement(ArticleList, readerProps([])));
+      });
+
+      expect(mount.textContent).not.toContain("An unread article");
+      expect(mount.textContent).toContain("All caught up.");
     });
   });
 

@@ -13,6 +13,10 @@ version section verbatim, so this file is the release record rather than an afte
 
 ### Changed
 
+- An open web reader now picks up cross-client article and sidebar changes after
+  returning to the app and at a restrained interval while visible. Fresh snapshots
+  reconcile into the current list without discarding loaded pages, closing the article
+  being read, or rewinding reading and audio progress.
 - New rules now default to **Star**, with **Add to notifications** immediately after it
   in the action list.
 - The sidebar source list now uses all available height above its fixed action area,
