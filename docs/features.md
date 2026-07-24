@@ -275,15 +275,15 @@ the exact deployed app version easy to identify.
 These observations came from production use of 2026.7.3. They are intentionally not
 assigned a version until their product shape and priority are agreed.
 
-1. **Complete native read-state parity and freshness.** The iOS reader can mark an
-   article read but cannot deliberately mark it unread again. Add that reversal wherever
-   the native reader exposes article actions. A write made in iOS already persists and
-   appears after reloading the web app; the open web client should also refresh
-   cross-client state on window focus and at a restrained visible-page interval, without
-   requiring a full real-time socket system.
-2. **Put the most useful rule actions first.** A new rule should default to **Star**,
-   with **Add to notifications** immediately after it in the action list. Testing a rule
-   must continue to preserve the draft action and pattern.
+1. **Complete native read-state parity and freshness.** The native article toolbar now
+   exposes a tested **Mark unread** / **Mark read** reversal alongside the existing list
+   swipe. A write made in iOS already persists and appears after reloading the web app;
+   the remaining work is for the open web client to refresh cross-client state on window
+   focus and at a restrained visible-page interval, without requiring a full real-time
+   socket system.
+2. **Put the most useful rule actions first (implemented; release pending).** A new rule
+   now defaults to **Star**, with **Add to notifications** immediately after it in the
+   action list. Testing a rule continues to preserve the draft action and pattern.
 3. **Reconsider digests as a reading roundup.** A weekly email containing only rule
    notifications has a weak purpose. Explore one deduplicated, user-controlled roundup
    of explicitly important unread material: notification-rule matches, Read later

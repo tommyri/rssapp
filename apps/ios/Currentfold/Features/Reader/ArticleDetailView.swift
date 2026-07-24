@@ -23,6 +23,23 @@ struct ArticleDetailView: View {
                 .navigationTitle(article.feed.title)
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button {
+                            Task {
+                                await store.setRead(
+                                    articleID: article.id,
+                                    read: !article.state.read
+                                )
+                            }
+                        } label: {
+                            Label(
+                                article.state.read ? "Mark Unread" : "Mark Read",
+                                systemImage: article.state.read
+                                    ? "envelope.badge"
+                                    : "envelope.open"
+                            )
+                        }
+                    }
                     if let url = article.canonicalUrl ?? article.url {
                         ToolbarItem(placement: .topBarTrailing) {
                             Link(destination: url) {

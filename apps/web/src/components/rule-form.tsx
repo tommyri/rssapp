@@ -7,6 +7,10 @@ import {
   type RuleActionState,
   type RulePreviewState,
 } from "@/app/rules/actions";
+import {
+  DEFAULT_RULE_ACTION,
+  RULE_ACTION_OPTIONS,
+} from "@/components/rule-action-options";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { RuleAction, RuleField, RuleMatchType } from "@/lib/rules";
@@ -28,7 +32,7 @@ const initialDraft: RuleDraft = {
   field: "title",
   matchType: "contains",
   pattern: "",
-  action: "mute",
+  action: DEFAULT_RULE_ACTION,
   labelId: "",
 };
 
@@ -145,11 +149,11 @@ export function RuleForm({
           }
           className={selectClass}
         >
-          <option value="mute">mute</option>
-          <option value="mark_read">mark read</option>
-          <option value="star">star</option>
-          <option value="tag">apply label</option>
-          <option value="notify">add to notifications</option>
+          {RULE_ACTION_OPTIONS.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
         </select>
         {draft.action === "tag" ? (
           <>

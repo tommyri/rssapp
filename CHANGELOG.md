@@ -5,6 +5,17 @@ version section verbatim, so this file is the release record rather than an afte
 
 ## [Unreleased]
 
+### Added
+
+- A visible **Mark unread** / **Mark read** control in the native article toolbar,
+  complementing the existing list swipe and making read-state reversal discoverable
+  while reading.
+
+### Changed
+
+- New rules now default to **Star**, with **Add to notifications** immediately after it
+  in the action list.
+
 ## [2026.7.3] - 2026-07-24
 
 ### Added
