@@ -5,10 +5,9 @@ its own as a useful reader; the current rollout and next candidates are delibera
 separate from shipped work.
 
 **Release status — 24 July 2026:** v0.1, v1.0, **2026.7.1 — Notifications, full text &
-reading history**, and **2026.7.2 — Deliberate read state** are shipped. **2026.7.3 —
-Email digests, build identity & product foundations** is a release candidate: automated
-web, contract, deployment, and iOS validation is complete; signed-in production and
-digest-soak validation remain.
+reading history**, **2026.7.2 — Deliberate read state**, and **2026.7.3 — Email digests,
+build identity & product foundations** are shipped. The next release is not assigned
+yet; its candidates are being evaluated below.
 
 ## MVP (v0.1) — daily-drivable reader
 
@@ -226,13 +225,15 @@ pagination are navigation, never read-state mutations.
    The collapsed-row swipe no longer offers an unread-to-read bypass. Rules and
    age-based retention remain separately configured automation.
 
-## 2026.7.3 — Email digests, build identity & product foundations (release candidate)
+## 2026.7.3 — Email digests, build identity & product foundations
 
 **Goal:** deliver a calm, user-controlled summary of unread rule notifications without
 requiring readers to keep a browser open or enabling immediate push alerts, while making
 the exact deployed app version easy to identify.
 
-1. **Email digests (implemented; production soak pending).** Readers can schedule a
+*Shipped 24 July 2026.*
+
+1. **Email digests.** Readers can schedule a
    daily or weekly digest of unread rule notifications in their own IANA timezone and
    send a rate-limited test to their verified account email. A durable delivery queue
    freezes exact membership, claims work atomically, retries transient failures with
@@ -241,14 +242,13 @@ the exact deployed app version easy to identify.
    while opening its signed link does. Signed confirmation and RFC 8058 one-click
    unsubscribe paths turn off only the digest channel. The schedule survives JSON
    backup/restore; historical delivery attempts do not.
-2. **Build identity (implemented).** Quiet **App information** metadata at the bottom of
+2. **Build identity.** Quiet **App information** metadata at the bottom of
    Settings shows the calendar release version and short source revision, with a clear
    local-development fallback. CI bakes both values into the immutable image and its OCI
    labels, rather than accepting mutable deployment configuration. `/api/health` returns
    the same non-sensitive version and full revision even when database readiness fails,
    so support and deployment checks can identify the exact running artifact.
-3. **Multi-client product foundation (implemented; automated validation complete,
-   signed-in production validation pending).** The
+3. **Multi-client product foundation.** The
    repository is now an npm-workspace product monorepo: `apps/web` remains the deployed
    Next.js service, `packages/brand` generates shared web and Swift identity assets, and
    `packages/api-contract` owns an OpenAPI 3.1 contract plus cross-platform fixtures.
@@ -269,6 +269,33 @@ the exact deployed app version easy to identify.
    [ADR 0001](adr/0001-product-monorepo-and-native-api.md),
    [ADR 0002](adr/0002-native-account-authentication.md), and
    [first-party-api.md](first-party-api.md).
+
+## Next release candidates
+
+These observations came from production use of 2026.7.3. They are intentionally not
+assigned a version until their product shape and priority are agreed.
+
+1. **Complete native read-state parity and freshness.** The iOS reader can mark an
+   article read but cannot deliberately mark it unread again. Add that reversal wherever
+   the native reader exposes article actions. A write made in iOS already persists and
+   appears after reloading the web app; the open web client should also refresh
+   cross-client state on window focus and at a restrained visible-page interval, without
+   requiring a full real-time socket system.
+2. **Put the most useful rule actions first.** A new rule should default to **Star**,
+   with **Add to notifications** immediately after it in the action list. Testing a rule
+   must continue to preserve the draft action and pattern.
+3. **Reconsider digests as a reading roundup.** A weekly email containing only rule
+   notifications has a weak purpose. Explore one deduplicated, user-controlled roundup
+   of explicitly important unread material: notification-rule matches, Read later
+   entries, and starred articles. The email should help a reader return to things they
+   already signalled they care about, not become an opaque recommendation algorithm or
+   a dump of every unread feed item. Decide section controls, scheduling, eligibility,
+   ordering, and migration from the current notification-only digest before building it.
+4. **Progressively disclose long source lists.** In each expanded sidebar source group,
+   show a small useful initial set—approximately five rows—then a clear **Show N more**
+   control and a way to collapse it again. Keep the active source visible, retain folder
+   collapse and drag ordering, and avoid hiding unread totals or making keyboard
+   navigation unpredictable.
 
 ## Later / version undecided
 
