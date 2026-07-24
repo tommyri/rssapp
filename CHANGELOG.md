@@ -5,6 +5,8 @@ version section verbatim, so this file is the release record rather than an afte
 
 ## [Unreleased]
 
+## [2026.7.3] - 2026-07-24
+
 ### Added
 
 - Daily or weekly email digests for unread rule notifications, with timezone-aware
@@ -12,6 +14,25 @@ version section verbatim, so this file is the release record rather than an afte
   links.
 - Quiet app version and source-revision metadata in Settings and the health endpoint,
   backed by the same identity stored in published container images.
+- A shared Currentfold product workspace for the web service, generated brand assets,
+  API contract, and native clients, with reproducible iOS project generation and
+  dedicated CI verification.
+- A stable first-party JSON API for service discovery, account identity, subscriptions,
+  cursor-paginated article streams, and batched read-state changes.
+- An internal native SwiftUI iOS foundation with email/password registration, sign-in,
+  verification and recovery; Library, Sources, and Settings navigation; paginated
+  article reading; and Universal Link handoff.
+- Native Apple and Google sign-in foundations using their system authorization surfaces
+  and server-side identity verification. Providers remain hidden when the deployment is
+  not completely configured; Sign in with Apple remains disabled pending Apple Developer
+  Program setup and production-readiness work.
+
+### Security
+
+- Native clients use short-lived access tokens and rotating, Keychain-protected refresh
+  credentials backed by revocable device sessions. Provider sign-in verifies signed
+  proofs and one-time challenges on the server instead of trusting client-supplied
+  identity details.
 
 ## [2026.7.2] - 2026-07-19
 

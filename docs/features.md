@@ -4,9 +4,11 @@ This is the living product roadmap and concise release record. Every phase must 
 its own as a useful reader; the current rollout and next candidates are deliberately
 separate from shipped work.
 
-**Release status — 22 July 2026:** v0.1, v1.0, **2026.7.1 — Notifications, full text &
+**Release status — 24 July 2026:** v0.1, v1.0, **2026.7.1 — Notifications, full text &
 reading history**, and **2026.7.2 — Deliberate read state** are shipped. **2026.7.3 —
-Email digests, build identity & product foundations** is in development.
+Email digests, build identity & product foundations** is a release candidate: automated
+web, contract, deployment, and iOS validation is complete; signed-in production and
+digest-soak validation remain.
 
 ## MVP (v0.1) — daily-drivable reader
 
@@ -224,7 +226,7 @@ pagination are navigation, never read-state mutations.
    The collapsed-row swipe no longer offers an unread-to-read bypass. Rules and
    age-based retention remain separately configured automation.
 
-## 2026.7.3 — Email digests, build identity & product foundations (in development)
+## 2026.7.3 — Email digests, build identity & product foundations (release candidate)
 
 **Goal:** deliver a calm, user-controlled summary of unread rule notifications without
 requiring readers to keep a browser open or enabling immediate push alerts, while making
@@ -245,7 +247,8 @@ the exact deployed app version easy to identify.
    labels, rather than accepting mutable deployment configuration. `/api/health` returns
    the same non-sensitive version and full revision even when database readiness fails,
    so support and deployment checks can identify the exact running artifact.
-3. **Multi-client product foundation (implemented; internal validation pending).** The
+3. **Multi-client product foundation (implemented; automated validation complete,
+   signed-in production validation pending).** The
    repository is now an npm-workspace product monorepo: `apps/web` remains the deployed
    Next.js service, `packages/brand` generates shared web and Swift identity assets, and
    `packages/api-contract` owns an OpenAPI 3.1 contract plus cross-platform fixtures.
