@@ -96,6 +96,35 @@ function sortsAfterBoundary(
   return oldestFirst ? item.id > boundary.id : item.id < boundary.id;
 }
 
+/**
+ * Where the open row belongs once it has left the fresh page — directly after
+ * whichever of the rows above it is still on screen, which is exactly where the
+ * reader clicked. Appending it instead would drop it to the end of the loaded
+ * list, moving the article out from under someone who is reading it.
+ */
+function openRowPosition(
+  current: readonly ReaderItem[],
+  reconciled: readonly ReaderItem[],
+  openRow: ReaderItem,
+): number {
+  const openKey = readerItemKey(openRow);
+  const positions = new Map(
+    reconciled.map((item, index) => [readerItemKey(item), index]),
+  );
+  const originalIndex = current.findIndex(
+    (item) => readerItemKey(item) === openKey,
+  );
+
+  for (let above = originalIndex - 1; above >= 0; above -= 1) {
+    const neighbour = current[above];
+    if (neighbour === undefined) continue;
+    const position = positions.get(readerItemKey(neighbour));
+    if (position !== undefined) return position + 1;
+  }
+  // Nothing above it survived, so it was — and stays — the first row.
+  return 0;
+}
+
 export interface ReaderSnapshotOptions {
   freshHasMore: boolean;
   oldestFirst: boolean;
@@ -134,6 +163,10 @@ export function reconcileReaderSnapshot(
       : item;
   });
 
+  // The open row is placed last, because where it goes depends on which of its
+  // neighbours survived the fresh page.
+  let openRow: ReaderItem | null = null;
+
   for (const item of current) {
     const key = readerItemKey(item);
     if (freshKeys.has(key)) continue;
@@ -149,17 +182,25 @@ export function reconcileReaderSnapshot(
     if (!shouldPreserve) continue;
 
     if (options.protectedKey === key && !outsideFreshPage) {
-      reconciled.push({
+      openRow = {
         ...item,
         ...(options.unreadOnly ? { read: true } : {}),
         ...(options.starredOnly ? { starred: false } : {}),
         ...(options.readLaterOnly && item.kind === "item"
           ? { readLater: false }
           : {}),
-      });
+      };
     } else {
       reconciled.push(item);
     }
+  }
+
+  if (openRow !== null) {
+    reconciled.splice(
+      openRowPosition(current, reconciled, openRow),
+      0,
+      openRow,
+    );
   }
 
   const same =

@@ -5,6 +5,13 @@ version section verbatim, so this file is the release record rather than an afte
 
 ## [Unreleased]
 
+### Fixed
+
+- Opening an article no longer moves it out of sight. Since 2026.7.4, opening one in the
+  default unread view marked it read, which removed it from the refreshed list and sent
+  the still-open article to the bottom of the loaded page — thousands of pixels below the
+  row that was just clicked. It now stays exactly where it was.
+
 ## [2026.7.5] - 2026-07-25
 
 ### Fixed

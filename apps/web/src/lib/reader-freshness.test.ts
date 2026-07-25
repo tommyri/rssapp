@@ -95,6 +95,50 @@ describe("reader snapshot reconciliation", () => {
     ).toEqual([expect.objectContaining({ id: 1, read: true })]);
   });
 
+  it("keeps the open row where the reader clicked, not at the end", () => {
+    // Regression: the open row was appended, so opening the top article in an
+    // unread-only view moved it to the bottom of the loaded page — thousands of
+    // pixels away from the click. Neighbours are what make this observable, so
+    // the single-row case above cannot catch it.
+    const current = [item(5, 50), item(4, 40), item(3, 30), item(2, 20)];
+    const fresh = [item(4, 40), item(3, 30), item(2, 20)];
+
+    const result = reconcileReaderSnapshot(
+      current,
+      fresh,
+      options({ protectedKey: "item:5", unreadOnly: true }),
+    );
+
+    expect(result.map((entry) => entry.id)).toEqual([5, 4, 3, 2]);
+    expect(result[0]).toMatchObject({ id: 5, read: true });
+  });
+
+  it("keeps an open row between the neighbours it sat between", () => {
+    const current = [item(5, 50), item(4, 40), item(3, 30)];
+    const fresh = [item(5, 50), item(3, 30)];
+
+    const result = reconcileReaderSnapshot(
+      current,
+      fresh,
+      options({ protectedKey: "item:4", unreadOnly: true }),
+    );
+
+    expect(result.map((entry) => entry.id)).toEqual([5, 4, 3]);
+  });
+
+  it("still lands the open row first when everything above it went away", () => {
+    const current = [item(5, 50), item(4, 40), item(3, 30)];
+    const fresh = [item(3, 30)];
+
+    const result = reconcileReaderSnapshot(
+      current,
+      fresh,
+      options({ protectedKey: "item:4", unreadOnly: true }),
+    );
+
+    expect(result.map((entry) => entry.id)).toEqual([4, 3]);
+  });
+
   it("preserves older pages beyond the fresh first-page boundary", () => {
     const older = item(1, 10);
     const current = [item(3, 30), item(2, 20), older];
