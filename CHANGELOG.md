@@ -11,6 +11,10 @@ version section verbatim, so this file is the release record rather than an afte
   default unread view marked it read, which removed it from the refreshed list and sent
   the still-open article to the bottom of the loaded page — thousands of pixels below the
   row that was just clicked. It now stays exactly where it was.
+- List previews are two lines again, as intended, instead of running to five or six on a
+  phone. A stray display rule had been quietly disabling the clamp, which also meant the
+  Compact density setting left previews unchanged. Roughly twice as many articles now fit
+  on a phone screen.
 
 ## [2026.7.5] - 2026-07-25
 

@@ -876,9 +876,13 @@ export function ArticleList({
                         ) : null}
                         {item.title ?? "(untitled)"}
                       </span>
+                      {/* No `block` here: the density classes clamp the snippet
+                          with line-clamp, which needs its own display value.
+                          Adding `block` silently wins and the clamp stops
+                          working — rows then grow to 5–6 lines on a phone. */}
                       {!isOpen && (pageSubtitle || snippet) ? (
                         <span
-                          className={`block ${rowDensity.snippet} ${
+                          className={`${rowDensity.snippet} ${
                             item.read
                               ? "text-muted-foreground/60"
                               : "text-muted-foreground"
