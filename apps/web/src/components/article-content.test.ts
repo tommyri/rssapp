@@ -18,7 +18,7 @@ function withDom<T>(html: string, run: (root: HTMLElement) => T): T {
   const previousSplitText = textPrototype.splitText;
 
   globalWithDom.document = document as unknown as Document;
-  globalWithDom.NodeFilter = { SHOW_TEXT: 4 };
+  globalWithDom.NodeFilter = { SHOW_TEXT: 4 } as unknown as typeof NodeFilter;
   textPrototype.splitText = function splitText(this: Text, offset: number) {
     const tail = document.createTextNode(this.data.slice(offset));
     this.data = this.data.slice(0, offset);
@@ -48,7 +48,9 @@ describe("renderHighlights", () => {
         },
       ]);
 
-      const mark = root.querySelector("mark[data-reader-highlight='1']");
+      const mark = root.querySelector<HTMLElement>(
+        "mark[data-reader-highlight='1']",
+      );
       expect(mark?.textContent).toBe("reader");
       expect(root.textContent).toBe(
         "A reader should preserve the exact selected passage.",
@@ -92,7 +94,9 @@ describe("renderHighlights", () => {
       renderHighlights(root, highlights);
       renderHighlights(root, highlights);
 
-      const mark = root.querySelector("mark[data-reader-highlight='1']");
+      const mark = root.querySelector<HTMLElement>(
+        "mark[data-reader-highlight='1']",
+      );
       expect(mark?.textContent).toBe("important");
       expect(mark?.dataset.readerNote).toBe("true");
       expect(root.textContent).toBe(
@@ -117,7 +121,9 @@ describe("renderHighlights", () => {
       const committedHtml = root.innerHTML;
       root.innerHTML = committedHtml;
 
-      const mark = root.querySelector("mark[data-reader-highlight='1']");
+      const mark = root.querySelector<HTMLElement>(
+        "mark[data-reader-highlight='1']",
+      );
       expect(mark?.textContent).toBe("important");
       expect(root.textContent).toBe(
         "A reader returns to the important passage.",
@@ -151,7 +157,7 @@ describe("renderHighlights", () => {
         2,
       );
 
-      const overlap = root.querySelector(
+      const overlap = root.querySelector<HTMLElement>(
         "mark[data-reader-highlight-ids='1,2']",
       );
       expect(overlap?.textContent).toBe(nestedQuote);
@@ -175,7 +181,9 @@ describe("renderHighlights", () => {
 
       syncHighlightNotes(root, [{ ...highlight, note: "Revisit this." }]);
 
-      const mark = root.querySelector("mark[data-reader-highlight='1']");
+      const mark = root.querySelector<HTMLElement>(
+        "mark[data-reader-highlight='1']",
+      );
       expect(mark?.textContent).toBe("important");
       expect(mark?.dataset.readerNote).toBe("true");
     });

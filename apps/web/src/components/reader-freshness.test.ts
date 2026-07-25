@@ -25,10 +25,10 @@ type DomGlobals = {
 
 async function withFreshnessDom(
   run: (context: {
-    window: Window;
+    window: Window & typeof globalThis;
     setVisible: (visible: boolean) => void;
   }) => Promise<void>,
-): Promise<Window> {
+): Promise<Window & typeof globalThis> {
   const parsed = parseHTML('<html><body><div id="mount"></div></body></html>');
   let visible = true;
   Object.defineProperty(parsed.document, "visibilityState", {
@@ -57,7 +57,7 @@ async function withFreshnessDom(
       root?.render(createElement(ReaderFreshness));
     });
     await run({
-      window: parsed.window as unknown as Window,
+      window: parsed.window as unknown as Window & typeof globalThis,
       setVisible: (next) => {
         visible = next;
       },
@@ -70,7 +70,7 @@ async function withFreshnessDom(
     Object.assign(globals, previous);
   }
 
-  return parsed.window as unknown as Window;
+  return parsed.window as unknown as Window & typeof globalThis;
 }
 
 afterEach(() => {

@@ -11,6 +11,7 @@
     "build": "npm run build --workspace @currentfold/web",
     "start": "npm run start --workspace @currentfold/web",
     "lint": "npm run lint --workspace @currentfold/web",
+    "typecheck": "npm run typecheck --workspace @currentfold/web",
     "format": "npm run format --workspace @currentfold/web",
     "test": "npm run test --workspace @currentfold/web",
     "db:generate": "npm run db:generate --workspace @currentfold/web",

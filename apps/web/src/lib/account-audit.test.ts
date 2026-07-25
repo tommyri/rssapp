@@ -40,7 +40,7 @@ describe("account audit events", () => {
     expect(
       accountAuditEventDescription({
         id: 2,
-        actorEmail: null,
+        actorEmail: "System",
         targetEmail: null,
         eventType: "account_deleted",
         metadata: {},

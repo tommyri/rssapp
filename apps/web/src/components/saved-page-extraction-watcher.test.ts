@@ -35,11 +35,11 @@ async function withWatcherDom(
   fetchMock: ReturnType<typeof vi.fn>,
   onResolved: (result: SavedPageExtractionSnapshot) => void,
   run: (context: {
-    window: Window;
+    window: Window & typeof globalThis;
     setVisible: (visible: boolean) => void;
   }) => Promise<void>,
   onExhaustedChange: (exhausted: boolean) => void = () => {},
-): Promise<Window> {
+): Promise<Window & typeof globalThis> {
   const parsed = parseHTML('<html><body><div id="mount"></div></body></html>');
   let visible = true;
   Object.defineProperty(parsed.document, "visibilityState", {
@@ -76,7 +76,7 @@ async function withWatcherDom(
       );
     });
     await run({
-      window: parsed.window as unknown as Window,
+      window: parsed.window as unknown as Window & typeof globalThis,
       setVisible: (next) => {
         visible = next;
       },
@@ -89,7 +89,7 @@ async function withWatcherDom(
     Object.assign(globals, previous);
   }
 
-  return parsed.window as unknown as Window;
+  return parsed.window as unknown as Window & typeof globalThis;
 }
 
 function jsonResponse(value: unknown): Response {

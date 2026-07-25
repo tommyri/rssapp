@@ -33,7 +33,7 @@ function validBackup() {
         feedUrl: "https://example.com/feed.xml",
         guid: "article-1",
         url: "https://example.com/article-1",
-        canonicalUrl: "https://example.com/article-1",
+        canonicalUrl: "https://example.com/article-1" as string | null,
         title: "Article",
         author: null,
         contentHtml: "<p>Article</p>",

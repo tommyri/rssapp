@@ -70,7 +70,7 @@ describe("ArticleContent audio progress rerenders", () => {
         const [progress, setProgress] = useState<Record<string, number>>({});
         return createElement(ArticleContent, {
           html: '<audio src="https://cdn.example.com/episode.m4a"></audio>',
-          embedLoading: { defaultMode: "defer", providers: {} },
+          embedLoading: { default: "click", providers: {} },
           itemId: 42,
           audioProgress: progress,
           onAudioProgressChange: async (url, position) => {

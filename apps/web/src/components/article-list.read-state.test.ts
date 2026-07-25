@@ -127,7 +127,7 @@ function readerProps(
     showingAll: false,
     unreadCount: initialItems.filter((item) => !item.read).length,
     density: "comfortable",
-    embedLoading: { defaultMode: "defer", providers: {} },
+    embedLoading: { default: "click", providers: {} },
     offlineUserId: 1,
     availableLabels: [],
   };

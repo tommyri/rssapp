@@ -54,6 +54,9 @@ describe("offlineArticleFromReaderItem", () => {
         starred: false,
         readLater: false,
         readingProgress: null,
+        audioUrl: null,
+        audioType: null,
+        audioProgress: {},
       },
       "<p>Sanitized readable copy</p>",
     );
@@ -99,6 +102,9 @@ describe("offlineArticlesFromReaderItems", () => {
         starred: false,
         readLater: true,
         readingProgress: null,
+        audioUrl: null,
+        audioType: null,
+        audioProgress: {},
       },
       {
         kind: "page" as const,
@@ -116,6 +122,9 @@ describe("offlineArticlesFromReaderItems", () => {
         starred: false,
         readLater: true,
         readingProgress: null,
+        audioUrl: null,
+        audioType: null,
+        audioProgress: {},
       },
     ];
 

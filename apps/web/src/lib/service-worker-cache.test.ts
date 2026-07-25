@@ -72,7 +72,7 @@ function loadServiceWorker() {
       let response: Promise<Response> | undefined;
       listeners.get("fetch")?.({
         request: new Request(url),
-        respondWith: (next) => {
+        respondWith: (next: Promise<Response>) => {
           response = next;
         },
       });

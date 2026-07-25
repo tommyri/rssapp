@@ -23,6 +23,9 @@ jobs:
       - run: npm run contract:check
       - run: npm run deploy:check
       - run: npm run lint
+      # Vitest does not typecheck and `next build` only checks files reachable
+      # from the app graph, so tests drift out of the types without this.
+      - run: npm run typecheck
       - run: npm test
       - run: npm run build
 

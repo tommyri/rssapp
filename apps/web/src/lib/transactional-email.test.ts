@@ -43,10 +43,10 @@ describe("transactional email", () => {
         subject: "Test",
         text: "Body",
       }),
-    ).rejects.toMatchObject<Partial<EmailDeliveryError>>({
+    ).rejects.toMatchObject({
       name: "EmailDeliveryError",
       retryable: false,
-    });
+    } satisfies Partial<EmailDeliveryError>);
     expect(isEmailDeliveryAvailable()).toBe(false);
   });
 
@@ -111,9 +111,9 @@ describe("transactional email", () => {
         subject: "Digest",
         text: "Plain",
       });
-      await expect(result).rejects.toMatchObject<Partial<EmailDeliveryError>>({
+      await expect(result).rejects.toMatchObject({
         retryable,
-      });
+      } satisfies Partial<EmailDeliveryError>);
     },
   );
 });
