@@ -1,8 +1,13 @@
 import { lookup } from "node:dns/promises";
 import { isIP } from "node:net";
+import { getBuildIdentity } from "@/lib/build-identity";
 
-export const USER_AGENT =
-  "rssapp/0.1 (+https://github.com/rssapp; self-hosted feed reader)";
+// Publishers see this on every fetch, so it states the real deployed version
+// rather than a frozen one. The previous value advertised a repository URL that
+// does not exist; a dead link wastes a publisher's time more than no link does.
+// Whether to advertise a contact URL here is part of the parked rebrand and
+// domain decision (docs/brand-domain-migration.md), not a value to invent.
+export const USER_AGENT = `rssapp/${getBuildIdentity().version} (feed reader)`;
 
 const TIMEOUT_MS = 15_000;
 const ARTICLE_MAX_BYTES = 5 * 1024 * 1024;

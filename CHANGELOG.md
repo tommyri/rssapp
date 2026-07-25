@@ -17,6 +17,8 @@ version section verbatim, so this file is the release record rather than an afte
 - Saving a link no longer fetches it twice. The save and the scheduler's backstop sweep
   claim a page before extracting, so they can't both call the same publisher at once —
   most likely previously on exactly the slow publishers least able to absorb it.
+- Outbound requests now identify the deployed release instead of a frozen `0.1`, and no
+  longer point publishers at a repository address that does not exist.
 
 ## [2026.7.4] - 2026-07-25
 
