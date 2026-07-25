@@ -335,6 +335,14 @@ assigned a version until their product shape and priority are agreed.
    `Retry-After` (five attempts, ending in a visible failure), while a permanent one
    stays immediately terminal. An explicit **Retry** resets the budget. A crashed worker
    releases its row once the claim goes stale.
+3. **Close the resolve-then-connect gap (implemented; release pending).** The
+   public-internet check is now applied inside the resolution the connection actually
+   uses, via a shared dispatcher whose lookup rejects private answers, so a host that
+   answers one query publicly and the next privately can no longer reach the
+   deployment's own network. The pre-flight resolution stays, but only to produce the
+   message a reader sees when they paste a private URL — the dispatcher is the
+   enforcement, and the two are documented as such so neither is mistaken for a
+   duplicate of the other.
 
 ## Later / version undecided
 

@@ -7,8 +7,21 @@ vi.mock("node:dns/promises", () => ({ lookup: mocks.lookup }));
 import {
   fetchFeedUrl,
   isPublicInternetAddress,
+  publicOnlyLookup,
   safeFetchCandidate,
 } from "./fetch";
+
+/** Drive the connect-time lookup the way undici's socket factory does. */
+function resolveThroughGuard(
+  hostname: string,
+  options: { all?: boolean } = { all: true },
+) {
+  return new Promise<{ error: Error | null; addresses: unknown }>((resolve) => {
+    publicOnlyLookup(hostname, options, (error, addresses) => {
+      resolve({ error, addresses });
+    });
+  });
+}
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -110,5 +123,100 @@ describe("guarded feed fetching", () => {
     await expect(
       fetchFeedUrl("https://feeds.example.com/rss"),
     ).resolves.toMatchObject({ status: "ok", body: "<rss/>" });
+  });
+});
+
+describe("connect-time address enforcement", () => {
+  it("passes through the addresses of a genuinely public name", async () => {
+    mocks.lookup.mockResolvedValue([
+      { address: "93.184.216.34", family: 4 },
+      { address: "2606:2800:220:1:248:1893:25c8:1946", family: 6 },
+    ]);
+
+    const { error, addresses } = await resolveThroughGuard("feeds.example.com");
+
+    expect(error).toBeNull();
+    expect(addresses).toEqual([
+      { address: "93.184.216.34", family: 4 },
+      { address: "2606:2800:220:1:248:1893:25c8:1946", family: 6 },
+    ]);
+  });
+
+  it("blocks the connection when the name resolves privately", async () => {
+    mocks.lookup.mockResolvedValue([{ address: "169.254.169.254", family: 4 }]);
+
+    const { error, addresses } =
+      await resolveThroughGuard("metadata.evil.test");
+
+    expect(error?.message).toContain("private network address");
+    expect((error as NodeJS.ErrnoException).code).toBe("ECONNREFUSED");
+    expect(addresses).toEqual([]);
+  });
+
+  it("blocks a rebinding answer that the pre-flight check would have passed", async () => {
+    // The pre-flight resolution sees only public addresses and allows the URL;
+    // the connection's own resolution is what this guard has to catch.
+    mocks.lookup
+      .mockResolvedValueOnce([{ address: "93.184.216.34", family: 4 }])
+      .mockResolvedValueOnce([{ address: "127.0.0.1", family: 4 }]);
+
+    const preflight = await resolveThroughGuard("rebind.evil.test");
+    expect(preflight.error).toBeNull();
+
+    const connect = await resolveThroughGuard("rebind.evil.test");
+    expect(connect.error?.message).toContain("private network address");
+  });
+
+  it("refuses a name that mixes public and private answers", async () => {
+    mocks.lookup.mockResolvedValue([
+      { address: "93.184.216.34", family: 4 },
+      { address: "10.0.0.5", family: 4 },
+    ]);
+
+    const { error } = await resolveThroughGuard("split.evil.test");
+
+    expect(error?.message).toContain("private network address");
+  });
+
+  it("answers the single-address form when undici asks for one", async () => {
+    mocks.lookup.mockResolvedValue([{ address: "93.184.216.34", family: 4 }]);
+
+    await new Promise<void>((resolve) => {
+      publicOnlyLookup(
+        "feeds.example.com",
+        { all: false },
+        (error, address, family) => {
+          expect(error).toBeNull();
+          expect(address).toBe("93.184.216.34");
+          expect(family).toBe(4);
+          resolve();
+        },
+      );
+    });
+  });
+
+  it("blocks the connection when resolution fails outright", async () => {
+    mocks.lookup.mockRejectedValue(new Error("ENOTFOUND"));
+
+    const { error } = await resolveThroughGuard("missing.example.test");
+
+    expect(error?.message).toContain("could not be resolved");
+  });
+
+  // Real fetch, no stub: proves the dispatcher is actually wired into the fetch
+  // path rather than merely correct in isolation. Nothing leaves the process —
+  // the guard rejects during resolution, before any socket is opened.
+  it("stops a rebinding answer reaching the network through fetchFeedUrl", async () => {
+    mocks.lookup
+      // The pre-flight resolution is answered with a public address, so the URL
+      // passes every check that happens before the connection.
+      .mockResolvedValueOnce([{ address: "93.184.216.34", family: 4 }])
+      // Everything after that — the resolution undici connects with — is private.
+      .mockResolvedValue([{ address: "127.0.0.1", family: 4 }]);
+
+    const result = await fetchFeedUrl("https://rebind.example.test/rss");
+
+    expect(result.status).toBe("error");
+    expect(mocks.lookup.mock.calls.length).toBeGreaterThan(1);
   });
 });

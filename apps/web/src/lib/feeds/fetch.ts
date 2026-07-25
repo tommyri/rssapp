@@ -1,5 +1,6 @@
 import { lookup } from "node:dns/promises";
 import { isIP } from "node:net";
+import { Agent } from "undici";
 import { getBuildIdentity } from "@/lib/build-identity";
 
 // Publishers see this on every fetch, so it states the real deployed version
@@ -179,6 +180,79 @@ async function assertAllowedTarget(
   }
 }
 
+type LookupResult = { address: string; family: number };
+type LookupCallback = (
+  error: NodeJS.ErrnoException | null,
+  addresses: LookupResult[] | string,
+  family?: number,
+) => void;
+
+function blocked(message: string): NodeJS.ErrnoException {
+  const error: NodeJS.ErrnoException = new Error(message);
+  // Presented to callers as an ordinary connection failure.
+  error.code = "ECONNREFUSED";
+  return error;
+}
+
+/**
+ * The authoritative private-address check.
+ *
+ * `assertAllowedTarget` above resolves the hostname too, but the addresses it
+ * approved are not necessarily the ones the socket then connects to: a hostile
+ * name can answer a second query with different records, and `fetch` resolves
+ * again independently. This runs *inside* the resolution the connection uses,
+ * so there is no second lookup left to poison.
+ *
+ * Both exist deliberately. The pre-flight check produces the message a reader
+ * sees for the ordinary mistake of pasting a private URL; this one is the
+ * enforcement. Do not delete it as a duplicate.
+ */
+export function publicOnlyLookup(
+  hostname: string,
+  options: { all?: boolean },
+  callback: LookupCallback,
+): void {
+  lookup(hostname, { all: true, verbatim: true })
+    .then((addresses) => {
+      // Any private answer rejects the whole name, matching the pre-flight
+      // check — a name that mixes public and private records is not a target
+      // we are willing to guess about.
+      const usable = addresses.filter((entry) =>
+        isPublicInternetAddress(entry.address),
+      );
+      if (usable.length === 0 || usable.length !== addresses.length) {
+        callback(
+          blocked(`${hostname} resolves to a private network address.`),
+          [],
+        );
+        return;
+      }
+      if (options.all) {
+        callback(null, usable);
+        return;
+      }
+      const [first] = usable;
+      callback(null, first.address, first.family);
+    })
+    .catch(() => {
+      callback(blocked(`${hostname} could not be resolved.`), []);
+    });
+}
+
+let guardedAgent: Agent | null = null;
+
+/**
+ * Built on first use so importing this module never opens sockets, and shared so
+ * connections still pool. Every outbound feed and article request goes through
+ * it, which is what makes the lookup above unavoidable.
+ */
+function guardedDispatcher(): Agent {
+  guardedAgent ??= new Agent({
+    connect: { lookup: publicOnlyLookup, timeout: TIMEOUT_MS },
+  });
+  return guardedAgent;
+}
+
 async function boundedText(
   response: Response,
   maxBytes: number,
@@ -231,11 +305,16 @@ async function fetchGuarded(
 
     let response: Response;
     try {
-      response = await fetch(current, {
+      // `dispatcher` is undici's extension to fetch, so it is absent from the
+      // DOM RequestInit type. A variable rather than a literal keeps it out of
+      // the excess-property check without casting the whole init away.
+      const init: RequestInit & { dispatcher: Agent } = {
         headers: fetchHeaders(options.conditional),
         redirect: "manual",
         signal: AbortSignal.timeout(TIMEOUT_MS),
-      });
+        dispatcher: guardedDispatcher(),
+      };
+      response = await fetch(current, init);
     } catch (err) {
       const error = err instanceof Error ? err.message : String(err);
       return { status: "error", error, retryable: true };

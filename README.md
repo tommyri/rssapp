@@ -162,6 +162,9 @@ Feeds are domain names (a public address literal works too), so this has no opt-
 needs no configuration. A setting that relaxed it would only ever be useful to an
 attacker.
 
+The address check runs inside the connection's own DNS resolution, so a host cannot
+answer the check with a public address and the connection with a private one.
+
 ### Search
 
 Full-text search (Postgres FTS) across titles, authors, and article bodies — including

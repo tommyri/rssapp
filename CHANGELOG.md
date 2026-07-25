@@ -20,6 +20,13 @@ version section verbatim, so this file is the release record rather than an afte
 - Outbound requests now identify the deployed release instead of a frozen `0.1`, and no
   longer point publishers at a repository address that does not exist.
 
+### Security
+
+- The private-address check is now enforced on the connection itself, not only on a
+  separate lookup beforehand. A hostile feed or article host could previously answer the
+  safety check with a public address and the connection with a private one, defeating the
+  check; the address the socket connects to is now the address that was verified.
+
 ## [2026.7.4] - 2026-07-25
 
 ### Added
