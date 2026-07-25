@@ -11,12 +11,24 @@ Compose.
 | Environment | Image | Update policy | Data |
 |---|---|---|---|
 | Local | Working-tree build | Manual | Local Docker volumes |
-| Staging | `ghcr.io/tommyri/rssapp:edge` | Checks every five minutes | Separate `rssapp-staging` volumes and database |
+| Staging — **not built yet** | `ghcr.io/tommyri/rssapp:edge` | Checks every five minutes | Separate `rssapp-staging` volumes and database |
 | Production | `ghcr.io/tommyri/rssapp:sha-<commit>` or a calendar-version tag | Explicit promotion only | Existing `rssapp` volumes and database |
 
 The `edge` tag changes whenever a verified commit reaches `main`; it is deliberately
 staging-only. A production deployment always names an immutable commit SHA or release
-version that has already been tested on staging.
+version.
+
+> **Staging does not exist yet, and production is the only environment.** Standing it up
+> is deferred until after the identity cutover — image path, Compose project and volume
+> names, VPS paths, env-file locations, systemd units, and its own domain are all
+> identity-bound, so building it first would mean migrating it immediately afterwards. The
+> deferral is recorded as **Confirmed** in
+> [brand-domain-migration.md](brand-domain-migration.md).
+>
+> Everything below describing staging is therefore the intended setup, not the current
+> one. Until it exists, read every "test it on staging" step as work a person does against
+> production, deliberately and with a backup in hand — the automated gate in CI is all
+> that runs before a release.
 
 Keep staging and production separate: different domains, environment files, Compose
 project names, databases, backup locations, email senders where practical, and VAPID
@@ -330,7 +342,7 @@ Postgres.
 # Staging reads APP_IMAGE=edge from /etc/rssapp/staging.env.
 sudo bash /opt/rssapp/scripts/deploy-image.sh staging
 
-# Promote an immutable image that has been tested on staging.
+# Promote an immutable image CI has verified (and staging has tested, once it exists).
 sudo bash /opt/rssapp/scripts/deploy-image.sh production \
   ghcr.io/tommyri/rssapp:sha-<tested-full-commit-sha>
 ```
@@ -356,7 +368,10 @@ name differs, use
 `sudo docker compose --project-name rssapp-staging ps` or `--project-name rssapp ps` to
 find it.
 
-## 6. Let staging follow `main`
+## 6. Let staging follow `main` (not set up yet)
+
+Deferred until after the identity cutover — see the note under
+[the deployment model](#the-deployment-model). The steps below are the intended setup.
 
 Install the systemd unit and timer once. It pulls the current `edge` image every five
 minutes; ordinary runs are safe no-ops when the image did not change.
@@ -417,7 +432,8 @@ git add package.json package-lock.json CHANGELOG.md
 git commit -m "release: prepare 2026.7.1"
 git push origin main
 
-# 2. Wait for CI to publish that exact commit and test it in staging.
+# 2. Wait for CI to publish that exact commit. Test it in staging once staging
+#    exists; until then CI's own gate is the only check before the tag.
 # 3. Tag the same tested commit. Do not use --follow-tags with the main push:
 #    the release workflow needs the immutable sha image to exist first.
 git tag -a v2026.7.1 -m "rssapp 2026.7.1"

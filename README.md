@@ -313,11 +313,13 @@ create or paste one. See [docs/first-party-api.md](docs/first-party-api.md).
 
 ## Deployment (home server / VPS)
 
-GitHub Actions tests and builds the standalone Docker image, publishes it to GHCR, and
-lets a separate staging instance follow `main`. Production only pulls an immutable image
-that staging has already tested; it never compiles the app or carries uncommitted Compose
-changes. The app still applies database migrations during a successful container boot and
-starts its in-process poller normally.
+GitHub Actions tests and builds the standalone Docker image and publishes it to GHCR.
+Production only pulls an immutable, CI-verified image by commit SHA or release version; it
+never compiles the app or carries uncommitted Compose changes. A separate staging instance
+that follows `main` is designed but not built — it is deferred until after the identity
+cutover, so production is currently the only environment (see
+[deployment.md](docs/deployment.md)). The app still applies database migrations during a
+successful container boot and starts its in-process poller normally.
 
 Every published image carries the package calendar version and exact source revision in
 its runtime environment and OCI labels. The same identity is visible at the bottom of
