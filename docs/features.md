@@ -5,11 +5,11 @@ its own as a useful reader; the current rollout and next candidates are delibera
 separate from shipped work.
 
 **Release status — 25 July 2026:** v0.1, v1.0, **2026.7.1 — Notifications, full text &
-reading history**, **2026.7.2 — Deliberate read state**, and **2026.7.3 — Email digests,
-build identity & product foundations** are shipped. **2026.7.4 — Reader freshness,
-durability & one guarded fetch path** is a release candidate: automated web, brand,
-contract, deployment, and iOS validation is complete; staging and signed-in production
-validation remain.
+reading history**, **2026.7.2 — Deliberate read state**, **2026.7.3 — Email digests,
+build identity & product foundations**, and **2026.7.4 — Reader freshness, durability &
+one guarded fetch path** are shipped and deployed to production. **2026.7.5 — Fetch
+address-policy correction** is a release candidate covering one defect 2026.7.4's own
+production deployment surfaced.
 
 ## MVP (v0.1) — daily-drivable reader
 
@@ -272,7 +272,7 @@ the exact deployed app version easy to identify.
    [ADR 0002](adr/0002-native-account-authentication.md), and
    [first-party-api.md](first-party-api.md).
 
-## 2026.7.4 — Reader freshness, durability & one guarded fetch path (release candidate)
+## 2026.7.4 — Reader freshness, durability & one guarded fetch path
 
 **Goal:** keep an open reader honest about what has changed elsewhere — on another
 client, or in a background job — finish the interface details that daily production use
@@ -336,6 +336,21 @@ of 2026.7.3 exposed, and hold every automatic outbound request to one guarded pa
    signed-in reader through it, and the budget is what stops that becoming an unmetered
    fetcher. The ceiling is generous enough to bookmark a screenful of open tabs; hitting
    it reports back in Read later instead of silently dropping the save.
+
+## 2026.7.5 — Fetch address-policy correction
+
+**Goal:** correct the address policy 2026.7.4 began applying to feed fetching, which
+rejected far more of the public internet than it meant to.
+
+1. **Only the reserved blocks inside `192/8`, `198/8` and `203/8` are rejected.** The
+   policy matched those blocks on their second octet, which took whole `/16`s when the
+   reserved ranges inside them are `/24`s. That put `192.0.0.0/16` out of reach —
+   including `192.0.66.0/24` and `192.0.78.0/24`, where WordPress VIP and WordPress.com
+   serve a large share of independent blogs. Feed fetching began failing visibly for
+   those hosts in 2026.7.4; the same rule had been quietly costing them full-text
+   extraction since 2026.7.1, where the feed-provided body absorbed it. The address
+   classifier is now pinned by tests at each `/24` boundary, asserting both the public
+   addresses that were wrongly rejected and the reserved ones that must stay rejected.
 
 ## Next release candidates
 

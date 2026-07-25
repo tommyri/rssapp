@@ -5,6 +5,18 @@ version section verbatim, so this file is the release record rather than an afte
 
 ## [Unreleased]
 
+## [2026.7.5] - 2026-07-25
+
+### Fixed
+
+- Feeds hosted on WordPress.com or WordPress VIP stopped updating after 2026.7.4. The
+  address policy that release began applying to feed fetching treated the whole of
+  `192.0.0.0/16` as reserved, when only two small blocks inside it are — and the rest
+  includes the addresses a great many blogs are served from. Affected feeds recover on
+  their next scheduled refresh; the same mistake had also been quietly preventing
+  full-text extraction from those hosts since 2026.7.1, where it fell back to the
+  feed-provided body instead of failing visibly.
+
 ## [2026.7.4] - 2026-07-25
 
 ### Added

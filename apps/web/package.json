@@ -1,6 +1,6 @@
 {
   "name": "@currentfold/web",
-  "version": "2026.7.4",
+  "version": "2026.7.5",
   "private": true,
   "scripts": {
     "dev": "next dev",
