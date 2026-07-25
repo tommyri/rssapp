@@ -18,12 +18,20 @@ The `edge` tag changes whenever a verified commit reaches `main`; it is delibera
 staging-only. A production deployment always names an immutable commit SHA or release
 version.
 
-> **Staging does not exist yet, and production is the only environment.** Standing it up
-> is deferred until after the identity cutover — image path, Compose project and volume
-> names, VPS paths, env-file locations, systemd units, and its own domain are all
-> identity-bound, so building it first would mean migrating it immediately afterwards. The
-> deferral is recorded as **Confirmed** in
+> **Staging does not exist yet, and production is the only environment.** The two-tier
+> model is the plan, not a maybe: calendar-tagged releases go to production, `edge`
+> follows `main` into staging. It waits on two things — the identity cutover being
+> finished, and a deliberate decision to stabilize production. Building staging first
+> would mean migrating it immediately afterwards, because its image path, Compose project
+> and volume names, VPS paths, env-file locations, systemd units, and its own domain are
+> all identity-bound. The deferral is recorded as **Confirmed** in
 > [brand-domain-migration.md](brand-domain-migration.md).
+>
+> Only the server half is missing. CI already publishes `:edge` alongside
+> `:sha-<commit>` on every verified push to `main`, and production already promotes
+> immutable version or SHA tags — so `edge` is being built continuously with nothing
+> consuming it. Standing staging up needs no pipeline change; it needs the VPS side of
+> sections 4–6.
 >
 > Everything below describing staging is therefore the intended setup, not the current
 > one. Until it exists, read every "test it on staging" step as work a person does against
