@@ -5,6 +5,8 @@ version section verbatim, so this file is the release record rather than an afte
 
 ## [Unreleased]
 
+## [2026.7.6] - 2026-07-26
+
 ### Fixed
 
 - Opening an article no longer moves it out of sight. Since 2026.7.4, opening one in the

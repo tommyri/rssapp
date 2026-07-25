@@ -4,12 +4,13 @@ This is the living product roadmap and concise release record. Every phase must 
 its own as a useful reader; the current rollout and next candidates are deliberately
 separate from shipped work.
 
-**Release status — 25 July 2026:** v0.1, v1.0, **2026.7.1 — Notifications, full text &
+**Release status — 26 July 2026:** v0.1, v1.0, **2026.7.1 — Notifications, full text &
 reading history**, **2026.7.2 — Deliberate read state**, **2026.7.3 — Email digests,
-build identity & product foundations**, and **2026.7.4 — Reader freshness, durability &
-one guarded fetch path** are shipped and deployed to production. **2026.7.5 — Fetch
-address-policy correction** is a release candidate covering one defect 2026.7.4's own
-production deployment surfaced.
+build identity & product foundations**, **2026.7.4 — Reader freshness, durability & one
+guarded fetch path**, and **2026.7.5 — Fetch address-policy correction** are shipped and
+deployed to production. **2026.7.6 — Scanning corrections, search reach & bounded growth**
+is a release candidate: it collects what a hands-on product review of the deployed app
+found.
 
 ## MVP (v0.1) — daily-drivable reader
 
@@ -351,6 +352,42 @@ rejected far more of the public internet than it meant to.
    extraction since 2026.7.1, where the feed-provided body absorbed it. The address
    classifier is now pinned by tests at each `/24` boundary, asserting both the public
    addresses that were wrongly rejected and the reserved ones that must stay rejected.
+
+## 2026.7.6 — Scanning corrections, search reach & bounded growth
+
+**Goal:** fix what using the deployed reader revealed but no test could — two defects in
+the article list itself — and remove two properties that would have degraded quietly as
+content and readers grew.
+
+1. **An opened article stays where it was clicked.** 2026.7.4's cross-client freshness
+   marked the article read, which removed it from the refreshed unread page; the
+   reconciliation preserved the open row but appended it, sending it to the bottom of the
+   loaded list — around 6,600px below the click, within 300ms. It now keeps its position
+   relative to whichever neighbour above it survived. The original test asserted only that
+   the row survived, on a single-item list where "appended" and "in place" are the same
+   thing; the regression tests now carry neighbours.
+2. **List previews clamp to two lines again.** A `block` class was overriding the display
+   mode `line-clamp` depends on, so the clamp was inert everywhere — masked on a desktop
+   width, obvious on a phone at five or six lines per row. It also meant the Compact
+   density setting left previews untouched. Roughly twice as many articles now fit a phone
+   screen, which is what [design-ux.md](design-ux.md)'s own anti-pattern 4 asks for.
+3. **Previews stop repeating feed boilerplate.** A publication date the row already shows,
+   the article's own title, and the spacing tag-stripping leaves before punctuation are all
+   removed, and a preview no longer ends mid-word. A feed whose posts genuinely are link
+   lists is left alone: guessing there would delete real content.
+4. **Search reaches every language's words.** The index carries a language-neutral `simple`
+   layer beside the English and Norwegian stemmers. This was never about exact matching,
+   which already worked — mis-stemming is self-consistent. It is about noise-word lists
+   silently discarding tokens, so a search for French *a* or Italian *i* produced an empty
+   query and no results. Author and site names are matched as written rather than stemmed.
+   Per-language inflection matching stays deferred; see
+   [business-option.md](business-option.md).
+5. **Sidebar unread counts stopped growing with the archive.** They joined every article of
+   every subscribed feed on every page load, unbounded, so the cost rose forever as
+   history accumulated. Counts now look back only as far as an article could still be
+   unread — auto-read cannot be disabled and is capped at one year, so the result is
+   unchanged — with a matching index, since the reader's sort expression could not use the
+   existing one.
 
 ## Next release candidates
 
