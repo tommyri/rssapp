@@ -3,14 +3,9 @@
 import {
   BookmarkCheckIcon,
   BookmarkIcon,
-  CheckIcon,
   CircleIcon,
-  DownloadIcon,
-  ExternalLinkIcon,
   LinkIcon,
-  RotateCwIcon,
   StarIcon,
-  Trash2Icon,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -34,10 +29,15 @@ import {
   listHighlightsAction,
   updateHighlightNoteAction,
 } from "@/app/highlights/actions";
-import { ArticleAudioPlayer } from "@/components/article-audio-player";
-import { ArticleContent } from "@/components/article-content";
-import { ArticleLabelPicker } from "@/components/article-label-picker";
 import { ArticleListHeader } from "@/components/article-list-header";
+import {
+  type ArticleRowActionHandlers,
+  ArticleRowActions,
+} from "@/components/article-row-actions";
+import {
+  ArticleRowBody,
+  type ArticleRowBodyHighlights,
+} from "@/components/article-row-body";
 import { SaveLinkForm } from "@/components/save-link-form";
 import { SavedPageExtractionWatcher } from "@/components/saved-page-extraction-watcher";
 import { SwipeableRow } from "@/components/swipeable-row";
@@ -47,13 +47,11 @@ import {
   useReaderKeyboard,
 } from "@/components/use-reader-keyboard";
 import { useReadingProgress } from "@/components/use-reading-progress";
-import { hasExpandedArticleContent } from "@/lib/article-display";
 import {
   type ArticleListDensity,
   articleListDensityClasses,
 } from "@/lib/article-list-density";
-import { withAudioProgress } from "@/lib/audio-progress";
-import { persistItemAudioProgress } from "@/lib/audio-progress-client";
+import { articleRowFacts } from "@/lib/article-row-facts";
 import { alsoInLabel } from "@/lib/duplicates";
 import type { EmbedLoadingPreferences } from "@/lib/embed-loading";
 import { relativeTime } from "@/lib/format";
@@ -699,6 +697,25 @@ export function ArticleList({
     keyOf,
   });
 
+  const rowHighlights: ArticleRowBodyHighlights = {
+    list: highlights,
+    focusId: focusHighlightId,
+    create: createHighlightForItem,
+    updateNote: updateHighlightNote,
+    remove: removeHighlight,
+  };
+
+  const rowActionHandlers: ArticleRowActionHandlers = {
+    keepOffline: (item, contentHtml) => void keepOffline(item, contentHtml),
+    updateLabels: updateItemLabels,
+    retryPage: (item) => void retryPage(item),
+    retryFullContent: (item) => void retryFullContent(item),
+    toggleStarred,
+    toggleReadLater,
+    toggleRead: toggleReadFromActions,
+    removePage,
+  };
+
   return (
     <div>
       {expandedItem?.kind === "page" &&
@@ -766,23 +783,15 @@ export function ArticleList({
               isOpen ? "comfortable" : density,
             );
             const isPage = item.kind === "page";
-            const contentHtml = item.fullContentHtml ?? item.contentHtml;
-            const fullTextPending =
-              !isPage &&
-              (item.fullContentStatus === "pending" ||
-                item.fullContentStatus === "processing" ||
-                item.fullContentStatus === "retrying");
-            const fullTextUnavailable =
-              !isPage && item.fullContentStatus === "unavailable";
+            const {
+              contentHtml,
+              fullTextPending,
+              fullTextUnavailable,
+              pageSubtitle,
+            } = articleRowFacts(item);
             const snippet = snippetOf(item);
             // Best-available estimate: improves when full content is loaded.
             const minutes = readingTimeMinutes(contentHtml);
-            const pageSubtitle =
-              isPage && item.pageStatus === "pending"
-                ? "Fetching a readable copy…"
-                : isPage && item.pageStatus === "error"
-                  ? "Couldn't fetch a readable copy — open the original."
-                  : "";
             return [
               readHistoryStartKey === key ? (
                 <li
@@ -927,176 +936,27 @@ export function ArticleList({
 
                 {isOpen ? (
                   <div className="row-enter pr-1 pb-5 pl-6">
-                    {isPage && item.pageStatus === "pending" ? (
-                      <p className="text-sm text-muted-foreground italic">
-                        {extractionWatchGaveUp
-                          ? "Still fetching a readable copy — reload to check for it."
-                          : "Fetching a readable copy…"}
-                      </p>
-                    ) : isPage && item.pageStatus === "error" ? (
-                      <p className="text-sm text-muted-foreground italic">
-                        {item.pageError ??
-                          "Couldn't fetch a readable copy of this page."}
-                      </p>
-                    ) : hasExpandedArticleContent(
-                        contentHtml,
-                        item.audioUrl,
-                      ) ? (
-                      <div ref={articleRef}>
-                        {item.audioUrl ? (
-                          <ArticleAudioPlayer
-                            itemId={item.id}
-                            url={item.audioUrl}
-                            type={item.audioType}
-                            initialProgress={
-                              item.audioProgress[item.audioUrl] ?? null
-                            }
-                            onProgressChange={(audioUrl, progress) =>
-                              setEntryState([key], {
-                                audioProgress: withAudioProgress(
-                                  item.audioProgress,
-                                  audioUrl,
-                                  progress,
-                                ),
-                              })
-                            }
-                          />
-                        ) : null}
-                        {contentHtml ? (
-                          <ArticleContent
-                            html={contentHtml}
-                            embedLoading={embedLoading}
-                            itemId={item.kind === "item" ? item.id : undefined}
-                            audioProgress={item.audioProgress}
-                            onAudioProgressChange={
-                              item.kind === "item"
-                                ? (audioUrl, progress) => {
-                                    setEntryState([key], {
-                                      audioProgress: withAudioProgress(
-                                        item.audioProgress,
-                                        audioUrl,
-                                        progress,
-                                      ),
-                                    });
-                                    return persistItemAudioProgress({
-                                      itemId: item.id,
-                                      audioUrl,
-                                      progress,
-                                    });
-                                  }
-                                : undefined
-                            }
-                            highlights={highlights}
-                            focusHighlightId={focusHighlightId}
-                            onCreateHighlight={(anchor, note) =>
-                              createHighlightForItem(item, anchor, note)
-                            }
-                            onUpdateHighlightNote={updateHighlightNote}
-                            onDeleteHighlight={removeHighlight}
-                          />
-                        ) : (
-                          <p className="text-sm text-muted-foreground italic">
-                            This episode does not include article text.
-                          </p>
-                        )}
-                      </div>
-                    ) : (
-                      <p className="text-sm text-muted-foreground italic">
-                        {fullTextPending
-                          ? "Preparing a readable copy of this article…"
-                          : "No content in this feed entry."}
-                      </p>
-                    )}
+                    <ArticleRowBody
+                      item={item}
+                      contentHtml={contentHtml}
+                      fullTextPending={fullTextPending}
+                      fullTextUnavailable={fullTextUnavailable}
+                      extractionWatchGaveUp={extractionWatchGaveUp}
+                      embedLoading={embedLoading}
+                      articleRef={articleRef}
+                      highlights={rowHighlights}
+                      onAudioProgress={(audioProgress) =>
+                        setEntryState([key], { audioProgress })
+                      }
+                    />
 
-                    {fullTextUnavailable ? (
-                      <p className="mt-3 text-sm text-muted-foreground">
-                        We couldn’t get a readable full-text copy. The feed
-                        version above remains available when provided.
-                      </p>
-                    ) : null}
-
-                    <div className="mt-5 flex flex-wrap items-center gap-2 border-t border-border/60 pt-4 text-xs">
-                      {item.url ? (
-                        <ActionButton asLink href={item.url}>
-                          <ExternalLinkIcon className="size-3.5" />
-                          Open original
-                        </ActionButton>
-                      ) : null}
-                      {contentHtml ? (
-                        <ActionButton
-                          onClick={() => void keepOffline(item, contentHtml)}
-                        >
-                          <DownloadIcon className="size-3.5" />
-                          Keep offline
-                        </ActionButton>
-                      ) : null}
-                      <ArticleLabelPicker
-                        item={item}
-                        labels={availableLabels}
-                        onChange={(label, assigned) =>
-                          updateItemLabels(item, label, assigned)
-                        }
-                      />
-                      {isPage ? (
-                        <>
-                          {item.pageStatus === "error" ? (
-                            <ActionButton onClick={() => retryPage(item)}>
-                              <RotateCwIcon className="size-3.5" />
-                              Retry
-                            </ActionButton>
-                          ) : null}
-                          <ActionButton
-                            onClick={() => toggleReadFromActions(item)}
-                          >
-                            {item.read ? (
-                              <CircleIcon className="size-3.5" />
-                            ) : (
-                              <CheckIcon className="size-3.5" />
-                            )}
-                            {item.read ? "Mark unread" : "Mark read"}
-                          </ActionButton>
-                          <ActionButton onClick={() => removePage(item)}>
-                            <Trash2Icon className="size-3.5" />
-                            Remove
-                          </ActionButton>
-                        </>
-                      ) : (
-                        <>
-                          {fullTextUnavailable && item.url ? (
-                            <ActionButton
-                              onClick={() => retryFullContent(item)}
-                            >
-                              <RotateCwIcon className="size-3.5" />
-                              Retry full text
-                            </ActionButton>
-                          ) : null}
-                          <ActionButton onClick={() => toggleStarred(item)}>
-                            <StarIcon
-                              className={`size-3.5 ${item.starred ? "fill-current text-primary" : ""}`}
-                            />
-                            {item.starred ? "Unstar" : "Star"}
-                          </ActionButton>
-                          <ActionButton onClick={() => toggleReadLater(item)}>
-                            {item.readLater ? (
-                              <BookmarkCheckIcon className="size-3.5 text-primary" />
-                            ) : (
-                              <BookmarkIcon className="size-3.5" />
-                            )}
-                            {item.readLater ? "Saved" : "Read later"}
-                          </ActionButton>
-                          <ActionButton
-                            onClick={() => toggleReadFromActions(item)}
-                          >
-                            {item.read ? (
-                              <CircleIcon className="size-3.5" />
-                            ) : (
-                              <CheckIcon className="size-3.5" />
-                            )}
-                            {item.read ? "Mark unread" : "Mark read"}
-                          </ActionButton>
-                        </>
-                      )}
-                    </div>
+                    <ArticleRowActions
+                      item={item}
+                      contentHtml={contentHtml}
+                      fullTextUnavailable={fullTextUnavailable}
+                      labels={availableLabels}
+                      handlers={rowActionHandlers}
+                    />
                   </div>
                 ) : null}
               </li>,
@@ -1138,44 +998,5 @@ export function ArticleList({
         </div>
       ) : null}
     </div>
-  );
-}
-
-function ActionButton({
-  children,
-  onClick,
-  disabled,
-  asLink,
-  href,
-}: {
-  children: React.ReactNode;
-  onClick?: () => void;
-  disabled?: boolean;
-  asLink?: boolean;
-  href?: string;
-}) {
-  const className =
-    "inline-flex items-center gap-1.5 rounded-md border border-border/70 px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:border-border hover:bg-accent/60 hover:text-foreground disabled:opacity-50";
-  if (asLink && href) {
-    return (
-      <a
-        href={href}
-        target="_blank"
-        rel="noopener noreferrer"
-        className={className}
-      >
-        {children}
-      </a>
-    );
-  }
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={disabled}
-      className={className}
-    >
-      {children}
-    </button>
   );
 }
