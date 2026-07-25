@@ -5,40 +5,6 @@ version section verbatim, so this file is the release record rather than an afte
 
 ## [Unreleased]
 
-### Fixed
-
-- A saved page whose publisher fails temporarily is now retried automatically with
-  backoff instead of failing for good on the first stumble. A single timeout or “service
-  unavailable” previously left the page permanently unreadable until someone noticed and
-  pressed **Retry**; the page now keeps showing that a copy is on its way, and a
-  publisher's own Retry-After is respected. Failures that cannot succeed on a retry —
-  a page with no readable content, an address that does not resolve — still fail
-  immediately rather than waiting out a pointless backoff.
-- Saving a link no longer fetches it twice. The save and the scheduler's backstop sweep
-  claim a page before extracting, so they can't both call the same publisher at once —
-  most likely previously on exactly the slow publishers least able to absorb it.
-- Outbound requests now identify the deployed release instead of a frozen `0.1`, and no
-  longer point publishers at a repository address that does not exist.
-
-### Security
-
-- The private-address check is now enforced on the connection itself, not only on a
-  separate lookup beforehand. A hostile feed or article host could previously answer the
-  safety check with a public address and the connection with a private one, defeating the
-  check; the address the socket connects to is now the address that was verified.
-- Updated dependencies carrying security advisories, closing two critical sign-in issues
-  (a malformed bearer token could raise an unhandled error; a configuration error could
-  reveal whether an account exists), a denial-of-service opening in OPML import through
-  repeated XML doctype declarations, and a proxy-bypass issue in the framework's route
-  protection. Remaining advisories are build tooling or code no untrusted input reaches,
-  assessed in [tech-stack.md](docs/tech-stack.md).
-- Saving links is now bounded per account, with the bookmark and the paste-a-URL field
-  sharing one budget. Each save makes the reader fetch a page on your behalf, and the
-  bookmark has to work as a plain link, so another site could previously send a signed-in
-  reader through it without limit. Reaching the ceiling says so in Read later rather than
-  failing quietly, and normal use — including bookmarking a screenful of open tabs — stays
-  well inside it.
-
 ## [2026.7.4] - 2026-07-25
 
 ### Added
@@ -69,6 +35,18 @@ version section verbatim, so this file is the release record rather than an afte
 - Retrying a saved page that could not be fetched no longer flashes the previous failure
   back while the new attempt is still running, and a readable copy that has been stored
   is never replaced by a slower attempt that failed.
+- A saved page whose publisher fails temporarily is now retried automatically with
+  backoff instead of failing for good on the first stumble. A single timeout or “service
+  unavailable” previously left the page permanently unreadable until someone noticed and
+  pressed **Retry**; the page now keeps showing that a copy is on its way, and a
+  publisher's own Retry-After is respected. Failures that cannot succeed on a retry —
+  a page with no readable content, an address that does not resolve — still fail
+  immediately rather than waiting out a pointless backoff.
+- Saving a link no longer fetches it twice. The save and the scheduler's backstop sweep
+  claim a page before extracting, so they can't both call the same publisher at once —
+  most likely previously on exactly the slow publishers least able to absorb it.
+- Outbound requests now identify the deployed release instead of a frozen `0.1`, and no
+  longer point publishers at a repository address that does not exist.
 
 ### Security
 
@@ -78,6 +56,22 @@ version section verbatim, so this file is the release record rather than an afte
   size-bounded responses. Previously only article extraction was checked, so adding a
   feed could make the server fetch an address on its own network and report what it
   found. Feed and article requests are now held to one policy with no way to relax it.
+- The private-address check is now enforced on the connection itself, not only on a
+  separate lookup beforehand. A hostile feed or article host could previously answer the
+  safety check with a public address and the connection with a private one, defeating the
+  check; the address the socket connects to is now the address that was verified.
+- Updated dependencies carrying security advisories, closing two critical sign-in issues
+  (a malformed bearer token could raise an unhandled error; a configuration error could
+  reveal whether an account exists), a denial-of-service opening in OPML import through
+  repeated XML doctype declarations, and a proxy-bypass issue in the framework's route
+  protection. Remaining advisories are build tooling or code no untrusted input reaches,
+  assessed in [tech-stack.md](docs/tech-stack.md).
+- Saving links is now bounded per account, with the bookmark and the paste-a-URL field
+  sharing one budget. Each save makes the reader fetch a page on your behalf, and the
+  bookmark has to work as a plain link, so another site could previously send a signed-in
+  reader through it without limit. Reaching the ceiling says so in Read later rather than
+  failing quietly, and normal use — including bookmarking a screenful of open tabs — stays
+  well inside it.
 
 ## [2026.7.3] - 2026-07-24
 

@@ -6,9 +6,10 @@ separate from shipped work.
 
 **Release status — 25 July 2026:** v0.1, v1.0, **2026.7.1 — Notifications, full text &
 reading history**, **2026.7.2 — Deliberate read state**, and **2026.7.3 — Email digests,
-build identity & product foundations** are shipped. **2026.7.4 — Reader freshness &
-interface polish** is a release candidate: automated web, brand, contract, deployment,
-and iOS validation is complete; staging and signed-in production validation remain.
+build identity & product foundations** are shipped. **2026.7.4 — Reader freshness,
+durability & one guarded fetch path** is a release candidate: automated web, brand,
+contract, deployment, and iOS validation is complete; staging and signed-in production
+validation remain.
 
 ## MVP (v0.1) — daily-drivable reader
 
@@ -271,7 +272,7 @@ the exact deployed app version easy to identify.
    [ADR 0002](adr/0002-native-account-authentication.md), and
    [first-party-api.md](first-party-api.md).
 
-## 2026.7.4 — Reader freshness & interface polish (release candidate)
+## 2026.7.4 — Reader freshness, durability & one guarded fetch path (release candidate)
 
 **Goal:** keep an open reader honest about what has changed elsewhere — on another
 client, or in a background job — finish the interface details that daily production use
@@ -311,8 +312,30 @@ of 2026.7.3 exposed, and hold every automatic outbound request to one guarded pa
    longer aim the server at its own network. The policy is deliberately uniform and has
    no configurable escape hatch: subscriptions are domain names, so nothing a reader
    legitimately follows lives on private address space, and a setting that allowed it
-   would only ever serve an attacker. Still open: the resolve-then-connect gap, which
-   would need the connection pinned to the address that was checked.
+   would only ever serve an attacker. Item 7 closes the resolve-then-connect gap this
+   check originally left open.
+6. **Make saved-page extraction durable.** Saved-page extraction now matches the
+   reliability the feed article queue already had. Every
+   worker claims a row before fetching — a conditional update plus `SKIP LOCKED` for the
+   sweep — so the save path and the scheduler can no longer call the same publisher
+   concurrently, and only the worker still holding the claim may publish a result. A
+   retryable failure keeps the page pending with bounded backoff that honours
+   `Retry-After` (five attempts, ending in a visible failure), while a permanent one
+   stays immediately terminal. An explicit **Retry** resets the budget. A crashed worker
+   releases its row once the claim goes stale.
+7. **Close the resolve-then-connect gap.** The public-internet check is now applied
+   inside the resolution the connection actually uses, via a shared dispatcher whose
+   lookup rejects private answers, so a host that answers one query publicly and the next
+   privately can no longer reach the deployment's own network. The pre-flight resolution stays, but only to produce the
+   message a reader sees when they paste a private URL — the dispatcher is the
+   enforcement, and the two are documented as such so neither is mistaken for a
+   duplicate of the other.
+8. **Bound how much the reader will fetch for you.** Both ways of saving a link share
+   one per-account budget, because both do the same work: store a row and fetch a URL the
+   reader chose. The bookmark endpoint has to be a state-changing GET — a bookmark can only navigate — so another site can send a
+   signed-in reader through it, and the budget is what stops that becoming an unmetered
+   fetcher. The ceiling is generous enough to bookmark a screenful of open tabs; hitting
+   it reports back in Read later instead of silently dropping the save.
 
 ## Next release candidates
 
@@ -326,30 +349,6 @@ assigned a version until their product shape and priority are agreed.
    already signalled they care about, not become an opaque recommendation algorithm or
    a dump of every unread feed item. Decide section controls, scheduling, eligibility,
    ordering, and migration from the current notification-only digest before building it.
-2. **Make saved-page extraction durable (implemented; release pending).** Saved-page
-   extraction now matches the reliability the feed article queue already had. Every
-   worker claims a row before fetching — a conditional update plus `SKIP LOCKED` for the
-   sweep — so the save path and the scheduler can no longer call the same publisher
-   concurrently, and only the worker still holding the claim may publish a result. A
-   retryable failure keeps the page pending with bounded backoff that honours
-   `Retry-After` (five attempts, ending in a visible failure), while a permanent one
-   stays immediately terminal. An explicit **Retry** resets the budget. A crashed worker
-   releases its row once the claim goes stale.
-3. **Close the resolve-then-connect gap (implemented; release pending).** The
-   public-internet check is now applied inside the resolution the connection actually
-   uses, via a shared dispatcher whose lookup rejects private answers, so a host that
-   answers one query publicly and the next privately can no longer reach the
-   deployment's own network. The pre-flight resolution stays, but only to produce the
-   message a reader sees when they paste a private URL — the dispatcher is the
-   enforcement, and the two are documented as such so neither is mistaken for a
-   duplicate of the other.
-4. **Bound how much the reader will fetch for you (implemented; release pending).** Both
-   ways of saving a link share one per-account budget, because both do the same work:
-   store a row and fetch a URL the reader chose. The bookmark endpoint has to be a
-   state-changing GET — a bookmark can only navigate — so another site can send a
-   signed-in reader through it, and the budget is what stops that becoming an unmetered
-   fetcher. The ceiling is generous enough to bookmark a screenful of open tabs; hitting
-   it reports back in Read later instead of silently dropping the save.
 
 ## Later / version undecided
 
