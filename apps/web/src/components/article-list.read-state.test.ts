@@ -3,6 +3,7 @@ import { act, createElement } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { ReaderItem } from "@/lib/reader";
+import { SAVED_PAGE_POLL_MAX_DURATION_MS } from "@/lib/saved-page-extraction";
 import { ArticleList } from "./article-list";
 
 const mocks = vi.hoisted(() => ({
@@ -88,6 +89,7 @@ type DomGlobals = {
   HTMLElement?: typeof HTMLElement;
   IntersectionObserver?: typeof IntersectionObserver;
   localStorage?: Storage;
+  fetch?: typeof fetch;
   IS_REACT_ACT_ENVIRONMENT?: boolean;
 };
 
@@ -141,10 +143,18 @@ async function withReaderDom(
       observed: Element[];
     }>;
   }) => Promise<void>,
+  options: {
+    props?: React.ComponentProps<typeof ArticleList>;
+    fetch?: typeof fetch;
+  } = {},
 ) {
   const { document, window } = parseHTML(
     '<html><body><div id="mount"></div></body></html>',
   );
+  Object.defineProperty(document, "visibilityState", {
+    configurable: true,
+    value: "visible",
+  });
   const observers: Array<{
     callback: IntersectionObserverCallback;
     observed: Element[];
@@ -184,6 +194,7 @@ async function withReaderDom(
     HTMLElement: globals.HTMLElement,
     IntersectionObserver: globals.IntersectionObserver,
     localStorage: globals.localStorage,
+    fetch: globals.fetch,
     IS_REACT_ACT_ENVIRONMENT: globals.IS_REACT_ACT_ENVIRONMENT,
   };
   Object.assign(globals, {
@@ -194,6 +205,7 @@ async function withReaderDom(
     HTMLElement: window.HTMLElement,
     IntersectionObserver: MockIntersectionObserver,
     localStorage: storage,
+    ...(options.fetch ? { fetch: options.fetch } : {}),
     IS_REACT_ACT_ENVIRONMENT: true,
   });
 
@@ -201,7 +213,7 @@ async function withReaderDom(
   let root: Root | null = createRoot(mount);
   try {
     await act(async () => {
-      root?.render(createElement(ArticleList, readerProps()));
+      root?.render(createElement(ArticleList, options.props ?? readerProps()));
     });
     await run({
       mount,
@@ -278,6 +290,114 @@ describe("ArticleList deliberate read state", () => {
       expect(mount.textContent).not.toContain("An unread article");
       expect(mount.textContent).toContain("All caught up.");
     });
+  });
+
+  it("replaces an open saved page's pending state when extraction finishes", async () => {
+    vi.useFakeTimers();
+    const pendingPage: ReaderItem = {
+      ...unreadItem,
+      kind: "page",
+      id: 7,
+      title: "Pending saved page",
+      feedId: 0,
+      feedTitle: "Example",
+      contentHtml: null,
+      publishedAt: null,
+      readLater: true,
+      pageStatus: "pending",
+      pageError: null,
+    };
+    const fetchMock = vi.fn(async () =>
+      Response.json({
+        id: 7,
+        status: "ready",
+        error: null,
+        title: "Readable saved page",
+        author: "Example author",
+        feedTitle: "Example",
+        contentHtml: "<p>Readable article.</p>",
+      }),
+    );
+
+    await withReaderDom(
+      async ({ mount }) => {
+        expect(mount.textContent).toContain("Fetching a readable copy…");
+
+        await act(async () => {
+          await vi.advanceTimersByTimeAsync(1_000);
+        });
+
+        expect(fetchMock).toHaveBeenCalledWith(
+          "/api/saved-pages/7/extraction",
+          expect.objectContaining({ cache: "no-store" }),
+        );
+        expect(mount.textContent).toContain("Readable saved page");
+        expect(mount.textContent).not.toContain("Fetching a readable copy");
+      },
+      {
+        props: {
+          ...readerProps([pendingPage]),
+          view: { readLater: true },
+          title: "Read later",
+          toggleHref: "/?view=later",
+          initialExpandedId: "page:7",
+        },
+        fetch: fetchMock as typeof fetch,
+      },
+    );
+  });
+
+  it("stops implying an open saved page is still arriving once the watch ends", async () => {
+    vi.useFakeTimers();
+    const pendingPage: ReaderItem = {
+      ...unreadItem,
+      kind: "page",
+      id: 7,
+      title: "Pending saved page",
+      feedId: 0,
+      feedTitle: "Example",
+      contentHtml: null,
+      publishedAt: null,
+      readLater: true,
+      pageStatus: "pending",
+      pageError: null,
+    };
+    const fetchMock = vi.fn(async () =>
+      Response.json({
+        id: 7,
+        status: "pending",
+        error: null,
+        title: "Pending saved page",
+        author: null,
+        feedTitle: "Example",
+        contentHtml: null,
+      }),
+    );
+
+    await withReaderDom(
+      async ({ mount }) => {
+        expect(mount.textContent).toContain("Fetching a readable copy…");
+
+        await act(async () => {
+          await vi.advanceTimersByTimeAsync(SAVED_PAGE_POLL_MAX_DURATION_MS);
+        });
+
+        // The extraction is still server-owned, so the copy stays truthful and
+        // gives the reader the one action that resolves it.
+        expect(mount.textContent).toContain("reload to check for it");
+        expect(mount.textContent).not.toContain("Fetching a readable copy…");
+      },
+      {
+        props: {
+          ...readerProps([pendingPage]),
+          view: { readLater: true },
+          title: "Read later",
+          toggleHref: "/?view=later",
+          initialExpandedId: "page:7",
+        },
+        fetch: fetchMock as typeof fetch,
+      },
+    );
   });
 
   it("keeps Mark all read as the deliberate batch path", async () => {

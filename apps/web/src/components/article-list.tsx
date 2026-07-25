@@ -39,6 +39,7 @@ import { ArticleContent } from "@/components/article-content";
 import { ArticleLabelPicker } from "@/components/article-label-picker";
 import { ArticleListHeader } from "@/components/article-list-header";
 import { SaveLinkForm } from "@/components/save-link-form";
+import { SavedPageExtractionWatcher } from "@/components/saved-page-extraction-watcher";
 import { SwipeableRow } from "@/components/swipeable-row";
 import { Button } from "@/components/ui/button";
 import {
@@ -159,6 +160,10 @@ export function ArticleList({
   const [focusRequested, setFocusRequested] = useState(false);
   const [statusMsg, setStatusMsg] = useState("");
   const [highlights, setHighlights] = useState<ArticleHighlight[]>([]);
+  // Whether the extraction watcher has stopped watching the open pending page.
+  // The watcher owns this for as long as it is mounted — which is exactly when
+  // a pending page is expanded — so one flag always describes the open page.
+  const [extractionWatchGaveUp, setExtractionWatchGaveUp] = useState(false);
 
   const hasMoreRef = useRef(hasMore);
   hasMoreRef.current = hasMore;
@@ -696,6 +701,24 @@ export function ArticleList({
 
   return (
     <div>
+      {expandedItem?.kind === "page" &&
+      expandedItem.pageStatus === "pending" ? (
+        <SavedPageExtractionWatcher
+          pageId={expandedItem.id}
+          onResolved={(snapshot) =>
+            setEntryState([`page:${snapshot.id}`], {
+              pageStatus: snapshot.status,
+              pageError: snapshot.error,
+              title: snapshot.title,
+              author: snapshot.author,
+              feedTitle: snapshot.feedTitle,
+              contentHtml: snapshot.contentHtml,
+            })
+          }
+          onExhaustedChange={setExtractionWatchGaveUp}
+        />
+      ) : null}
+
       <ArticleListHeader
         title={title}
         unreadCount={unreadCount}
@@ -906,7 +929,9 @@ export function ArticleList({
                   <div className="row-enter pr-1 pb-5 pl-6">
                     {isPage && item.pageStatus === "pending" ? (
                       <p className="text-sm text-muted-foreground italic">
-                        Fetching a readable copy — refresh in a moment.
+                        {extractionWatchGaveUp
+                          ? "Still fetching a readable copy — reload to check for it."
+                          : "Fetching a readable copy…"}
                       </p>
                     ) : isPage && item.pageStatus === "error" ? (
                       <p className="text-sm text-muted-foreground italic">

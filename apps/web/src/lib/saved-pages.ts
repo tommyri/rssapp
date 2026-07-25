@@ -1,4 +1,4 @@
-import { and, desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, ne, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { labels, savedPageLabels, savedPages } from "@/db/schema";
 import { canonicalizeUrl } from "@/lib/canonical-url";
@@ -63,10 +63,14 @@ export async function extractSavedPage(id: number): Promise<void> {
 
   const result = await extractReadablePage(page.url);
   if (result.status === "error") {
+    // A page can be extracted twice at once (the save path and the scheduler
+    // sweep both reach a pending row). Never let the losing failure bury a
+    // stored readable copy — that state is terminal and the sweep, which only
+    // looks at pending rows, would not recover it.
     await db
       .update(savedPages)
       .set({ status: "error", error: result.error })
-      .where(eq(savedPages.id, id));
+      .where(and(eq(savedPages.id, id), ne(savedPages.status, "ready")));
     return;
   }
 
@@ -242,6 +246,14 @@ export async function retrySavedPage(
     .from(savedPages)
     .where(and(eq(savedPages.id, id), eq(savedPages.userId, userId)));
   if (!owned) return { ok: false, error: "Saved page not found." };
+
+  // Publish the retry before doing the work. A reader watching this page polls
+  // the stored status, so leaving the previous failure in place would report
+  // that stale error back as a terminal result while the fetch is still running.
+  await db
+    .update(savedPages)
+    .set({ status: "pending", error: null })
+    .where(eq(savedPages.id, id));
 
   await extractSavedPage(id);
   const [page] = await db

@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import type { NextRequest } from "next/server";
+import { after, type NextRequest } from "next/server";
 import { getCurrentUserId } from "@/lib/current-user";
 import { extractSavedPage, saveLink } from "@/lib/saved-pages";
 
@@ -15,7 +15,9 @@ export async function GET(request: NextRequest): Promise<Response> {
   if (url) {
     const result = await saveLink(userId, url);
     if (result.ok && !result.alreadySaved) {
-      void extractSavedPage(result.id).catch(() => {});
+      after(async () => {
+        await extractSavedPage(result.id).catch(() => {});
+      });
     }
   }
   redirect("/?view=later");
