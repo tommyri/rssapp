@@ -343,6 +343,13 @@ assigned a version until their product shape and priority are agreed.
    message a reader sees when they paste a private URL — the dispatcher is the
    enforcement, and the two are documented as such so neither is mistaken for a
    duplicate of the other.
+4. **Bound how much the reader will fetch for you (implemented; release pending).** Both
+   ways of saving a link share one per-account budget, because both do the same work:
+   store a row and fetch a URL the reader chose. The bookmark endpoint has to be a
+   state-changing GET — a bookmark can only navigate — so another site can send a
+   signed-in reader through it, and the budget is what stops that becoming an unmetered
+   fetcher. The ceiling is generous enough to bookmark a screenful of open tabs; hitting
+   it reports back in Read later instead of silently dropping the save.
 
 ## Later / version undecided
 

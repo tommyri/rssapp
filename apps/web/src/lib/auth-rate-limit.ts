@@ -51,6 +51,17 @@ export const AUTH_RATE_LIMITS = {
     maxAttempts: 20,
     windowMs: 60 * 60 * 1000,
   },
+  // Not a sign-in bucket, but the same durable counter: saving a link makes the
+  // server fetch a URL someone else chose, so it needs a ceiling. Keyed per
+  // account rather than per network — the endpoints require a session, and
+  // signup is already limited per network, so an abuser cannot cheaply spread
+  // across accounts. Generous enough to bookmark a screenful of open tabs in
+  // one go; low enough that the reader is useless as a fetch amplifier.
+  saveLink: {
+    bucket: "save_link_user",
+    maxAttempts: 40,
+    windowMs: 5 * 60 * 1000,
+  },
 } as const satisfies Record<string, AuthRateLimitPolicy>;
 
 export interface AuthRateLimitResult {

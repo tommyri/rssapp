@@ -81,6 +81,12 @@ EMAIL_FROM="rssapp <accounts@reader.example.com>"
 For delivery safety, each account can request each kind of account email at most once
 per minute. A failed delivery releases its link immediately so the person can retry.
 
+Saving links is bounded per account across both entry points — the bookmarklet and the
+paste-a-URL field share one budget — because each save makes the server fetch a URL
+someone chose. A bookmark can only navigate, so `GET /save` changes state on a GET and
+another site can send a signed-in reader through it; the budget is what keeps that from
+becoming an unmetered fetcher.
+
 **Signed-in sessions.** Every new sign-in is recorded separately. In
 **Settings → Account**, a person can review the active sign-ins for their reader and
 end one or all other sessions without interrupting the one they are using. Sessions

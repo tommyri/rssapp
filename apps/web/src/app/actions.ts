@@ -24,6 +24,8 @@ import {
   setItemReadLater,
   setItemStarred,
 } from "@/lib/reader";
+import { consumeSaveLinkBudget } from "@/lib/save-link-limit";
+import { SAVE_LINK_LIMITED_MESSAGE } from "@/lib/save-link-notice";
 import {
   extractSavedPage,
   removeSavedPage,
@@ -157,6 +159,10 @@ export async function saveLinkAction(
   if (!url) return { ok: false, message: "Paste a link to save." };
 
   const userId = await getCurrentUserId();
+  // Shares the bookmark endpoint's budget: same work, same ceiling.
+  if (!(await consumeSaveLinkBudget(userId))) {
+    return { ok: false, message: SAVE_LINK_LIMITED_MESSAGE };
+  }
   const result = await saveLink(userId, url);
   if (!result.ok) return { ok: false, message: result.error };
 

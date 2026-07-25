@@ -32,6 +32,12 @@ version section verbatim, so this file is the release record rather than an afte
   repeated XML doctype declarations, and a proxy-bypass issue in the framework's route
   protection. Remaining advisories are build tooling or code no untrusted input reaches,
   assessed in [tech-stack.md](docs/tech-stack.md).
+- Saving links is now bounded per account, with the bookmark and the paste-a-URL field
+  sharing one budget. Each save makes the reader fetch a page on your behalf, and the
+  bookmark has to work as a plain link, so another site could previously send a signed-in
+  reader through it without limit. Reaching the ceiling says so in Read later rather than
+  failing quietly, and normal use — including bookmarking a screenful of open tabs — stays
+  well inside it.
 
 ## [2026.7.4] - 2026-07-25
 

@@ -14,6 +14,13 @@ describe("authentication rate limits", () => {
     expect(AUTH_RATE_LIMITS.recoveryEmail.maxAttempts).toBe(5);
   });
 
+  it("bounds link saving without getting in a reader's way", () => {
+    // Enough to bookmark a screenful of open tabs in one sitting, while capping
+    // what the endpoint can be made to fetch on someone else's behalf.
+    expect(AUTH_RATE_LIMITS.saveLink.maxAttempts).toBe(40);
+    expect(AUTH_RATE_LIMITS.saveLink.windowMs).toBe(5 * 60 * 1000);
+  });
+
   it("hashes normalized source values rather than retaining them", () => {
     const key = emailRateLimitKey("  TOMMY@example.com ");
     expect(key).toBe("email:tommy@example.com");

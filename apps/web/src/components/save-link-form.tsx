@@ -1,11 +1,16 @@
 "use client";
 
 import { PlusIcon } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useState, useTransition } from "react";
 import { type ActionState, saveLinkAction } from "@/app/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  SAVE_LINK_LIMITED_PARAM,
+  SAVE_LINK_LIMITED_VALUE,
+  saveLinkNotice,
+} from "@/lib/save-link-notice";
 
 const initial: ActionState = { ok: true, message: "" };
 
@@ -17,13 +22,25 @@ const initial: ActionState = { ok: true, message: "" };
  */
 export function SaveLinkForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [url, setUrl] = useState("");
   const [state, setState] = useState<ActionState>(initial);
   const [pending, startTransition] = useTransition();
+  // A save through the bookmark has no other way to report back, so it redirects
+  // here with a marker. This form already owns the one message slot on the view.
+  // Submitting retires it: the marker outlives its own truth once this form has
+  // saved something, and a stale "too many" would otherwise reappear later.
+  const [bookmarkNoticeUsed, setBookmarkNoticeUsed] = useState(false);
+  const notice = saveLinkNotice(
+    state,
+    !bookmarkNoticeUsed &&
+      searchParams.get(SAVE_LINK_LIMITED_PARAM) === SAVE_LINK_LIMITED_VALUE,
+  );
 
   function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (!url.trim()) return;
+    setBookmarkNoticeUsed(true);
     const formData = new FormData();
     formData.set("url", url);
     startTransition(async () => {
@@ -57,11 +74,11 @@ export function SaveLinkForm() {
           {pending ? "Saving…" : "Save"}
         </Button>
       </div>
-      {state.message ? (
+      {notice.text ? (
         <p
-          className={`text-xs ${state.ok ? "text-muted-foreground" : "text-destructive"}`}
+          className={`text-xs ${notice.failure ? "text-destructive" : "text-muted-foreground"}`}
         >
-          {state.message}
+          {notice.text}
         </p>
       ) : null}
     </form>
