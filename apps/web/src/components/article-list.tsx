@@ -52,6 +52,7 @@ import {
   articleListDensityClasses,
 } from "@/lib/article-list-density";
 import { articleRowFacts } from "@/lib/article-row-facts";
+import { articleSnippet } from "@/lib/article-snippet";
 import { alsoInLabel } from "@/lib/duplicates";
 import type { EmbedLoadingPreferences } from "@/lib/embed-loading";
 import { relativeTime } from "@/lib/format";
@@ -104,18 +105,6 @@ interface Props {
 /** Composite key: ids are only unique within a kind (feed item vs saved page). */
 const keyOf = (item: Pick<ReaderItem, "kind" | "id">) =>
   `${item.kind}:${item.id}`;
-
-/** One-line preview derived from the stored (sanitized) HTML. */
-function snippetOf(item: ReaderItem): string {
-  const html = item.fullContentHtml ?? item.contentHtml ?? "";
-  const text = html
-    .replace(/<[^>]*>/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-  // Too short to preview anything (e.g. HN's bare "Comments" link) — skip.
-  if (text.length < 40 || text === item.title) return "";
-  return text.slice(0, 220);
-}
 
 export function ArticleList({
   initialItems,
@@ -789,7 +778,10 @@ export function ArticleList({
               fullTextUnavailable,
               pageSubtitle,
             } = articleRowFacts(item);
-            const snippet = snippetOf(item);
+            const snippet = articleSnippet(
+              item.fullContentHtml ?? item.contentHtml,
+              item.title,
+            );
             // Best-available estimate: improves when full content is loaded.
             const minutes = readingTimeMinutes(contentHtml);
             return [
