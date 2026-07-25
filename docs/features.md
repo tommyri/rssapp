@@ -407,14 +407,7 @@ promise. A later version gets a scoped goal before one of them becomes planned w
    on AI features.
 6. **AI daily digest / article summaries** — a companion to the reading workflow, also
    likely BYO-key so product costs stay explicit.
-7. **Snooze / resurface** — dismiss an article now and have it resurface to the top of
-   the unread list later (tomorrow/weekend). Deferred: it overlaps our own reading
-   process, where a post is either put in Read later (keep) or read (done, shouldn't
-   come back), so the snooze middle-ground earns little here. Design was scoped
-   (nullable `item_states.snoozed_until`, passive query-time hiding, resurface by
-   sorting on the snooze time) — revisit if the triage/overload pressure ever makes a
-   “not now, ask me later” state worth it.
-8. **Infinite scroll + list virtualization** — auto-load older articles on scroll
+7. **Infinite scroll + list virtualization** — auto-load older articles on scroll
    instead of the “Load older” button, and virtualize the list for large unread counts.
    Deferred: we don't hit long unread lists in practice, and the explicit button is
    predictable and keyboard-friendly; virtualization also fights the inline-accordion
@@ -422,6 +415,13 @@ promise. A later version gets a scoped goal before one of them becomes planned w
 
 ## Explicitly out of scope
 
+- **Snooze / resurface** *(rejected 25 July 2026)* — a "not now, ask me later" state only
+  earns its place under a triage pitch, and we sell a clean, reliable reader instead (see
+  [competitive-analysis.md](competitive-analysis.md)). Read later means keep, read means
+  done; a third state adds a lifecycle to every article for a job those two already cover.
+  The design was scoped once (nullable `item_states.snoozed_until`, query-time hiding,
+  resurface by sorting on the snooze time), so this is a decision about product shape, not
+  a question of cost.
 - Social features (sharing, comments, recommendations)
 - Crawling sites that don't offer feeds (except v1 full-content extraction of subscribed articles)
 - An Android client before the iOS product and first-party API have proven the native

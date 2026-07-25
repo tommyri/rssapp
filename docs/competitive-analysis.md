@@ -59,6 +59,31 @@ Consistently paywalled across the market: feed-count caps, **rules/filters/autom
 4. **Android/mobile is chronically underserved** (Feedbin: no Android; FreshRSS: stale third-party clients; best UX is Apple-only). A great PWA + GReader API covers both cheaply.
 5. **Cloudflare/bot walls hurt single-IP self-hosted fetchers.** A hosted service's shared fetching infra is a real, defensible advantage — and a known risk for our own home-server fetcher (mitigations: good UA, conditional GET, backoff; accept some feeds may need workarounds).
 
+## What we are actually selling — decided 25 July 2026
+
+**"The clean reader that's reliable", not "the reader that solves triage."**
+
+Opportunity 1 above is real, and we do not claim it. Rules, age-based auto-read,
+mark-all-read variants, capped counts and duplicate collapsing are *filtering and escape
+valves*: they ask a reader to say in advance what they will not want. Triage in the sense
+NewsBlur attempts it — learning from what someone actually reads — is a different product,
+and nothing in the reader does it. Good triage support is a welcome consequence of the
+valves, never the pitch.
+
+This matters because the two positions imply different roadmaps. "Solves triage" would
+demand behavioural signals, resurfacing, and a learning model. "Clean and reliable" demands
+that the reading loop stay fast, quiet, and correct — which is where opportunity 2 and
+Feedbin's $70/yr with no free tier say the money actually is. When a feature is justified
+by "it helps with overload", check it against this line first.
+
+Consequences already taken:
+
+- **Snooze is rejected, not deferred.** It only earns its place under a triage pitch. Read
+  later is "keep this", read is "done"; a third "ask me later" state adds a lifecycle to
+  every article for a job the other two already cover.
+- **Mark-read-on-scroll stays removed.** Under this positioning it is not a missing
+  table-stake; passive state mutation is the opposite of reliable.
+
 ## Product decisions this research supports
 
 1. **Rules and notifications are core, not ornamental.** Rules/filters are the #1 willingness-to-pay feature and the core of the “clean UI, powerful underneath” wedge. The rule system and durable inbox are shipped; browser push is the current production rollout.
