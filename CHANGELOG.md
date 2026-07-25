@@ -5,6 +5,19 @@ version section verbatim, so this file is the release record rather than an afte
 
 ## [Unreleased]
 
+### Fixed
+
+- A saved page whose publisher fails temporarily is now retried automatically with
+  backoff instead of failing for good on the first stumble. A single timeout or “service
+  unavailable” previously left the page permanently unreadable until someone noticed and
+  pressed **Retry**; the page now keeps showing that a copy is on its way, and a
+  publisher's own Retry-After is respected. Failures that cannot succeed on a retry —
+  a page with no readable content, an address that does not resolve — still fail
+  immediately rather than waiting out a pointless backoff.
+- Saving a link no longer fetches it twice. The save and the scheduler's backstop sweep
+  claim a page before extracting, so they can't both call the same publisher at once —
+  most likely previously on exactly the slow publishers least able to absorb it.
+
 ## [2026.7.4] - 2026-07-25
 
 ### Added

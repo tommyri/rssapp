@@ -326,6 +326,15 @@ assigned a version until their product shape and priority are agreed.
    already signalled they care about, not become an opaque recommendation algorithm or
    a dump of every unread feed item. Decide section controls, scheduling, eligibility,
    ordering, and migration from the current notification-only digest before building it.
+2. **Make saved-page extraction durable (implemented; release pending).** Saved-page
+   extraction now matches the reliability the feed article queue already had. Every
+   worker claims a row before fetching — a conditional update plus `SKIP LOCKED` for the
+   sweep — so the save path and the scheduler can no longer call the same publisher
+   concurrently, and only the worker still holding the claim may publish a result. A
+   retryable failure keeps the page pending with bounded backoff that honours
+   `Retry-After` (five attempts, ending in a visible failure), while a permanent one
+   stays immediately terminal. An explicit **Retry** resets the budget. A crashed worker
+   releases its row once the claim goes stale.
 
 ## Later / version undecided
 

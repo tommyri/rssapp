@@ -53,9 +53,11 @@ async function tick(): Promise<void> {
     if (swept > 0) {
       console.log(`[scheduler] auto-read swept ${swept} item(s)`);
     }
-    const extracted = await sweepPendingSavedPages();
-    if (extracted > 0) {
-      console.log(`[scheduler] extracted ${extracted} saved page(s)`);
+    const savedPageSweep = await sweepPendingSavedPages();
+    if (savedPageSweep.claimed > 0) {
+      console.log(
+        `[scheduler] saved pages: ${savedPageSweep.extracted} extracted, ${savedPageSweep.retrying} retrying, ${savedPageSweep.failed} failed`,
+      );
     }
     const digests = await sweepNotificationDigests();
     if (digests.created > 0 || digests.claimed > 0) {

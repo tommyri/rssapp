@@ -919,8 +919,19 @@ export const savedPages = pgTable(
     // Readability-extracted, sanitized article body — safe to render directly.
     contentHtml: text("content_html"),
     // Extraction lifecycle: 'pending' until fetched, then 'ready' or 'error'.
+    // A retryable failure stays 'pending' with a future extraction_next_at, so
+    // the reader keeps showing "fetching" rather than a failure it will undo.
     status: text("status").notNull().default("pending"),
     error: text("error"),
+    // Extraction claim. Set while one worker owns this row and cleared when it
+    // finishes, so the save path and the scheduler sweep cannot both fetch the
+    // same URL; the lock age (src/lib/saved-page-retry.ts) recovers a crash.
+    extractionStartedAt: timestamp("extraction_started_at", {
+      withTimezone: true,
+    }),
+    extractionAttempts: integer("extraction_attempts").notNull().default(0),
+    // Null means due now. Set to a backoff instant by a retryable failure.
+    extractionNextAt: timestamp("extraction_next_at", { withTimezone: true }),
     read: boolean("read").notNull().default(false),
     readAt: timestamp("read_at", { withTimezone: true }),
     // Saved pages are per-user, so their resume state can live on the row.
@@ -941,6 +952,10 @@ export const savedPages = pgTable(
     uniqueIndex("saved_pages_user_url_idx").on(t.userId, t.url),
     index("saved_pages_user_saved_idx").on(t.userId, t.savedAt),
     index("saved_pages_status_idx").on(t.status),
+    // The extraction worker only scans pending rows that are due.
+    index("saved_pages_extraction_queue_idx")
+      .on(t.extractionNextAt, t.savedAt)
+      .where(sql`${t.status} = 'pending'`),
     index("saved_pages_search_idx").using("gin", t.searchVector),
   ],
 );

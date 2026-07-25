@@ -1,8 +1,12 @@
-import { and, desc, eq, ne, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull, lte, or, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { labels, savedPageLabels, savedPages } from "@/db/schema";
 import { canonicalizeUrl } from "@/lib/canonical-url";
-import { extractReadablePage } from "@/lib/feeds/extract";
+import { extractReadablePage, type ReadablePage } from "@/lib/feeds/extract";
+import {
+  nextSavedPageRetryAt,
+  SAVED_PAGE_EXTRACTION_LOCK_MS,
+} from "@/lib/saved-page-retry";
 
 export interface SavedPage {
   id: number;
@@ -49,31 +53,103 @@ export async function saveLink(
   return { ok: true, id: existing.id, alreadySaved: true };
 }
 
+interface ClaimedSavedPage {
+  id: number;
+  url: string;
+  /** Attempts including this one — the claim increments before extracting. */
+  attempts: number;
+  claimedAt: Date;
+}
+
+const claimFields = {
+  id: savedPages.id,
+  url: savedPages.url,
+  attempts: savedPages.extractionAttempts,
+};
+
+/** Pending, due, and not already owned by a live worker. */
+function claimable(now: Date) {
+  const staleBefore = new Date(now.getTime() - SAVED_PAGE_EXTRACTION_LOCK_MS);
+  return and(
+    eq(savedPages.status, "pending"),
+    or(
+      isNull(savedPages.extractionNextAt),
+      lte(savedPages.extractionNextAt, now),
+    ),
+    or(
+      isNull(savedPages.extractionStartedAt),
+      lte(savedPages.extractionStartedAt, staleBefore),
+    ),
+  );
+}
+
 /**
- * Fetch and store a readable copy of a saved page. Best-effort and idempotent:
- * flips status to 'ready' with content, or 'error' with a message. Safe to call
- * from the save action (for immediacy) and the scheduler (as a backstop).
+ * Only the worker still holding the claim may publish a result. Without this a
+ * slow worker whose lock has already been reclaimed could overwrite the newer
+ * worker's outcome — including burying a readable copy under a stale failure.
  */
-export async function extractSavedPage(id: number): Promise<void> {
-  const [page] = await db
-    .select({ id: savedPages.id, url: savedPages.url })
-    .from(savedPages)
-    .where(eq(savedPages.id, id));
-  if (!page) return;
+function heldClaim(page: ClaimedSavedPage) {
+  return and(
+    eq(savedPages.id, page.id),
+    eq(savedPages.extractionStartedAt, page.claimedAt),
+  );
+}
 
-  const result = await extractReadablePage(page.url);
-  if (result.status === "error") {
-    // A page can be extracted twice at once (the save path and the scheduler
-    // sweep both reach a pending row). Never let the losing failure bury a
-    // stored readable copy — that state is terminal and the sweep, which only
-    // looks at pending rows, would not recover it.
-    await db
+/** Take one row if it is available; null means another worker owns it. */
+async function claimSavedPage(
+  id: number,
+  now = new Date(),
+): Promise<ClaimedSavedPage | null> {
+  const [claimed] = await db
+    .update(savedPages)
+    .set({
+      extractionStartedAt: now,
+      extractionAttempts: sql`${savedPages.extractionAttempts} + 1`,
+    })
+    .where(and(eq(savedPages.id, id), claimable(now)))
+    .returning(claimFields);
+  return claimed ? { ...claimed, claimedAt: now } : null;
+}
+
+/**
+ * Reserve a batch of due extractions. SKIP LOCKED keeps two app processes — or
+ * a sweep racing the save path — from fetching the same publisher URL twice.
+ */
+async function claimDueSavedPages(
+  limit: number,
+  now = new Date(),
+): Promise<ClaimedSavedPage[]> {
+  return db.transaction(async (tx) => {
+    const due = await tx
+      .select({ id: savedPages.id })
+      .from(savedPages)
+      .where(claimable(now))
+      .orderBy(savedPages.savedAt)
+      .limit(limit)
+      .for("update", { skipLocked: true });
+    if (due.length === 0) return [];
+
+    const claimed = await tx
       .update(savedPages)
-      .set({ status: "error", error: result.error })
-      .where(and(eq(savedPages.id, id), ne(savedPages.status, "ready")));
-    return;
-  }
+      .set({
+        extractionStartedAt: now,
+        extractionAttempts: sql`${savedPages.extractionAttempts} + 1`,
+      })
+      .where(
+        inArray(
+          savedPages.id,
+          due.map((row) => row.id),
+        ),
+      )
+      .returning(claimFields);
+    return claimed.map((row) => ({ ...row, claimedAt: now }));
+  });
+}
 
+async function publishReady(
+  page: ClaimedSavedPage,
+  result: Extract<ReadablePage, { status: "ok" }>,
+): Promise<void> {
   await db
     .update(savedPages)
     .set({
@@ -84,29 +160,99 @@ export async function extractSavedPage(id: number): Promise<void> {
       byline: result.byline,
       siteName: result.siteName,
       excerpt: result.excerpt,
+      extractionStartedAt: null,
+      extractionNextAt: null,
     })
-    .where(eq(savedPages.id, id));
+    .where(heldClaim(page));
+}
+
+async function publishFailure(
+  page: ClaimedSavedPage,
+  error: string,
+  retryable: boolean | undefined,
+  retryAfterAt: Date | undefined,
+): Promise<"retrying" | "error"> {
+  const nextAt = retryable
+    ? nextSavedPageRetryAt(page.attempts, new Date(), retryAfterAt)
+    : null;
+  await db
+    .update(savedPages)
+    .set({
+      // A retryable failure stays pending: the reader is still owed a copy, and
+      // a visible failure we intend to undo in a minute is just noise. Only an
+      // exhausted or permanent failure becomes terminal.
+      status: nextAt === null ? "error" : "pending",
+      error: error.slice(0, 1_000),
+      extractionStartedAt: null,
+      extractionNextAt: nextAt,
+    })
+    .where(heldClaim(page));
+  return nextAt === null ? "error" : "retrying";
+}
+
+async function runExtraction(
+  page: ClaimedSavedPage,
+): Promise<"ready" | "retrying" | "error"> {
+  try {
+    const result = await extractReadablePage(page.url);
+    if (result.status === "ok") {
+      await publishReady(page, result);
+      return "ready";
+    }
+    return publishFailure(
+      page,
+      result.error,
+      result.retryable,
+      result.retryAfterAt,
+    );
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    // An unexpected throw is treated as transient; the attempt budget bounds it.
+    return publishFailure(page, message, true, undefined);
+  }
+}
+
+/**
+ * Fetch and store a readable copy of one saved page. Claims the row first, so
+ * this is safe to call from the save path for immediacy while the scheduler
+ * sweep runs as the backstop — whichever gets there first does the work once.
+ */
+export async function extractSavedPage(id: number): Promise<void> {
+  const claimed = await claimSavedPage(id);
+  if (!claimed) return;
+  await runExtraction(claimed);
 }
 
 const SWEEP_BATCH = 10;
 
+export interface SavedPageSweepSummary {
+  claimed: number;
+  extracted: number;
+  retrying: number;
+  failed: number;
+}
+
 /**
  * Extract any saved pages still awaiting a readable copy. Called each scheduler
- * tick as the reliable backstop for links saved via the bookmarklet (which
- * doesn't wait). Returns how many were processed.
+ * tick as the reliable backstop for links saved via the bookmark (which doesn't
+ * wait) and as the retry path for pages whose publisher failed transiently.
  */
-export async function sweepPendingSavedPages(): Promise<number> {
-  const pending = await db
-    .select({ id: savedPages.id })
-    .from(savedPages)
-    .where(eq(savedPages.status, "pending"))
-    .orderBy(savedPages.savedAt)
-    .limit(SWEEP_BATCH);
+export async function sweepPendingSavedPages(): Promise<SavedPageSweepSummary> {
+  const claimed = await claimDueSavedPages(SWEEP_BATCH);
+  const summary: SavedPageSweepSummary = {
+    claimed: claimed.length,
+    extracted: 0,
+    retrying: 0,
+    failed: 0,
+  };
 
-  for (const p of pending) {
-    await extractSavedPage(p.id);
+  for (const page of claimed) {
+    const outcome = await runExtraction(page);
+    if (outcome === "ready") summary.extracted += 1;
+    else if (outcome === "retrying") summary.retrying += 1;
+    else summary.failed += 1;
   }
-  return pending.length;
+  return summary;
 }
 
 const columns = {
@@ -250,11 +396,21 @@ export async function retrySavedPage(
   // Publish the retry before doing the work. A reader watching this page polls
   // the stored status, so leaving the previous failure in place would report
   // that stale error back as a terminal result while the fetch is still running.
+  // An explicit retry is a fresh start, so it also clears the attempt budget and
+  // any backoff a previous automatic attempt left behind.
   await db
     .update(savedPages)
-    .set({ status: "pending", error: null })
+    .set({
+      status: "pending",
+      error: null,
+      extractionAttempts: 0,
+      extractionStartedAt: null,
+      extractionNextAt: null,
+    })
     .where(eq(savedPages.id, id));
 
+  // If the sweep claimed this row in between, it is already doing the work; the
+  // row stays pending here and the reader's watcher picks up that result.
   await extractSavedPage(id);
   const [page] = await db
     .select(columns)
