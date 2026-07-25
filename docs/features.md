@@ -4,10 +4,11 @@ This is the living product roadmap and concise release record. Every phase must 
 its own as a useful reader; the current rollout and next candidates are deliberately
 separate from shipped work.
 
-**Release status — 24 July 2026:** v0.1, v1.0, **2026.7.1 — Notifications, full text &
+**Release status — 25 July 2026:** v0.1, v1.0, **2026.7.1 — Notifications, full text &
 reading history**, **2026.7.2 — Deliberate read state**, and **2026.7.3 — Email digests,
-build identity & product foundations** are shipped. The next release is not assigned
-yet; its candidates are being evaluated below.
+build identity & product foundations** are shipped. **2026.7.4 — Reader freshness &
+interface polish** is a release candidate: automated web, brand, contract, deployment,
+and iOS validation is complete; staging and signed-in production validation remain.
 
 ## MVP (v0.1) — daily-drivable reader
 
@@ -270,56 +271,74 @@ the exact deployed app version easy to identify.
    [ADR 0002](adr/0002-native-account-authentication.md), and
    [first-party-api.md](first-party-api.md).
 
+## 2026.7.4 — Reader freshness & interface polish (release candidate)
+
+**Goal:** keep an open reader honest about what has changed elsewhere — on another
+client, or in a background job — finish the interface details that daily production use
+of 2026.7.3 exposed, and hold every automatic outbound request to one guarded path.
+
+1. **Complete native read-state parity and cross-client freshness.** The native article
+   toolbar exposes a tested **Mark unread** / **Mark read** reversal alongside the
+   existing list swipe. The open web reader now catches up after a meaningful return to
+   the tab and once per minute while it remains visible and online, without a permanent
+   real-time connection or background-page work. Fresh server snapshots reconcile into
+   the live article list as well as the sidebar: locally loaded pages, an article
+   currently being read, in-flight optimistic changes, reading position, and audio
+   playback progress remain intact.
+2. **The most useful rule actions come first.** A new rule now defaults to **Star**, with
+   **Add to notifications** immediately after it in the action list. Testing a rule
+   continues to preserve the draft action and pattern.
+3. **Source lists use the available sidebar height.** The primary views and utility
+   actions remain fixed while the source region fills all space between them. It renders
+   every source, shows as many rows as the current viewport can hold, and becomes
+   independently scrollable only when necessary. Opening a source scrolls its active row
+   into view. Folder collapse, unread totals, source ordering, and mouse, touch, and
+   keyboard drag behavior remain intact.
+4. **Readable saved pages refresh live.** The bookmark redirect schedules extraction with
+   Next's supported post-response lifecycle instead of a detached promise. While a pending
+   saved page is open, the reader polls only that user-scoped status with a bounded
+   backoff, pauses while hidden or offline, and replaces the loading state with normalized
+   content or a terminal failure as soon as it is stored. Closing the page stops the
+   watcher, and the scheduler remains the durable recovery path. A retry publishes its own
+   pending state before fetching, so a watching reader is never handed the previous error
+   as a fresh result, and a stored readable copy is never buried by a slower concurrent
+   attempt that failed. When the bounded watch ends with the page still pending, the
+   reader is asked to reload rather than left on a loading line that has stopped meaning
+   anything.
+5. **One guarded path for every outbound fetch.** Feed fetching now shares the article
+   extractor's public-internet policy — scheme, credential, port, and DNS checks
+   revalidated on every redirect hop, with size-bounded bodies — so adding a feed can no
+   longer aim the server at its own network. The policy is deliberately uniform and has
+   no configurable escape hatch: subscriptions are domain names, so nothing a reader
+   legitimately follows lives on private address space, and a setting that allowed it
+   would only ever serve an attacker. Still open: the resolve-then-connect gap, which
+   would need the connection pinned to the address that was checked.
+
 ## Next release candidates
 
 These observations came from production use of 2026.7.3. They are intentionally not
 assigned a version until their product shape and priority are agreed.
 
-1. **Complete native read-state parity and freshness (implemented; release pending).**
-   The native article toolbar exposes a tested **Mark unread** / **Mark read** reversal
-   alongside the existing list swipe. The open web reader now catches up after a
-   meaningful return to the tab and once per minute while it remains visible and online,
-   without a permanent real-time connection or background-page work. Fresh server
-   snapshots reconcile into the live article list as well as the sidebar: locally loaded
-   pages, an article currently being read, in-flight optimistic changes, reading
-   position, and audio playback progress remain intact.
-2. **Put the most useful rule actions first (implemented; release pending).** A new rule
-   now defaults to **Star**, with **Add to notifications** immediately after it in the
-   action list. Testing a rule continues to preserve the draft action and pattern.
-3. **Reconsider digests as a reading roundup.** A weekly email containing only rule
+1. **Reconsider digests as a reading roundup.** A weekly email containing only rule
    notifications has a weak purpose. Explore one deduplicated, user-controlled roundup
    of explicitly important unread material: notification-rule matches, Read later
    entries, and starred articles. The email should help a reader return to things they
    already signalled they care about, not become an opaque recommendation algorithm or
    a dump of every unread feed item. Decide section controls, scheduling, eligibility,
    ordering, and migration from the current notification-only digest before building it.
-4. **Use the available sidebar height for source lists (implemented; release
-   pending).** The primary views and utility actions remain fixed while the source
-   region fills all space between them. It renders every source, shows as many rows as
-   the current viewport can hold, and becomes independently scrollable only when
-   necessary. Opening a source scrolls its active row into view. Folder collapse,
-   unread totals, source ordering, and mouse, touch, and keyboard drag behavior remain
-   intact.
 
 ## Later / version undecided
 
 These are useful product possibilities, but none has a release assignment or delivery
 promise. A later version gets a scoped goal before one of them becomes planned work.
 
-1. **Read-later extraction live refresh (next UX-fix candidate)** — an article saved
-   through the **Save to RSS app** bookmark currently remains on **Fetching a readable
-   copy…** until the reader manually reloads the page, even after extraction has
-   completed. The open article should detect the completed background fetch and replace
-   the pending state with the readable content automatically. A terminal extraction
-   failure should likewise replace the pending message with a clear failure state; no
-   manual reload should be required in either case.
-2. **Durable saved copies (parked)** — consider preserving an immutable, private
+1. **Durable saved copies (parked)** — consider preserving an immutable, private
    readable copy when a reader explicitly keeps an article, including selected local
    assets so it survives source deletion or link rot. PDF should be an optional export,
    not the canonical archive. This needs deliberate storage, quota, safety, commercial,
    and legal decisions before it receives a release; see
    [durable-saved-copies.md](durable-saved-copies.md).
-3. **Currentfold rebrand and clean deployment** — finish replacing the temporary RSS
+2. **Currentfold rebrand and clean deployment** — finish replacing the temporary RSS
    App identity with the approved Currentfold name and visual system across the public
    product and active internal stack: repository, package/image, Compose resources,
    database/volume, VPS paths, backup format, browser storage, and protocol identifiers.
@@ -330,7 +349,7 @@ promise. A later version gets a scoped goal before one of them becomes planned w
    domain/availability and data-transition decision gate is settled; see
    [brand-identity.md](brand-identity.md) and
    [brand-domain-migration.md](brand-domain-migration.md).
-4. **Native iOS productization** — grow the internal SwiftUI foundation into an
+3. **Native iOS productization** — grow the internal SwiftUI foundation into an
    externally testable reader: Read later and saved pages, full article state/progress,
    resilient offline sync and queued mutations, highlights/notes, Apple
    deletion-time authorization revocation, accessibility and device testing, and a
@@ -340,24 +359,24 @@ promise. A later version gets a scoped goal before one of them becomes planned w
    remains a version-undecided, membership-blocked part of this work; its external,
    server-lifecycle, email-relay, deployment, and validation tasks are tracked in
    [sign-in-with-apple.md](sign-in-with-apple.md).
-5. **Email newsletter → feed bridge** — a unique inbound address per feed. This is a
+4. **Email newsletter → feed bridge** — a unique inbound address per feed. This is a
    paid-product-shaped differentiator, but is deliberately deferred to an undecided
    later version. It requires an inbound-email provider/webhook, opaque addresses,
    sender and size controls, spam/abuse protections, and safe failure handling before it
    is ready.
-6. **Text-to-speech (“Listen to this article”)** — defer browser `SpeechSynthesis`;
+5. **Text-to-speech (“Listen to this article”)** — defer browser `SpeechSynthesis`;
    revisit with a high-quality AI TTS provider, likely BYO-key, when we deliberately take
    on AI features.
-7. **AI daily digest / article summaries** — a companion to the reading workflow, also
+6. **AI daily digest / article summaries** — a companion to the reading workflow, also
    likely BYO-key so product costs stay explicit.
-8. **Snooze / resurface** — dismiss an article now and have it resurface to the top of
+7. **Snooze / resurface** — dismiss an article now and have it resurface to the top of
    the unread list later (tomorrow/weekend). Deferred: it overlaps our own reading
    process, where a post is either put in Read later (keep) or read (done, shouldn't
    come back), so the snooze middle-ground earns little here. Design was scoped
    (nullable `item_states.snoozed_until`, passive query-time hiding, resurface by
    sorting on the snooze time) — revisit if the triage/overload pressure ever makes a
    “not now, ask me later” state worth it.
-9. **Infinite scroll + list virtualization** — auto-load older articles on scroll
+8. **Infinite scroll + list virtualization** — auto-load older articles on scroll
    instead of the “Load older” button, and virtualize the list for large unread counts.
    Deferred: we don't hit long unread lists in practice, and the explicit button is
    predictable and keyboard-friendly; virtualization also fights the inline-accordion

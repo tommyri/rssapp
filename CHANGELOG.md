@@ -5,6 +5,8 @@ version section verbatim, so this file is the release record rather than an afte
 
 ## [Unreleased]
 
+## [2026.7.4] - 2026-07-25
+
 ### Added
 
 - A visible **Mark unread** / **Mark read** control in the native article toolbar,
@@ -22,6 +24,26 @@ version section verbatim, so this file is the release record rather than an afte
 - The sidebar source list now uses all available height above its fixed action area,
   showing as many sources as fit and scrolling only when the list is longer. Opening a
   source keeps its active row in view.
+
+### Fixed
+
+- Saved pages opened through the bookmark now replace **Fetching a readable copy…**
+  with the extracted article or a clear failure automatically. Extraction is kept alive
+  through the redirect, and status checks run only while that pending page is open and
+  visible. When a copy takes longer than the reader waits for it, the page now says it is
+  still being fetched and asks for a reload instead of waiting silently.
+- Retrying a saved page that could not be fetched no longer flashes the previous failure
+  back while the new attempt is still running, and a readable copy that has been stored
+  is never replaced by a slower attempt that failed.
+
+### Security
+
+- Feed fetching now uses the same guarded fetcher as automatic article extraction:
+  HTTP(S)-only URLs without credentials, private, loopback, link-local and
+  cloud-metadata addresses rejected by DNS check, every redirect hop revalidated, and
+  size-bounded responses. Previously only article extraction was checked, so adding a
+  feed could make the server fetch an address on its own network and report what it
+  found. Feed and article requests are now held to one policy with no way to relax it.
 
 ## [2026.7.3] - 2026-07-24
 
