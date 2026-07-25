@@ -556,7 +556,7 @@ export const items = pgTable(
     // (src/lib/reader.ts). Scaling beyond two known languages is a business
     // question, parked in docs/business-option.md.
     searchVector: tsvector("search_vector").generatedAlwaysAs(
-      sql`setweight(to_tsvector('english', coalesce(title, '')), 'A') || setweight(to_tsvector('norwegian', coalesce(title, '')), 'A') || setweight(to_tsvector('english', coalesce(author, '')), 'B') || setweight(to_tsvector('english', regexp_replace(coalesce(full_content_html, content_html, ''), '<[^>]*>', ' ', 'g')), 'C') || setweight(to_tsvector('norwegian', regexp_replace(coalesce(full_content_html, content_html, ''), '<[^>]*>', ' ', 'g')), 'C')`,
+      sql`setweight(to_tsvector('english', coalesce(title, '')), 'A') || setweight(to_tsvector('norwegian', coalesce(title, '')), 'A') || setweight(to_tsvector('simple', coalesce(title, '')), 'A') || setweight(to_tsvector('english', coalesce(author, '')), 'B') || setweight(to_tsvector('simple', coalesce(author, '')), 'B') || setweight(to_tsvector('english', regexp_replace(coalesce(full_content_html, content_html, ''), '<[^>]*>', ' ', 'g')), 'C') || setweight(to_tsvector('norwegian', regexp_replace(coalesce(full_content_html, content_html, ''), '<[^>]*>', ' ', 'g')), 'C') || setweight(to_tsvector('simple', regexp_replace(coalesce(full_content_html, content_html, ''), '<[^>]*>', ' ', 'g')), 'C')`,
     ),
   },
   (t) => [
@@ -567,6 +567,13 @@ export const items = pgTable(
     index("items_canonical_url_idx")
       .on(t.canonicalUrl)
       .where(sql`${t.canonicalUrl} is not null`),
+    // Matches how the reader orders and bounds items: keyset pagination and the
+    // sidebar unread horizon both use coalesce(published_at, created_at), which
+    // the (feed_id, published_at) index above cannot serve.
+    index("items_feed_sort_idx").on(
+      t.feedId,
+      sql`coalesce(${t.publishedAt}, ${t.createdAt})`,
+    ),
     // The extraction worker only scans non-terminal work that is due.
     index("items_full_content_queue_idx")
       .on(t.fullContentNextAt, t.createdAt)
@@ -945,7 +952,7 @@ export const savedPages = pgTable(
     // Same weighted, bilingual FTS document as items (schema.ts above), so
     // saved pages fold into search results next to feed articles.
     searchVector: tsvector("search_vector").generatedAlwaysAs(
-      sql`setweight(to_tsvector('english', coalesce(title, '')), 'A') || setweight(to_tsvector('norwegian', coalesce(title, '')), 'A') || setweight(to_tsvector('english', coalesce(site_name, '')), 'B') || setweight(to_tsvector('english', coalesce(excerpt, '')), 'C') || setweight(to_tsvector('english', regexp_replace(coalesce(content_html, ''), '<[^>]*>', ' ', 'g')), 'C') || setweight(to_tsvector('norwegian', regexp_replace(coalesce(content_html, ''), '<[^>]*>', ' ', 'g')), 'C')`,
+      sql`setweight(to_tsvector('english', coalesce(title, '')), 'A') || setweight(to_tsvector('norwegian', coalesce(title, '')), 'A') || setweight(to_tsvector('simple', coalesce(title, '')), 'A') || setweight(to_tsvector('english', coalesce(site_name, '')), 'B') || setweight(to_tsvector('simple', coalesce(site_name, '')), 'B') || setweight(to_tsvector('english', coalesce(excerpt, '')), 'C') || setweight(to_tsvector('english', regexp_replace(coalesce(content_html, ''), '<[^>]*>', ' ', 'g')), 'C') || setweight(to_tsvector('norwegian', regexp_replace(coalesce(content_html, ''), '<[^>]*>', ' ', 'g')), 'C') || setweight(to_tsvector('simple', regexp_replace(coalesce(content_html, ''), '<[^>]*>', ' ', 'g')), 'C')`,
     ),
   },
   (t) => [

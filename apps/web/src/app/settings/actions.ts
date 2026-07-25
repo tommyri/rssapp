@@ -49,6 +49,7 @@ import {
   removePushSubscription,
   savePushSubscription,
 } from "@/lib/push-notifications";
+import { MAX_AUTO_READ_DAYS } from "@/lib/reading-prefs";
 import {
   EmailDeliveryError,
   isEmailDeliveryConfigured,
@@ -248,8 +249,14 @@ export async function updateReadingPrefsAction(
 ): Promise<AccountActionState> {
   const raw = String(formData.get("autoReadDays") ?? "").trim();
   const days = raw === "" ? null : Number(raw);
-  if (days !== null && !(Number.isInteger(days) && days >= 1 && days <= 365)) {
-    return { ok: false, message: "Days must be a whole number from 1 to 365." };
+  if (
+    days !== null &&
+    !(Number.isInteger(days) && days >= 1 && days <= MAX_AUTO_READ_DAYS)
+  ) {
+    return {
+      ok: false,
+      message: `Days must be a whole number from 1 to ${MAX_AUTO_READ_DAYS}.`,
+    };
   }
   // Unchecked checkboxes are omitted from FormData entirely.
   const collapseDuplicates = formData.get("collapseDuplicates") === "on";

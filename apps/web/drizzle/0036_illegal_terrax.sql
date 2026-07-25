@@ -1,0 +1,1 @@
+CREATE INDEX "items_feed_sort_idx" ON "items" USING btree ("feed_id",coalesce("published_at", "created_at"));

@@ -29,7 +29,10 @@ import { getHighlightTarget } from "@/lib/highlights";
 import { labelsForTargets, type ReaderLabel } from "@/lib/labels";
 import { notificationItemId } from "@/lib/notifications";
 import type { ExportEntry } from "@/lib/opml";
-import { DEFAULT_AUTO_READ_DAYS } from "@/lib/reading-prefs";
+import {
+  DEFAULT_AUTO_READ_DAYS,
+  UNREAD_COUNT_HORIZON_DAYS,
+} from "@/lib/reading-prefs";
 import {
   getSavedPage,
   listSavedPages,
@@ -69,50 +72,61 @@ export interface FeedSummary {
  */
 export const listFeeds = cache(
   async (userId: number): Promise<FeedSummary[]> => {
-    return db
-      .select({
-        feedId: feeds.id,
-        title: sql<
-          string | null
-        >`coalesce(${subscriptions.customTitle}, ${feeds.title})`,
-        url: feeds.url,
-        siteUrl: feeds.siteUrl,
-        lastError: feeds.lastError,
-        paused: sql<boolean>`coalesce((${subscriptions.settings}->>'paused')::boolean, false)`,
-        folderId: folders.id,
-        folderName: folders.name,
-        customTitle: subscriptions.customTitle,
-        feedTitle: feeds.title,
-        autoReadDays: sql<
-          number | null
-        >`(${subscriptions.settings}->>'autoReadDays')::int`,
-        sortOrder: sql<SortOrder>`case when ${subscriptions.settings}->>'sortOrder' = 'oldest' then 'oldest' else 'newest' end`,
-        defaultUnreadOnly: sql<boolean>`coalesce((${subscriptions.settings}->>'defaultUnreadOnly')::boolean, true)`,
-        unread: sql<number>`cast(count(${itemsTable.id}) filter (where ${itemStates.read} is not true and ${itemStates.muted} is not true) as int)`,
-      })
-      .from(subscriptions)
-      .innerJoin(feeds, eq(feeds.id, subscriptions.feedId))
-      .leftJoin(folders, eq(folders.id, subscriptions.folderId))
-      .leftJoin(itemsTable, eq(itemsTable.feedId, feeds.id))
-      .leftJoin(
-        itemStates,
-        and(
-          eq(itemStates.itemId, itemsTable.id),
-          eq(itemStates.userId, userId),
-        ),
-      )
-      .where(eq(subscriptions.userId, userId))
-      .groupBy(
-        feeds.id,
-        subscriptions.customTitle,
-        subscriptions.settings,
-        feeds.title,
-        feeds.url,
-        feeds.lastError,
-        folders.id,
-        folders.name,
-      )
-      .orderBy(sql`coalesce(${subscriptions.customTitle}, ${feeds.title})`);
+    return (
+      db
+        .select({
+          feedId: feeds.id,
+          title: sql<
+            string | null
+          >`coalesce(${subscriptions.customTitle}, ${feeds.title})`,
+          url: feeds.url,
+          siteUrl: feeds.siteUrl,
+          lastError: feeds.lastError,
+          paused: sql<boolean>`coalesce((${subscriptions.settings}->>'paused')::boolean, false)`,
+          folderId: folders.id,
+          folderName: folders.name,
+          customTitle: subscriptions.customTitle,
+          feedTitle: feeds.title,
+          autoReadDays: sql<
+            number | null
+          >`(${subscriptions.settings}->>'autoReadDays')::int`,
+          sortOrder: sql<SortOrder>`case when ${subscriptions.settings}->>'sortOrder' = 'oldest' then 'oldest' else 'newest' end`,
+          defaultUnreadOnly: sql<boolean>`coalesce((${subscriptions.settings}->>'defaultUnreadOnly')::boolean, true)`,
+          unread: sql<number>`cast(count(${itemsTable.id}) filter (where ${itemStates.read} is not true and ${itemStates.muted} is not true) as int)`,
+        })
+        .from(subscriptions)
+        .innerJoin(feeds, eq(feeds.id, subscriptions.feedId))
+        .leftJoin(folders, eq(folders.id, subscriptions.folderId))
+        // Bounded on purpose: without a horizon this joins every article of every
+        // subscribed feed on every page load, which grows with the archive forever.
+        // Nothing older can still be unread (see UNREAD_COUNT_HORIZON_DAYS).
+        .leftJoin(
+          itemsTable,
+          and(
+            eq(itemsTable.feedId, feeds.id),
+            sql`${sortKey} > now() - ${sql.raw(`interval '${UNREAD_COUNT_HORIZON_DAYS} days'`)}`,
+          ),
+        )
+        .leftJoin(
+          itemStates,
+          and(
+            eq(itemStates.itemId, itemsTable.id),
+            eq(itemStates.userId, userId),
+          ),
+        )
+        .where(eq(subscriptions.userId, userId))
+        .groupBy(
+          feeds.id,
+          subscriptions.customTitle,
+          subscriptions.settings,
+          feeds.title,
+          feeds.url,
+          feeds.lastError,
+          folders.id,
+          folders.name,
+        )
+        .orderBy(sql`coalesce(${subscriptions.customTitle}, ${feeds.title})`)
+    );
   },
 );
 
@@ -610,7 +624,7 @@ export async function searchItems(
 ): Promise<ReaderItem[]> {
   // The index holds english + norwegian stems (schema.ts); parse the query
   // with both and OR them so either language's inflections match.
-  const tsquery = sql`(websearch_to_tsquery('english', ${query}) || websearch_to_tsquery('norwegian', ${query}))`;
+  const tsquery = sql`(websearch_to_tsquery('english', ${query}) || websearch_to_tsquery('norwegian', ${query}) || websearch_to_tsquery('simple', ${query}))`;
 
   const rows = await db
     .select({

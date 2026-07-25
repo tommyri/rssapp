@@ -318,7 +318,7 @@ export async function searchSavedPages(
   userId: number,
   query: string,
 ): Promise<SavedPage[]> {
-  const tsquery = sql`(websearch_to_tsquery('english', ${query}) || websearch_to_tsquery('norwegian', ${query}))`;
+  const tsquery = sql`(websearch_to_tsquery('english', ${query}) || websearch_to_tsquery('norwegian', ${query}) || websearch_to_tsquery('simple', ${query}))`;
   return db
     .select(columns)
     .from(savedPages)

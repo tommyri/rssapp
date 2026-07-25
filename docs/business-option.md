@@ -79,9 +79,17 @@ Two findings from competitive-analysis.md sharpen this:
 1. Open-source or not — and if so, MIT-style goodwill vs. AGPL protection.
 2. Which angle: hosted reader UI, sync backend, or both.
 3. How API access should be positioned, limited, and supported if a hosted plan exists.
-4. **Multilingual search at scale.** Today search indexes with English + Norwegian
-   stemmers (the builder's actual mix — one migration to change, not a lock-in).
-   Customers in arbitrary languages need a real strategy: per-feed language detection
-   with per-language configs, language-neutral `simple` + trigram matching, or an
-   external engine (Meilisearch/Typesense). Decide when there are non-EN/NO users;
-   the generated-column design makes any of these a contained migration.
+4. **Multilingual search — partly decided (25 July 2026).** The index now carries a
+   language-neutral `simple` layer alongside the English and Norwegian stemmers. That was
+   not about adding languages: mis-stemming is self-consistent, so exact-word search
+   already worked in any language. What was broken is that English and Norwegian noise-word
+   lists silently discarded tokens — a search for French *a* or Italian *i* matched
+   nothing, and Postgres reported the query as empty. `simple` closes that and stops names
+   being stemmed.
+   Still open: **inflection matching** for other languages (German *Häuser* will not find
+   *Haus*). Deliberately deferred, because OR-ing more stemmers does not scale — each one
+   multiplies index size and adds cross-language false positives. The shape when it matters
+   is one language *per item*, taken from its feed. Verified cheap: a dynamic
+   `to_tsvector(lang::regconfig, …)` is rejected in a generated column as not immutable,
+   but an immutable `CASE` over known configs works, so it stays a generated column and one
+   migration. Decide when there are users in those languages.

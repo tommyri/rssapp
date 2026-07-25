@@ -15,6 +15,15 @@ version section verbatim, so this file is the release record rather than an afte
   phone. A stray display rule had been quietly disabling the clamp, which also meant the
   Compact density setting left previews unchanged. Roughly twice as many articles now fit
   on a phone screen.
+- List previews no longer lead with boilerplate the feed repeated — a publication date
+  already shown on the row, or the article's own title — and no longer end mid-word.
+- Search now finds words that are common in English or Norwegian but carry meaning in
+  other languages. Those were being discarded as noise words, so an article containing
+  them could not be found by them at all. Author and site names are also matched as
+  written rather than shortened.
+- Sidebar unread counts no longer scan a reader's entire article history on every page
+  load, which kept getting slower as an archive grew. Counts are unchanged: nothing older
+  than the auto-read window can be unread anyway.
 
 ## [2026.7.5] - 2026-07-25
 
