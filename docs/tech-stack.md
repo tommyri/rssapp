@@ -145,3 +145,35 @@ One deliberate detail: primary keys are `bigint` identity columns, not UUIDs. Th
    isolated compatibility surface. Currentfold's own mobile clients use a modern,
    versioned `/api/v1` contract backed by shared reader-domain operations; see
    [ADR 0001](adr/0001-product-monorepo-and-native-api.md).
+
+## Dependency advisories
+
+`npm audit` does not reach zero, and chasing it to zero would make the product less
+safe rather than more. Judge an advisory by whether untrusted input can reach the
+vulnerable code, and record the answer here so the next audit is read rather than
+re-litigated.
+
+Everything reachable is patched. What remains, as of 2026-07-25:
+
+- **`postcss` (3 high, inside `next`)** — `next` pins its own `postcss@8.4.31` for the
+  build-time CSS pipeline. Every advisory needs attacker-authored CSS or a hostile
+  `sourceMappingURL`; ours is written by us and compiled before the image exists. The
+  copy that ships in the standalone output is the patched `8.5.23`, not Next's nested
+  one. An `overrides` entry would force a version Next did not build against, to protect
+  input we control. Revisit when Next widens the pin.
+- **`sharp` (1 high, libvips CVEs)** — used by `packages/brand` to resize our own
+  identity masters, and by Next's image optimizer. `next/image` is unused
+  ([feed-icon.tsx](../apps/web/src/components/feed-icon.tsx) explains why), and with no
+  `images.remotePatterns` configured the `/_next/image` endpoint refuses remote URLs, so
+  only images the deployment itself ships can reach libvips. Both consumers declare
+  `^0.34.5`, which excludes the 0.35 fix; overriding it violates two declared ranges to
+  harden a path with no untrusted input. Revisit when either widens its range, or
+  immediately if `next/image` or remote patterns are ever adopted — that changes the
+  answer.
+- **7 moderate, dev-only** (`esbuild` dev-server, `@hono/node-server` path traversal on
+  Windows, reached through `drizzle-kit` and `shadcn`) — build tooling that never runs in
+  production. npm proposes "fixes" of `drizzle-kit@0.18.1` and `shadcn@3.8.3`, which are
+  drastic downgrades of current majors, not fixes. Do not apply them.
+
+`npm audit --omit=dev` is the number that describes the deployed artifact; the full
+count includes tooling that never ships.

@@ -26,6 +26,12 @@ version section verbatim, so this file is the release record rather than an afte
   separate lookup beforehand. A hostile feed or article host could previously answer the
   safety check with a public address and the connection with a private one, defeating the
   check; the address the socket connects to is now the address that was verified.
+- Updated dependencies carrying security advisories, closing two critical sign-in issues
+  (a malformed bearer token could raise an unhandled error; a configuration error could
+  reveal whether an account exists), a denial-of-service opening in OPML import through
+  repeated XML doctype declarations, and a proxy-bypass issue in the framework's route
+  protection. Remaining advisories are build tooling or code no untrusted input reaches,
+  assessed in [tech-stack.md](docs/tech-stack.md).
 
 ## [2026.7.4] - 2026-07-25
 
