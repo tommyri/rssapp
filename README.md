@@ -151,6 +151,17 @@ Feeds can be **paused** from the Manage feeds page (feed health): a paused feed 
 its articles but is skipped by the scheduler and refresh-all until resumed. The same
 page flags **quiet** feeds — fetching fine, but nothing new in 90+ days.
 
+**Where the server will fetch from.** Adding a feed makes the server fetch a URL someone
+typed, so every outbound feed and article request goes through one guarded fetcher:
+HTTP(S) only, no credentials in the URL, standard ports, and a DNS check that rejects
+private, loopback, link-local, and cloud-metadata addresses — revalidated on every
+redirect hop, with size-bounded bodies. Without it, any account could use the reader to
+reach services on the deployment's own network.
+
+Feeds are domain names (a public address literal works too), so this has no opt-out and
+needs no configuration. A setting that relaxed it would only ever be useful to an
+attacker.
+
 ### Search
 
 Full-text search (Postgres FTS) across titles, authors, and article bodies — including

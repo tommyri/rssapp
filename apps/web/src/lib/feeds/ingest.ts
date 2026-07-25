@@ -26,7 +26,7 @@ import {
   looksLikeHtml,
   youtubeFeedUrl,
 } from "./discover";
-import { type FetchResult, fetchUrl } from "./fetch";
+import { type FetchResult, fetchFeedUrl } from "./fetch";
 import { parseFeed } from "./parse";
 import type { ParsedItem } from "./types";
 
@@ -205,7 +205,7 @@ export async function backfillCanonicalUrls(): Promise<number> {
 async function tryFeedUrl(
   candidate: string,
 ): Promise<{ feedUrl: string; ok: OkResult } | null> {
-  const res = await fetchUrl(candidate);
+  const res = await fetchFeedUrl(candidate);
   if (res.status === "ok" && !looksLikeHtml(res.body, res.contentType)) {
     return { feedUrl: candidate, ok: res };
   }
@@ -228,7 +228,7 @@ async function resolveFeed(
     throw new Error(`YouTube feed not found for ${inputUrl}`);
   }
 
-  const first = await fetchUrl(inputUrl);
+  const first = await fetchFeedUrl(inputUrl);
   if (first.status === "error") {
     throw new Error(`Could not fetch ${inputUrl}: ${first.error}`);
   }
@@ -356,7 +356,7 @@ export async function refreshFeed(feedId: number): Promise<RefreshResult> {
   if (!feed) return { itemsAdded: 0, status: "error", error: "Feed not found" };
 
   const started = Date.now();
-  const res = await fetchUrl(feed.url, {
+  const res = await fetchFeedUrl(feed.url, {
     etag: feed.etag,
     lastModified: feed.lastModified,
   });

@@ -6,7 +6,9 @@ export const USER_AGENT =
 
 const TIMEOUT_MS = 15_000;
 const ARTICLE_MAX_BYTES = 5 * 1024 * 1024;
-const ARTICLE_MAX_REDIRECTS = 5;
+const FEED_MAX_BYTES = 10 * 1024 * 1024;
+const MAX_REDIRECTS = 5;
+const REDIRECT_STATUSES = [301, 302, 303, 307, 308];
 
 export type FetchResult =
   | {
@@ -72,39 +74,6 @@ function errorFromResponse(
   };
 }
 
-/**
- * Polite HTTP GET for feeds (docs/tech-stack.md): custom UA, gzip, and
- * conditional GET so unchanged feeds cost a 304 instead of a full body.
- */
-export async function fetchUrl(
-  url: string,
-  conditional: ConditionalHeaders = {},
-): Promise<FetchResult> {
-  let res: Response;
-  try {
-    res = await fetch(url, {
-      headers: fetchHeaders(conditional),
-      redirect: "follow",
-      signal: AbortSignal.timeout(TIMEOUT_MS),
-    });
-  } catch (err) {
-    const error = err instanceof Error ? err.message : String(err);
-    return { status: "error", error, retryable: true };
-  }
-
-  if (res.status === 304) return { status: "not-modified" };
-  if (!res.ok) return errorFromResponse(res);
-
-  const body = await res.text();
-  return {
-    status: "ok",
-    body,
-    contentType: res.headers.get("content-type"),
-    etag: res.headers.get("etag"),
-    lastModified: res.headers.get("last-modified"),
-  };
-}
-
 function normalizeIp(value: string): string {
   return value.startsWith("[") && value.endsWith("]")
     ? value.slice(1, -1)
@@ -147,12 +116,20 @@ export function isPublicInternetAddress(value: string): boolean {
   return false;
 }
 
+const ARTICLE_SUBJECT = "The article link";
+const FEED_SUBJECT = "The feed address";
+
 /**
  * Reject schemes, credentials, ports, and literal private targets before any
- * automatic extraction request leaves the process. Hostname DNS validation is
- * performed separately for every redirect target.
+ * automatic request leaves the process. Hostname DNS validation is performed
+ * separately for every redirect target.
+ *
+ * This policy is deliberately uniform for feeds and articles, with no escape
+ * hatch: a subscription is a domain name (or, rarely, a public address), so
+ * nothing a reader legitimately follows lives on the deployment's own network.
+ * A setting that relaxed it would only ever be useful to an attacker.
  */
-export function articleUrlCandidate(raw: string): URL | null {
+export function safeFetchCandidate(raw: string): URL | null {
   let url: URL;
   try {
     url = new URL(raw);
@@ -173,12 +150,15 @@ export function articleUrlCandidate(raw: string): URL | null {
   return url;
 }
 
-async function assertPublicArticleTarget(url: URL): Promise<string | null> {
+async function assertAllowedTarget(
+  url: URL,
+  subject: string,
+): Promise<string | null> {
   const hostname = normalizeIp(url.hostname);
   if (isIP(hostname) !== 0) {
     return isPublicInternetAddress(hostname)
       ? null
-      : "The article link points to a private network address.";
+      : `${subject} points to a private network address.`;
   }
   try {
     const addresses = await lookup(hostname, { all: true, verbatim: true });
@@ -186,19 +166,21 @@ async function assertPublicArticleTarget(url: URL): Promise<string | null> {
       addresses.length === 0 ||
       addresses.some((entry) => !isPublicInternetAddress(entry.address))
     ) {
-      return "The article link resolves to a private network address.";
+      return `${subject} resolves to a private network address.`;
     }
     return null;
   } catch {
-    return "Could not resolve the article host.";
+    return `${subject} could not be resolved.`;
   }
 }
 
-async function boundedText(response: Response): Promise<string> {
+async function boundedText(
+  response: Response,
+  maxBytes: number,
+): Promise<string> {
+  const tooLarge = new Error("The page is too large to fetch safely.");
   const length = Number(response.headers.get("content-length"));
-  if (Number.isFinite(length) && length > ARTICLE_MAX_BYTES) {
-    throw new Error("Article page is too large to extract safely.");
-  }
+  if (Number.isFinite(length) && length > maxBytes) throw tooLarge;
   if (!response.body) return "";
 
   const reader = response.body.getReader();
@@ -209,9 +191,9 @@ async function boundedText(response: Response): Promise<string> {
     const { done, value } = await reader.read();
     if (done) break;
     total += value.byteLength;
-    if (total > ARTICLE_MAX_BYTES) {
+    if (total > maxBytes) {
       await reader.cancel();
-      throw new Error("Article page is too large to extract safely.");
+      throw tooLarge;
     }
     text += decoder.decode(value, { stream: true });
   }
@@ -219,26 +201,33 @@ async function boundedText(response: Response): Promise<string> {
 }
 
 /**
- * Guarded page fetch for automatic content extraction. Each redirect target is
- * revalidated before it is fetched, and article bodies are size-bounded.
+ * The one guarded outbound GET. Every redirect target is revalidated before it
+ * is fetched and bodies are size-bounded, so no automatic request — feed or
+ * article — can be steered onto the deployment's own network or made to stream
+ * an unbounded response. Callers differ only in how the target is named in
+ * errors, conditional headers, and size ceiling.
  */
-export async function fetchArticleUrl(rawUrl: string): Promise<FetchResult> {
-  let current = articleUrlCandidate(rawUrl);
+async function fetchGuarded(
+  rawUrl: string,
+  subject: string,
+  options: { conditional?: ConditionalHeaders; maxBytes: number },
+): Promise<FetchResult> {
+  let current = safeFetchCandidate(rawUrl);
   if (!current) {
     return {
       status: "error",
-      error: "Article link is not a safe public HTTP(S) URL.",
+      error: `${subject} is not a safe HTTP(S) URL.`,
     };
   }
 
-  for (let redirects = 0; redirects <= ARTICLE_MAX_REDIRECTS; redirects += 1) {
-    const unsafeTarget = await assertPublicArticleTarget(current);
+  for (let redirects = 0; redirects <= MAX_REDIRECTS; redirects += 1) {
+    const unsafeTarget = await assertAllowedTarget(current, subject);
     if (unsafeTarget) return { status: "error", error: unsafeTarget };
 
     let response: Response;
     try {
       response = await fetch(current, {
-        headers: fetchHeaders(),
+        headers: fetchHeaders(options.conditional),
         redirect: "manual",
         signal: AbortSignal.timeout(TIMEOUT_MS),
       });
@@ -247,19 +236,21 @@ export async function fetchArticleUrl(rawUrl: string): Promise<FetchResult> {
       return { status: "error", error, retryable: true };
     }
 
-    if ([301, 302, 303, 307, 308].includes(response.status)) {
+    if (response.status === 304) return { status: "not-modified" };
+
+    if (REDIRECT_STATUSES.includes(response.status)) {
       const location = response.headers.get("location");
       if (!location) {
         return {
           status: "error",
-          error: "Article redirect did not include a destination.",
+          error: `${subject} redirected without a destination.`,
         };
       }
-      const next = articleUrlCandidate(new URL(location, current).toString());
+      const next = safeFetchCandidate(new URL(location, current).toString());
       if (!next) {
         return {
           status: "error",
-          error: "Article redirect points to an unsafe destination.",
+          error: `${subject} redirects to an unsafe destination.`,
         };
       }
       current = next;
@@ -270,7 +261,7 @@ export async function fetchArticleUrl(rawUrl: string): Promise<FetchResult> {
     try {
       return {
         status: "ok",
-        body: await boundedText(response),
+        body: await boundedText(response, options.maxBytes),
         contentType: response.headers.get("content-type"),
         etag: response.headers.get("etag"),
         lastModified: response.headers.get("last-modified"),
@@ -282,5 +273,29 @@ export async function fetchArticleUrl(rawUrl: string): Promise<FetchResult> {
     }
   }
 
-  return { status: "error", error: "Article redirect chain is too long." };
+  return {
+    status: "error",
+    error: `${subject} redirect chain is too long.`,
+  };
+}
+
+/** Guarded page fetch for automatic content extraction. */
+export async function fetchArticleUrl(rawUrl: string): Promise<FetchResult> {
+  return fetchGuarded(rawUrl, ARTICLE_SUBJECT, {
+    maxBytes: ARTICLE_MAX_BYTES,
+  });
+}
+
+/**
+ * Polite HTTP GET for feeds (docs/tech-stack.md): custom UA, gzip, and
+ * conditional GET so unchanged feeds cost a 304 instead of a full body.
+ */
+export async function fetchFeedUrl(
+  url: string,
+  conditional: ConditionalHeaders = {},
+): Promise<FetchResult> {
+  return fetchGuarded(url, FEED_SUBJECT, {
+    conditional,
+    maxBytes: FEED_MAX_BYTES,
+  });
 }
