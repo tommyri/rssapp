@@ -21,3 +21,22 @@ This version has breaking changes — APIs, conventions, and file structure may 
 - **Favicons use `<img>` on purpose** (arbitrary origins; see `feed-icon.tsx`).
 - **No `loading.tsx` on purpose**: feed navigation keeps the previous list visible
   during the transition instead of flashing a skeleton (reader-UX choice).
+
+## Database conventions
+
+- **Changing a generated column drops its indexes, and `db:generate` won't put them
+  back.** Postgres cannot alter a generation expression, so drizzle emits
+  `drop column` + `add column` — which silently takes every index on that column with
+  it. This bit the `search_vector` change in 2026.7.6: search kept returning correct
+  results via sequential scans over the whole table, with nothing failing anywhere. After
+  generating any migration that touches a generated column, add the `CREATE INDEX`
+  statements by hand and confirm with
+  `select indexname from pg_indexes where tablename = '…'`.
+- **Unread means "no diverging row"**, so it cannot be indexed directly: `item_states` is
+  written only when state leaves its default. Anything counting unread has to enumerate
+  items and anti-join, which is why the sidebar count is bounded by
+  `UNREAD_COUNT_HORIZON_DAYS` rather than scanning an account's whole history. Auto-read
+  cannot be switched off, which is what makes that bound exact — keep those two facts
+  together if either changes.
+- **The reader orders by `coalesce(published_at, created_at)`**, not `published_at`. Index
+  the expression (`items_feed_sort_idx`), or a range predicate on it will scan.
