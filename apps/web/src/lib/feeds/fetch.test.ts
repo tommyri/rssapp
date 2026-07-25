@@ -66,6 +66,37 @@ describe("outbound fetch URL policy", () => {
     expect(safeFetchCandidate("http://127.0.0.1/admin")).toBeNull();
   });
 
+  it("accepts the public addresses inside part-reserved blocks", () => {
+    // Regression: matching these blocks on the second octet took whole /16s.
+    // 192.0.66/24 and 192.0.78/24 are WordPress VIP and WordPress.com, which
+    // host a lot of blogs — github.blog among them.
+    for (const address of [
+      "192.0.66.2",
+      "192.0.78.249",
+      "192.0.1.1",
+      "198.51.1.1",
+      "203.0.1.1",
+      "192.1.0.1",
+    ]) {
+      expect(isPublicInternetAddress(address)).toBe(true);
+    }
+  });
+
+  it("still rejects the reserved /24s inside those blocks", () => {
+    for (const address of [
+      "192.0.0.1", // IETF protocol assignments
+      "192.0.2.1", // TEST-NET-1
+      "192.88.99.1", // deprecated 6to4 relay anycast
+      "198.51.100.1", // TEST-NET-2
+      "203.0.113.1", // TEST-NET-3
+      "198.18.0.1", // benchmarking
+      "198.19.0.1",
+      "192.168.1.1",
+    ]) {
+      expect(isPublicInternetAddress(address)).toBe(false);
+    }
+  });
+
   it("rejects the cloud metadata address that makes blind SSRF valuable", () => {
     expect(
       safeFetchCandidate(

@@ -91,14 +91,20 @@ export function isPublicInternetAddress(value: string): boolean {
   const address = normalizeIp(value).toLowerCase();
   const family = isIP(address);
   if (family === 4) {
-    const [a = 0, b = 0] = address.split(".").map(Number);
+    const [a = 0, b = 0, c = 0] = address.split(".").map(Number);
     if (a === 0 || a === 10 || a === 127 || a >= 224) return false;
     if (a === 100 && b >= 64 && b <= 127) return false;
     if (a === 169 && b === 254) return false;
     if (a === 172 && b >= 16 && b <= 31) return false;
-    if (a === 192 && (b === 0 || b === 168)) return false;
-    if (a === 198 && (b === 18 || b === 19 || b === 51)) return false;
-    if (a === 203 && b === 0) return false;
+    // Reserved blocks inside 192/8 are /24s, apart from RFC 1918's /16. Matching
+    // on the second octet alone would take 192.0.0.0/16 with them — 65k public
+    // addresses that include WordPress.com and VIP, where a lot of blogs live.
+    if (a === 192 && b === 0 && (c === 0 || c === 2)) return false;
+    if (a === 192 && b === 88 && c === 99) return false;
+    if (a === 192 && b === 168) return false;
+    if (a === 198 && (b === 18 || b === 19)) return false;
+    if (a === 198 && b === 51 && c === 100) return false;
+    if (a === 203 && b === 0 && c === 113) return false;
     return true;
   }
   if (family === 6) {
