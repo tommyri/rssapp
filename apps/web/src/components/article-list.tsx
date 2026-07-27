@@ -168,6 +168,11 @@ export function ArticleList({
     Map<number, ArticleHighlight | null>
   >(new Map());
   const pendingReaderStateKeysRef = useRef(new Set<string>());
+  // Rows read while this view is mounted. Refreshed unread-only snapshots no
+  // longer contain them, but a reading session should not watch its finished
+  // posts vanish one by one — they stay until navigating to another view or
+  // reloading remounts the list (the component is keyed per view).
+  const sessionReadKeysRef = useRef(new Set<string>());
   const freshnessContextRef = useRef({
     readHistoryStarted,
     oldestFirst: view.sortOrder === "oldest",
@@ -231,6 +236,7 @@ export function ArticleList({
         preserveMissing: context.readHistoryStarted,
         protectedKey: expandedIdRef.current,
         pendingStateKeys: pendingReaderStateKeysRef.current,
+        sessionReadKeys: sessionReadKeysRef.current,
         unreadOnly: context.unreadOnly,
         starredOnly: context.starredOnly,
         readLaterOnly: context.readLaterOnly,
@@ -291,6 +297,8 @@ export function ArticleList({
   // Read state lives in different tables per kind; route to the right action.
   function persistRead(item: ReaderItem, read: boolean) {
     const key = keyOf(item);
+    if (read) sessionReadKeysRef.current.add(key);
+    else sessionReadKeysRef.current.delete(key);
     pendingReaderStateKeysRef.current.add(key);
     const call =
       item.kind === "page"

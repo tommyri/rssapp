@@ -42,6 +42,7 @@ function options(
     preserveMissing: false,
     protectedKey: null,
     pendingStateKeys: new Set(),
+    sessionReadKeys: new Set(),
     unreadOnly: false,
     starredOnly: false,
     readLaterOnly: false,
@@ -152,6 +153,55 @@ describe("reader snapshot reconciliation", () => {
     expect(result.map((entry) => entry.id)).toEqual([3, 2, 1]);
     expect(result[0].read).toBe(true);
     expect(result[2]).toBe(older);
+  });
+
+  it("keeps a row read this session in an unread view after it closes", () => {
+    // The reading-session contract: finishing a post must not remove it from
+    // the list. It only leaves when navigation or a reload remounts the view.
+    const current = [item(3, 30, { read: true }), item(2, 20), item(1, 10)];
+    const fresh = [item(2, 20), item(1, 10)];
+
+    const result = reconcileReaderSnapshot(
+      current,
+      fresh,
+      options({ sessionReadKeys: new Set(["item:3"]), unreadOnly: true }),
+    );
+
+    expect(result.map((entry) => entry.id)).toEqual([3, 2, 1]);
+    expect(result[0].read).toBe(true);
+  });
+
+  it("keeps session-read rows where they sat, in order, not at the end", () => {
+    const current = [
+      item(4, 40),
+      item(3, 30, { read: true }),
+      item(2, 20, { read: true }),
+      item(1, 10),
+    ];
+    const fresh = [item(4, 40), item(1, 10)];
+
+    const result = reconcileReaderSnapshot(
+      current,
+      fresh,
+      options({
+        sessionReadKeys: new Set(["item:3", "item:2"]),
+        unreadOnly: true,
+      }),
+    );
+
+    expect(result.map((entry) => entry.id)).toEqual([4, 3, 2, 1]);
+  });
+
+  it("does not resurrect session-read rows in views not gated on read state", () => {
+    // Outside an unread-only view, being read is not why a row went missing —
+    // it was removed server-side, and preserving it would fake its existence.
+    expect(
+      reconcileReaderSnapshot(
+        [item(1, 10, { read: true })],
+        [],
+        options({ sessionReadKeys: new Set(["item:1"]) }),
+      ),
+    ).toEqual([]);
   });
 
   it("does not overwrite a local reader-state mutation still in flight", () => {

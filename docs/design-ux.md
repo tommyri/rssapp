@@ -43,7 +43,7 @@ Sorting: newest-first globally and for folder/all views. A feed can opt into old
 
 ## Reading (inline-expanded article)
 
-- Article opens in place within a centered max-width column; generous margins. Opening an unread article auto-marks it read
+- Article opens in place within a centered max-width column; generous margins. Opening an unread article auto-marks it read — but posts read during the current visit stay in the unread list until navigation or reload opens it fresh, so a reading session never watches its finished posts vanish
 - **System font stack by default** — Feedbin deliberately moved off font-CDNs for privacy; we get the same result for free. Settings now offers reader text size, serif/sans body font, and narrow/normal/wide reading columns without changing that default
 - Sanitized article HTML; images constrained to column width; **full-text extraction by default** runs in a durable background queue. Feed content renders immediately as the fallback, with a quiet preparing state and an unobtrusive retry only when a readable page cannot be obtained.
 - A single feed opens on its unread queue. At its end, **Continue with read history** appends a labelled section of older read articles; it does not silently change the current view or URL to “Show read.”
