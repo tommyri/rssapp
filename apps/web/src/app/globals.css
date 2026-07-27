@@ -155,45 +155,43 @@
   }
 }
 
-/* Distraction-free reader mode (ArticleList): keeps the reading column and
- * its own scroll pane, while temporarily removing navigation chrome. */
-:root.reader-focus [data-reader-mobile-chrome],
-:root.reader-focus [data-reader-navigation] {
-  display: none;
-}
-
-/* On phones, hiding navigation alone barely changes the picture — the list
- * header and sibling rows still crowd the article. Below the shell's `md`
- * breakpoint (Tailwind: width >= 48rem) focus therefore clears everything
- * except the open article: list chrome (view title, filters, save form,
- * pagination) and collapsed rows leave, the sticky header shrinks to its
- * reading strip (progress · status · exit), and the article sheds its
- * list-alignment indent so the text gets the full column. ArticleList pins
- * the open row's on-screen position across this reflow. */
+/* Distraction-free reader mode (ArticleList): the open article owns the
+ * screen at every width. Navigation chrome, list chrome (view title,
+ * filters, save form, pagination) and sibling rows all leave; the sticky
+ * list header shrinks to its reading strip (progress · status · exit); and
+ * the article sheds its list-alignment indent so the text gets the full
+ * column. ArticleList pins the open row's on-screen position across this
+ * reflow. */
 [data-reader-focus-status] {
   display: none;
 }
-@media (width < 48rem) {
-  :root.reader-focus [data-reader-list-chrome],
-  :root.reader-focus [data-reader-row="collapsed"],
-  :root.reader-focus [data-reader-row="expanded"] [data-reader-unread-dot] {
-    display: none;
-  }
-  :root.reader-focus [data-reader-focus-status] {
-    display: inline;
-  }
-  :root.reader-focus [data-reader-list-header] {
-    padding-top: 0.5rem;
-    padding-bottom: 0.5rem;
-  }
-  :root.reader-focus [data-reader-reading-strip] {
-    margin-top: 0;
-  }
-  /* pl-6 aligns the body with the row title's dot indent; with the dot gone
-   * both sit at the row's own px-1, leaving symmetric margins. */
-  :root.reader-focus [data-reader-expanded-body] {
-    padding-left: 0.25rem;
-  }
+:root.reader-focus [data-reader-mobile-chrome],
+:root.reader-focus [data-reader-navigation],
+:root.reader-focus [data-reader-list-chrome],
+:root.reader-focus [data-reader-row="collapsed"],
+:root.reader-focus [data-reader-row="expanded"] [data-reader-unread-dot] {
+  display: none;
+}
+:root.reader-focus [data-reader-focus-status] {
+  display: inline;
+}
+:root.reader-focus [data-reader-list-header] {
+  padding-top: 0.5rem;
+  padding-bottom: 0.5rem;
+}
+:root.reader-focus [data-reader-reading-strip] {
+  margin-top: 0;
+}
+/* pl-6 aligns the body with the row title's dot indent; with the dot gone
+ * both sit at the row's own px-1, leaving symmetric margins. */
+:root.reader-focus [data-reader-expanded-body] {
+  padding-left: 0.25rem;
+}
+/* j/k while focused swaps which row is visible rather than scrolling a list;
+ * ArticleList re-anchors the fresh article to its title, and this keeps that
+ * title clear of the sticky reading strip. */
+:root.reader-focus [data-reader-row="expanded"] {
+  scroll-margin-top: 3rem;
 }
 
 /* The reading canvas: sanitized feed/extracted HTML, set like print. The

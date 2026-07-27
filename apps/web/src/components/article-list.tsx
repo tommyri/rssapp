@@ -212,10 +212,10 @@ export function ArticleList({
 
   // Focus is transient reader state: closing an article or navigating away always
   // restores the app chrome. It is applied post-hydration, like typography.
-  // On phones the class also hides sibling rows and list chrome, which reflows
-  // the list — so every toggle (the cleanup included: it runs before the next
-  // effect body and would otherwise reflow unmeasured) pins the open article
-  // to its on-screen position instead of jumping mid-read.
+  // The class hides sibling rows and list chrome, which reflows the list — so
+  // every toggle (the cleanup included: it runs before the next effect body
+  // and would otherwise reflow unmeasured) pins the open article to its
+  // on-screen position instead of jumping mid-read.
   useEffect(() => {
     function setFocusClassKeepingReadingPosition(active: boolean) {
       const expandedKey = expandedIdRef.current;
@@ -232,6 +232,19 @@ export function ArticleList({
     setFocusClassKeepingReadingPosition(focusMode);
     return () => setFocusClassKeepingReadingPosition(false);
   }, [focusMode]);
+
+  // Moving between articles while focused (j/k, space) swaps which row is
+  // visible instead of scrolling through a list, and the swap happens after
+  // openItem's own scrollIntoView (the target row is still hidden then). So
+  // the fresh article is re-anchored to its title once it is the visible row
+  // — but not when merely entering focus, which pins the position above.
+  const focusAnchoredIdRef = useRef(expandedId);
+  useEffect(() => {
+    const previous = focusAnchoredIdRef.current;
+    focusAnchoredIdRef.current = expandedId;
+    if (!focusMode || !expandedId || expandedId === previous) return;
+    itemRowRefs.current.get(expandedId)?.scrollIntoView({ block: "start" });
+  }, [expandedId, focusMode]);
 
   useEffect(() => {
     if (expandedItem === null) setFocusRequested(false);
