@@ -212,9 +212,25 @@ export function ArticleList({
 
   // Focus is transient reader state: closing an article or navigating away always
   // restores the app chrome. It is applied post-hydration, like typography.
+  // On phones the class also hides sibling rows and list chrome, which reflows
+  // the list — so every toggle (the cleanup included: it runs before the next
+  // effect body and would otherwise reflow unmeasured) pins the open article
+  // to its on-screen position instead of jumping mid-read.
   useEffect(() => {
-    document.documentElement.classList.toggle("reader-focus", focusMode);
-    return () => document.documentElement.classList.remove("reader-focus");
+    function setFocusClassKeepingReadingPosition(active: boolean) {
+      const expandedKey = expandedIdRef.current;
+      const row = expandedKey
+        ? itemRowRefs.current.get(expandedKey)
+        : undefined;
+      const topBefore = row?.getBoundingClientRect().top;
+      document.documentElement.classList.toggle("reader-focus", active);
+      if (row && topBefore !== undefined) {
+        const delta = row.getBoundingClientRect().top - topBefore;
+        if (delta !== 0) getReaderScrollContainer(row).scrollTop += delta;
+      }
+    }
+    setFocusClassKeepingReadingPosition(focusMode);
+    return () => setFocusClassKeepingReadingPosition(false);
   }, [focusMode]);
 
   useEffect(() => {
@@ -740,7 +756,11 @@ export function ArticleList({
         statusMessage={statusMsg}
       />
 
-      {view.readLater && !isSearch ? <SaveLinkForm /> : null}
+      {view.readLater && !isSearch ? (
+        <div data-reader-list-chrome>
+          <SaveLinkForm />
+        </div>
+      ) : null}
 
       {items.length === 0 ? (
         <div className="py-24 text-center">
@@ -788,6 +808,7 @@ export function ArticleList({
               readHistoryStartKey === key ? (
                 <li
                   key="read-history-divider"
+                  data-reader-list-chrome
                   className="border-y border-border/60 bg-muted/30 px-6 py-4"
                 >
                   <p className="text-sm font-medium">Read history</p>
@@ -798,6 +819,7 @@ export function ArticleList({
               ) : null,
               <li
                 key={key}
+                data-reader-row={isOpen ? "expanded" : "collapsed"}
                 ref={(el) => {
                   if (el) {
                     itemRowRefs.current.set(key, el);
@@ -844,6 +866,7 @@ export function ArticleList({
                   >
                     <span
                       aria-hidden
+                      data-reader-unread-dot
                       className={`${rowDensity.unreadDot} size-2 shrink-0 rounded-full transition-colors ${
                         item.read ? "bg-transparent" : "bg-primary"
                       }`}
@@ -931,7 +954,10 @@ export function ArticleList({
                 </SwipeableRow>
 
                 {isOpen ? (
-                  <div className="row-enter pr-1 pb-5 pl-6">
+                  <div
+                    data-reader-expanded-body
+                    className="row-enter pr-1 pb-5 pl-6"
+                  >
                     <ArticleRowBody
                       item={item}
                       contentHtml={contentHtml}
@@ -962,7 +988,7 @@ export function ArticleList({
       )}
 
       {hasMore ? (
-        <div className="flex justify-center py-6">
+        <div data-reader-list-chrome className="flex justify-center py-6">
           <Button
             variant="outline"
             size="sm"
@@ -979,7 +1005,10 @@ export function ArticleList({
       ) : canContinueReadHistory &&
         !readHistoryStarted &&
         !readHistoryChecked ? (
-        <div className="flex flex-col items-center gap-2 py-8 text-center">
+        <div
+          data-reader-list-chrome
+          className="flex flex-col items-center gap-2 py-8 text-center"
+        >
           <p className="text-sm text-muted-foreground">
             You’re caught up with this feed.
           </p>
