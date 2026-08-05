@@ -631,10 +631,21 @@ export function ArticleList({
         if (additions[0]) openKeyboardItem(additions[0]);
         return;
       }
+      if (delta < 0 && idx === 0) {
+        // Articles stay listed while read in this visit, so k walks back to
+        // them — but reads from before the visit (or on another device) have
+        // left an unread-only view. Silence here reads as a broken key.
+        if (view.unreadOnly) {
+          setStatusMsg(
+            "Top of the list — earlier reads aren’t in Unread only.",
+          );
+        }
+        return;
+      }
       const next = Math.max(0, Math.min(list.length - 1, idx + delta));
       openItem(list[next]);
     },
-    [loadOlder, openItem, openKeyboardItem],
+    [loadOlder, openItem, openKeyboardItem, view.unreadOnly],
   );
 
   const smartAdvance = useCallback(async () => {
