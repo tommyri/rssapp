@@ -208,16 +208,44 @@ export function ArticleList({
     },
   });
 
-  // Focus is transient reader state: closing an article or navigating away always
-  // restores the app chrome. It is applied post-hydration, like typography.
+  // Focus is a per-view reading preference: the request holds until Exit, `f`,
+  // or Escape (navigating to another view remounts the list and clears it),
+  // while the class only ever applies with an article open (readerFocusActive)
+  // — so closing an article always shows the full list, and opening the next
+  // one returns to focus. It is applied post-hydration, like typography.
+  // The class hides sibling rows and list chrome, which reflows the list — so
+  // every toggle (the cleanup included: it runs before the next effect body
+  // and would otherwise reflow unmeasured) pins the open article to its
+  // on-screen position instead of jumping mid-read.
   useEffect(() => {
-    document.documentElement.classList.toggle("reader-focus", focusMode);
-    return () => document.documentElement.classList.remove("reader-focus");
+    function setFocusClassKeepingReadingPosition(active: boolean) {
+      const expandedKey = expandedIdRef.current;
+      const row = expandedKey
+        ? itemRowRefs.current.get(expandedKey)
+        : undefined;
+      const topBefore = row?.getBoundingClientRect().top;
+      document.documentElement.classList.toggle("reader-focus", active);
+      if (row && topBefore !== undefined) {
+        const delta = row.getBoundingClientRect().top - topBefore;
+        if (delta !== 0) getReaderScrollContainer(row).scrollTop += delta;
+      }
+    }
+    setFocusClassKeepingReadingPosition(focusMode);
+    return () => setFocusClassKeepingReadingPosition(false);
   }, [focusMode]);
 
+  // Moving between articles while focused (j/k, space) swaps which row is
+  // visible instead of scrolling through a list, and the swap happens after
+  // openItem's own scrollIntoView (the target row is still hidden then). So
+  // the fresh article is re-anchored to its title once it is the visible row
+  // — but not when merely entering focus, which pins the position above.
+  const focusAnchoredIdRef = useRef(expandedId);
   useEffect(() => {
-    if (expandedItem === null) setFocusRequested(false);
-  }, [expandedItem]);
+    const previous = focusAnchoredIdRef.current;
+    focusAnchoredIdRef.current = expandedId;
+    if (!focusMode || !expandedId || expandedId === previous) return;
+    itemRowRefs.current.get(expandedId)?.scrollIntoView({ block: "start" });
+  }, [expandedId, focusMode]);
 
   useEffect(() => {
     const context = freshnessContextRef.current;
@@ -603,10 +631,21 @@ export function ArticleList({
         if (additions[0]) openKeyboardItem(additions[0]);
         return;
       }
+      if (delta < 0 && idx === 0) {
+        // Articles stay listed while read in this visit, so k walks back to
+        // them — but reads from before the visit (or on another device) have
+        // left an unread-only view. Silence here reads as a broken key.
+        if (view.unreadOnly) {
+          setStatusMsg(
+            "Top of the list — earlier reads aren’t in Unread only.",
+          );
+        }
+        return;
+      }
       const next = Math.max(0, Math.min(list.length - 1, idx + delta));
       openItem(list[next]);
     },
-    [loadOlder, openItem, openKeyboardItem],
+    [loadOlder, openItem, openKeyboardItem, view.unreadOnly],
   );
 
   const smartAdvance = useCallback(async () => {
@@ -734,6 +773,7 @@ export function ArticleList({
         toggleHref={toggleHref}
         showingAll={showingAll}
         expanded={expandedItem !== null}
+        expandedTitle={expandedItem?.title ?? null}
         readingProgress={readingProgress}
         focusMode={focusMode}
         onToggleFocus={() => setFocusRequested((value) => !value)}
@@ -741,7 +781,11 @@ export function ArticleList({
         statusMessage={statusMsg}
       />
 
-      {view.readLater && !isSearch ? <SaveLinkForm /> : null}
+      {view.readLater && !isSearch ? (
+        <div data-reader-list-chrome>
+          <SaveLinkForm />
+        </div>
+      ) : null}
 
       {items.length === 0 ? (
         <div className="py-24 text-center">
@@ -788,6 +832,7 @@ export function ArticleList({
               readHistoryStartKey === key ? (
                 <li
                   key="read-history-divider"
+                  data-reader-list-chrome
                   className="border-y border-border/60 bg-muted/30 px-6 py-4"
                 >
                   <p className="text-sm font-medium">Read history</p>
@@ -798,6 +843,7 @@ export function ArticleList({
               ) : null,
               <li
                 key={key}
+                data-reader-row={isOpen ? "expanded" : "collapsed"}
                 ref={(el) => {
                   if (el) {
                     itemRowRefs.current.set(key, el);
@@ -850,7 +896,10 @@ export function ArticleList({
                 </SwipeableRow>
 
                 {isOpen ? (
-                  <div className="row-enter pr-1 pb-5 pl-6">
+                  <div
+                    data-reader-expanded-body
+                    className="row-enter pr-1 pb-5 pl-6"
+                  >
                     <ArticleRowActions
                       item={item}
                       contentHtml={contentHtml}
@@ -890,7 +939,7 @@ export function ArticleList({
       )}
 
       {hasMore ? (
-        <div className="flex justify-center py-6">
+        <div data-reader-list-chrome className="flex justify-center py-6">
           <Button
             variant="outline"
             size="sm"
@@ -907,7 +956,10 @@ export function ArticleList({
       ) : canContinueReadHistory &&
         !readHistoryStarted &&
         !readHistoryChecked ? (
-        <div className="flex flex-col items-center gap-2 py-8 text-center">
+        <div
+          data-reader-list-chrome
+          className="flex flex-col items-center gap-2 py-8 text-center"
+        >
           <p className="text-sm text-muted-foreground">
             You’re caught up with this feed.
           </p>

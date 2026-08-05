@@ -13,6 +13,8 @@ interface ArticleListHeaderProps {
   toggleHref: string;
   showingAll: boolean;
   expanded: boolean;
+  /** Title of the open article, shown in the reading strip once width allows. */
+  expandedTitle: string | null;
   readingProgress: number;
   focusMode: boolean;
   onToggleFocus: () => void;
@@ -28,6 +30,7 @@ export function ArticleListHeader({
   toggleHref,
   showingAll,
   expanded,
+  expandedTitle,
   readingProgress,
   focusMode,
   onToggleFocus,
@@ -35,8 +38,14 @@ export function ArticleListHeader({
   statusMessage,
 }: ArticleListHeaderProps) {
   return (
-    <header className="sticky top-0 z-10 -mx-4 border-b border-border/60 bg-background/85 px-4 pt-6 pb-3 backdrop-blur-sm md:-mx-8 md:px-8">
-      <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+    <header
+      data-reader-list-header
+      className="sticky top-0 z-10 -mx-4 border-b border-border/60 bg-background/85 px-4 pt-6 pb-3 backdrop-blur-sm md:-mx-8 md:px-8"
+    >
+      <div
+        data-reader-list-chrome
+        className="flex flex-wrap items-baseline gap-x-3 gap-y-1"
+      >
         <h2 className="font-serif text-2xl font-bold tracking-tight">
           {title}
         </h2>
@@ -56,7 +65,10 @@ export function ArticleListHeader({
         ) : null}
       </div>
       {!isSearch ? (
-        <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-muted-foreground">
+        <div
+          data-reader-list-chrome
+          className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-muted-foreground"
+        >
           {!isArchiveView ? (
             <Link
               href={toggleHref}
@@ -71,7 +83,23 @@ export function ArticleListHeader({
         </div>
       ) : null}
       {expanded ? (
-        <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
+        <div
+          data-reader-reading-strip
+          className="mt-3 flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground"
+        >
+          {/* Context for long reads after the headline scrolls away. Purely
+              visual (the real title heads the article), so hidden from
+              assistive tech; the focus-mode CSS shows it once width allows. */}
+          {expandedTitle ? (
+            <span
+              aria-hidden
+              data-reader-focus-title
+              title={expandedTitle}
+              className="max-w-[38%] min-w-0 truncate text-xs font-medium text-foreground/90"
+            >
+              {expandedTitle}
+            </span>
+          ) : null}
           <div className="flex min-w-48 flex-1 items-center gap-2">
             <span className="shrink-0 tabular-nums">
               Reading {Math.round(readingProgress * 100)}%
@@ -90,6 +118,12 @@ export function ArticleListHeader({
               />
             </div>
           </div>
+          {/* Feedback normally lives beside Mark all read; while the phone
+              layout hides that row in focus mode, it surfaces here instead
+              (visibility is owned by the focus-mode CSS in globals.css). */}
+          {statusMessage ? (
+            <output data-reader-focus-status>{statusMessage}</output>
+          ) : null}
           <button
             type="button"
             onClick={onToggleFocus}

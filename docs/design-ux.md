@@ -6,7 +6,7 @@ Decisions for the interface, distilled from a UX survey of the current reader la
 
 What we shipped is a two-pane shell — sidebar (feeds/folders) → article list — where clicking an article **expands it inline in the list** (accordion: the row becomes the full article, only one open at a time) rather than opening a separate third reading pane. The classic three-pane layout (sidebar → list → reading pane) is what every migrating reader user knows (NetNewsWire established it in 2002, Google Reader cemented it, even Reeder's 2024 redesign kept the skeleton), but for a single reader on a centered max-width column, inline expansion keeps scan position and reading in one place and avoids a perpetually-empty third column. A separate reading pane stays a possible later option if it earns its keep.
 
-- **Mobile / narrow:** the layout is responsive — the sidebar gives way to the list as the primary surface, and articles expand in place. No separate full-screen article drill-down for now.
+- **Mobile / narrow:** the layout is responsive — the sidebar gives way to the list as the primary surface, and articles expand in place. No separate full-screen article drill-down for now. **Focus mode** is the maximize-reading answer within that structure, at every width: it hides everything except the open article (navigation, list chrome, and sibling rows leave; a slim sticky strip keeps progress and the exit control) without becoming a separate screen or route. The request is sticky within a view — closing an article restores the list, opening the next returns to focus — until exited from the strip, `f`, or Escape.
 - **Later option, not now:** a single-column "river" reading mode. There's a real 2026 zeitgeist around pressure-free timeline readers (new Reeder, Current, Tapestry), but the HN reader census shows inbox-style users are still the bulk of the audience — and we are one.
 
 ## Article list rows
@@ -48,7 +48,7 @@ Sorting: newest-first globally and for folder/all views. A feed can opt into old
 - Sanitized article HTML; images constrained to column width; **full-text extraction by default** runs in a durable background queue. Feed content renders immediately as the fallback, with a quiet preparing state and an unobtrusive retry only when a readable page cannot be obtained.
 - A single feed opens on its unread queue. At its end, **Continue with read history** appends a labelled section of older read articles; it does not silently change the current view or URL to “Show read.”
 - **Open original** is always one tap away: the open article's title is itself the link (new tab), and **Open original** stays in the action bar. Clicking anywhere else in the title area closes the article — two separate controls, because a link nested in a button is invalid and browsers won't follow it
-- **An article's actions bracket its content:** the same bar sits above and below, so abandoning a misclick never means scrolling to the end of a long post to reach **Mark unread**
+- **An article's actions bracket its content:** the same bar sits above and below, so abandoning a misclick never means scrolling to the end of a long post to reach **Mark unread**. Focus mode hides the top copy — that bracket serves triage, and focus is committed reading — while the bottom bar and every keyboard binding stay
 - **Keyboard shortcuts** (shipped July 2026): the Google Reader canon — `j`/`k`, `space`, `m`, `s`, `v`, bulk-read keys, `g`-chords, `/`, `?` (full keymap below)
 
 ## Read later & saved links
@@ -89,6 +89,8 @@ The Google Reader inheritance is non-negotiable muscle memory for anyone migrati
 | `v` | open original in new tab |
 | `Shift+A` | mark all read (with older-than options) |
 | `o` | mark older articles read |
+| `f` | toggle focus mode (article-only reading) |
+| `Esc` | exit focus mode |
 | `g` then `a`/`s`/`u` | go to all / starred / unread |
 | `a` | add subscription |
 | `/` | search (never rebind to AI — Feedly did, users hated it) |

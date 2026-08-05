@@ -138,6 +138,7 @@ function UnreadDot({
   return (
     <span
       aria-hidden
+      data-reader-unread-dot
       className={`${density.unreadDot} ${className} size-2 shrink-0 rounded-full transition-colors ${
         item.read ? "bg-transparent" : "bg-primary"
       }`}

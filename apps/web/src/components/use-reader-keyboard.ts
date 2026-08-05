@@ -104,6 +104,18 @@ export function useReaderKeyboard({
           event.preventDefault();
           void handlers.markOlderThanCurrent();
           return;
+        case "f":
+          event.preventDefault();
+          // With nothing open, f means "start focused reading": arm the
+          // (sticky) request and open the article j would have opened —
+          // arming invisibly and doing nothing would read as a dead key.
+          if (!expandedIdRef.current) {
+            setFocusRequested(true);
+            void moveBy(1);
+            return;
+          }
+          setFocusRequested((value) => !value);
+          return;
         default:
           return;
       }

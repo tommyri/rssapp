@@ -386,6 +386,7 @@ export default async function Home({
                 <div className="pt-6">
                   <Link
                     href="/?view=notifications"
+                    data-reader-list-chrome
                     className="inline-flex rounded-md px-1 py-1 text-sm text-muted-foreground transition-colors hover:text-foreground"
                   >
                     ← All notifications
@@ -424,6 +425,7 @@ export default async function Home({
                         ? "/?view=highlights&notes=1"
                         : "/?view=highlights"
                     }
+                    data-reader-list-chrome
                     className="inline-flex rounded-md px-1 py-1 text-sm text-muted-foreground transition-colors hover:text-foreground"
                   >
                     ← All highlights
