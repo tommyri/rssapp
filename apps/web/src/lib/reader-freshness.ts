@@ -97,22 +97,24 @@ function sortsAfterBoundary(
 }
 
 /**
- * Where the open row belongs once it has left the fresh page — directly after
+ * Where a kept row belongs once it has left the fresh page — directly after
  * whichever of the rows above it is still on screen, which is exactly where the
- * reader clicked. Appending it instead would drop it to the end of the loaded
- * list, moving the article out from under someone who is reading it.
+ * reader last saw it. Appending it instead would drop it to the end of the
+ * loaded list, moving the article out from under someone who is reading it.
+ * Kept rows are inserted in on-screen order, so consecutive kept rows chain:
+ * each anchors on the one inserted just before it.
  */
-function openRowPosition(
+function keptRowPosition(
   current: readonly ReaderItem[],
   reconciled: readonly ReaderItem[],
-  openRow: ReaderItem,
+  keptRow: ReaderItem,
 ): number {
-  const openKey = readerItemKey(openRow);
+  const keptKey = readerItemKey(keptRow);
   const positions = new Map(
     reconciled.map((item, index) => [readerItemKey(item), index]),
   );
   const originalIndex = current.findIndex(
-    (item) => readerItemKey(item) === openKey,
+    (item) => readerItemKey(item) === keptKey,
   );
 
   for (let above = originalIndex - 1; above >= 0; above -= 1) {
@@ -131,6 +133,13 @@ export interface ReaderSnapshotOptions {
   preserveMissing: boolean;
   protectedKey: string | null;
   pendingStateKeys: ReadonlySet<string>;
+  /**
+   * Rows the reader marked read while this view has been mounted. An
+   * unread-only snapshot no longer returns them, but removing them
+   * mid-session would pull finished posts out from under the reader — they
+   * stay in place until navigating away or reloading remounts the list.
+   */
+  sessionReadKeys: ReadonlySet<string>;
   unreadOnly: boolean;
   starredOnly: boolean;
   readLaterOnly: boolean;
@@ -163,9 +172,9 @@ export function reconcileReaderSnapshot(
       : item;
   });
 
-  // The open row is placed last, because where it goes depends on which of its
-  // neighbours survived the fresh page.
-  let openRow: ReaderItem | null = null;
+  // Rows kept inside the fresh page's range are placed last, because where
+  // each goes depends on which of its neighbours survived the fresh page.
+  const keptRows: ReaderItem[] = [];
 
   for (const item of current) {
     const key = readerItemKey(item);
@@ -178,28 +187,33 @@ export function reconcileReaderSnapshot(
       options.preserveMissing ||
       options.pendingStateKeys.has(key) ||
       options.protectedKey === key ||
+      (options.unreadOnly && options.sessionReadKeys.has(key)) ||
       (!freshCoversAll && outsideFreshPage);
     if (!shouldPreserve) continue;
 
-    if (options.protectedKey === key && !outsideFreshPage) {
-      openRow = {
+    if (outsideFreshPage) {
+      reconciled.push(item);
+    } else if (options.protectedKey === key) {
+      // The open row left the view for a reason its local state may not know
+      // about yet (read on another client, unstarred, …) — reflect it.
+      keptRows.push({
         ...item,
         ...(options.unreadOnly ? { read: true } : {}),
         ...(options.starredOnly ? { starred: false } : {}),
         ...(options.readLaterOnly && item.kind === "item"
           ? { readLater: false }
           : {}),
-      };
+      });
     } else {
-      reconciled.push(item);
+      keptRows.push(item);
     }
   }
 
-  if (openRow !== null) {
+  for (const keptRow of keptRows) {
     reconciled.splice(
-      openRowPosition(current, reconciled, openRow),
+      keptRowPosition(current, reconciled, keptRow),
       0,
-      openRow,
+      keptRow,
     );
   }
 

@@ -292,6 +292,41 @@ describe("ArticleList deliberate read state", () => {
     });
   });
 
+  it("keeps a post read this session listed after the snapshot drops it", async () => {
+    await withReaderDom(async ({ mount, document, root }) => {
+      const rowButton = mount.querySelector("li button");
+      const ClickEvent = document.defaultView?.Event;
+      if (!rowButton || !ClickEvent)
+        throw new Error("Reader row is unavailable.");
+
+      // Open (marks read), then close again so the row is no longer protected
+      // by being the expanded article. An open row closes through its own
+      // control — its title is the link to the original — so the collapsed
+      // row's button is gone by then.
+      await act(async () => {
+        rowButton.dispatchEvent(new ClickEvent("click", { bubbles: true }));
+      });
+      const closeButton = mount.querySelector(
+        'li button[aria-label="Close article"]',
+      );
+      if (!closeButton) throw new Error("Close control is unavailable.");
+      await act(async () => {
+        closeButton.dispatchEvent(new ClickEvent("click", { bubbles: true }));
+      });
+      expect(
+        mount.querySelector('li button[aria-label="Close article"]'),
+      ).toBeNull();
+
+      // The refreshed unread-only snapshot no longer contains the read post.
+      await act(async () => {
+        root.render(createElement(ArticleList, readerProps([])));
+      });
+
+      expect(mount.textContent).toContain("An unread article");
+      expect(mount.textContent).not.toContain("All caught up.");
+    });
+  });
+
   it("replaces an open saved page's pending state when extraction finishes", async () => {
     vi.useFakeTimers();
     const pendingPage: ReaderItem = {

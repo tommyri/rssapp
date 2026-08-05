@@ -1,12 +1,6 @@
 "use client";
 
-import {
-  BookmarkCheckIcon,
-  BookmarkIcon,
-  CircleIcon,
-  LinkIcon,
-  StarIcon,
-} from "lucide-react";
+import { BookmarkCheckIcon, BookmarkIcon, CircleIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
@@ -38,6 +32,7 @@ import {
   ArticleRowBody,
   type ArticleRowBodyHighlights,
 } from "@/components/article-row-body";
+import { ArticleRowHeader } from "@/components/article-row-header";
 import { SaveLinkForm } from "@/components/save-link-form";
 import { SavedPageExtractionWatcher } from "@/components/saved-page-extraction-watcher";
 import { SwipeableRow } from "@/components/swipeable-row";
@@ -53,9 +48,7 @@ import {
 } from "@/lib/article-list-density";
 import { articleRowFacts } from "@/lib/article-row-facts";
 import { articleSnippet } from "@/lib/article-snippet";
-import { alsoInLabel } from "@/lib/duplicates";
 import type { EmbedLoadingPreferences } from "@/lib/embed-loading";
-import { relativeTime } from "@/lib/format";
 import {
   type ArticleHighlight,
   type HighlightAnchor,
@@ -168,6 +161,11 @@ export function ArticleList({
     Map<number, ArticleHighlight | null>
   >(new Map());
   const pendingReaderStateKeysRef = useRef(new Set<string>());
+  // Rows read while this view is mounted. Refreshed unread-only snapshots no
+  // longer contain them, but a reading session should not watch its finished
+  // posts vanish one by one — they stay until navigating to another view or
+  // reloading remounts the list (the component is keyed per view).
+  const sessionReadKeysRef = useRef(new Set<string>());
   const freshnessContextRef = useRef({
     readHistoryStarted,
     oldestFirst: view.sortOrder === "oldest",
@@ -260,6 +258,7 @@ export function ArticleList({
         preserveMissing: context.readHistoryStarted,
         protectedKey: expandedIdRef.current,
         pendingStateKeys: pendingReaderStateKeysRef.current,
+        sessionReadKeys: sessionReadKeysRef.current,
         unreadOnly: context.unreadOnly,
         starredOnly: context.starredOnly,
         readLaterOnly: context.readLaterOnly,
@@ -320,6 +319,8 @@ export function ArticleList({
   // Read state lives in different tables per kind; route to the right action.
   function persistRead(item: ReaderItem, read: boolean) {
     const key = keyOf(item);
+    if (read) sessionReadKeysRef.current.add(key);
+    else sessionReadKeysRef.current.delete(key);
     pendingReaderStateKeysRef.current.add(key);
     const call =
       item.kind === "page"
@@ -804,7 +805,6 @@ export function ArticleList({
             const rowDensity = articleListDensityClasses(
               isOpen ? "comfortable" : density,
             );
-            const isPage = item.kind === "page";
             const {
               contentHtml,
               fullTextPending,
@@ -872,98 +872,16 @@ export function ArticleList({
                     )
                   }
                 >
-                  <button
-                    type="button"
-                    onClick={() => toggleExpanded(item)}
-                    className={`group flex w-full cursor-pointer items-start text-left transition-colors hover:bg-accent/40 ${rowDensity.header}`}
-                  >
-                    <span
-                      aria-hidden
-                      data-reader-unread-dot
-                      className={`${rowDensity.unreadDot} size-2 shrink-0 rounded-full transition-colors ${
-                        item.read ? "bg-transparent" : "bg-primary"
-                      }`}
-                    />
-                    <span className="min-w-0 flex-1">
-                      <span
-                        className={
-                          isOpen
-                            ? "block font-serif text-[22px] leading-tight font-bold"
-                            : `block truncate font-semibold ${rowDensity.title} ${
-                                item.read ? "text-muted-foreground" : ""
-                              }`
-                        }
-                      >
-                        {item.starred ? (
-                          <StarIcon className="mr-1 inline-block size-3.5 fill-current align-[-0.15em] text-primary" />
-                        ) : null}
-                        {isPage ? (
-                          <LinkIcon className="mr-1 inline-block size-3.5 align-[-0.15em] text-muted-foreground" />
-                        ) : item.readLater ? (
-                          <BookmarkCheckIcon className="mr-1 inline-block size-3.5 align-[-0.15em] text-primary" />
-                        ) : null}
-                        {item.title ?? "(untitled)"}
-                      </span>
-                      {/* No `block` here: the density classes clamp the snippet
-                          with line-clamp, which needs its own display value.
-                          Adding `block` silently wins and the clamp stops
-                          working — rows then grow to 5–6 lines on a phone. */}
-                      {!isOpen && (pageSubtitle || snippet) ? (
-                        <span
-                          className={`${rowDensity.snippet} ${
-                            item.read
-                              ? "text-muted-foreground/60"
-                              : "text-muted-foreground"
-                          }`}
-                        >
-                          {pageSubtitle || snippet}
-                        </span>
-                      ) : null}
-                      <span
-                        className={`block text-muted-foreground/80 ${rowDensity.metadata} ${
-                          isOpen ? "" : "truncate"
-                        }`}
-                      >
-                        {item.feedTitle}
-                        {item.dupFeedTitles && item.dupFeedTitles.length > 0 ? (
-                          <span className="text-muted-foreground/70">
-                            {` · also in ${alsoInLabel(item.dupFeedTitles)}`}
-                          </span>
-                        ) : null}
-                        {isPage
-                          ? ` · saved ${relativeTime(new Date(item.sortTs))}`
-                          : item.publishedAt
-                            ? ` · ${
-                                isOpen
-                                  ? new Date(item.publishedAt).toLocaleString()
-                                  : relativeTime(new Date(item.publishedAt))
-                              }`
-                            : ""}
-                        {item.author ? ` · ${item.author}` : ""}
-                        {/* "N min read" (the Medium convention): no "~" — it
-                          doubles up punctuation after the separator dot, and
-                          "read" keeps it from scanning as a second timestamp. */}
-                        {minutes !== null ? ` · ${minutes} min read` : ""}
-                        {isOpen && !isPage && item.fullContentHtml ? (
-                          <span className="italic"> · full content</span>
-                        ) : isOpen && fullTextPending ? (
-                          <span className="italic"> · preparing full text</span>
-                        ) : null}
-                        {item.labels && item.labels.length > 0 ? (
-                          <span className="ml-1 inline-flex flex-wrap gap-1 align-middle">
-                            {item.labels.map((label) => (
-                              <span
-                                key={label.id}
-                                className="rounded-sm bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground"
-                              >
-                                {label.name}
-                              </span>
-                            ))}
-                          </span>
-                        ) : null}
-                      </span>
-                    </span>
-                  </button>
+                  <ArticleRowHeader
+                    item={item}
+                    isOpen={isOpen}
+                    density={rowDensity}
+                    pageSubtitle={pageSubtitle}
+                    snippet={snippet}
+                    minutes={minutes}
+                    fullTextPending={fullTextPending}
+                    onToggle={() => toggleExpanded(item)}
+                  />
                 </SwipeableRow>
 
                 {isOpen ? (
@@ -971,6 +889,15 @@ export function ArticleList({
                     data-reader-expanded-body
                     className="row-enter pr-1 pb-5 pl-6"
                   >
+                    <ArticleRowActions
+                      item={item}
+                      contentHtml={contentHtml}
+                      fullTextUnavailable={fullTextUnavailable}
+                      labels={availableLabels}
+                      handlers={rowActionHandlers}
+                      placement="top"
+                    />
+
                     <ArticleRowBody
                       item={item}
                       contentHtml={contentHtml}

@@ -44,7 +44,7 @@ interface Props {
 }
 
 /**
- * What an open article shows above its action bar. Every branch here is a
+ * What an open article shows between its action bars. Every branch here is a
  * different answer to "is there anything to read yet?" — a saved page still
  * being fetched, one that failed, an episode with audio but no text, an article
  * whose full text is still being prepared, or the content itself.
