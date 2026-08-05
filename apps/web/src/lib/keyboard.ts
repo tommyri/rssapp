@@ -23,6 +23,8 @@ export const READER_SHORTCUTS: ShortcutRow[] = [
   { keys: "v", action: "Open original in new tab" },
   { keys: "Shift + A", action: "Mark all read" },
   { keys: "o", action: "Mark older articles read" },
+  { keys: "f", action: "Toggle focus mode" },
+  { keys: "Esc", action: "Exit focus mode" },
   { keys: "g then a", action: "Go to all articles" },
   { keys: "g then s", action: "Go to starred" },
   { keys: "g then u", action: "Go to unread only" },

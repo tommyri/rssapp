@@ -193,6 +193,23 @@
 :root.reader-focus [data-reader-row="expanded"] {
   scroll-margin-top: 3rem;
 }
+/* Focus is committed reading, not triage: the action bar bracketing the top
+ * of the article steps back too. Its bottom twin stays for the end of the
+ * read, and every action keeps its keyboard binding. */
+:root.reader-focus [data-reader-actions="top"] {
+  display: none;
+}
+/* The reading strip gains the open article's title once width allows —
+ * context for long reads after the headline scrolls away. Phones keep the
+ * strip to a single line (48rem mirrors the shell's `md`). */
+[data-reader-focus-title] {
+  display: none;
+}
+@media (width >= 48rem) {
+  :root.reader-focus [data-reader-focus-title] {
+    display: block;
+  }
+}
 
 /* The reading canvas: sanitized feed/extracted HTML, set like print. The
  * --reader-* custom properties are set by the typography controls (Settings →

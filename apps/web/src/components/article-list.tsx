@@ -208,8 +208,11 @@ export function ArticleList({
     },
   });
 
-  // Focus is transient reader state: closing an article or navigating away always
-  // restores the app chrome. It is applied post-hydration, like typography.
+  // Focus is a per-view reading preference: the request holds until Exit, `f`,
+  // or Escape (navigating to another view remounts the list and clears it),
+  // while the class only ever applies with an article open (readerFocusActive)
+  // — so closing an article always shows the full list, and opening the next
+  // one returns to focus. It is applied post-hydration, like typography.
   // The class hides sibling rows and list chrome, which reflows the list — so
   // every toggle (the cleanup included: it runs before the next effect body
   // and would otherwise reflow unmeasured) pins the open article to its
@@ -243,10 +246,6 @@ export function ArticleList({
     if (!focusMode || !expandedId || expandedId === previous) return;
     itemRowRefs.current.get(expandedId)?.scrollIntoView({ block: "start" });
   }, [expandedId, focusMode]);
-
-  useEffect(() => {
-    if (expandedItem === null) setFocusRequested(false);
-  }, [expandedItem]);
 
   useEffect(() => {
     const context = freshnessContextRef.current;
@@ -763,6 +762,7 @@ export function ArticleList({
         toggleHref={toggleHref}
         showingAll={showingAll}
         expanded={expandedItem !== null}
+        expandedTitle={expandedItem?.title ?? null}
         readingProgress={readingProgress}
         focusMode={focusMode}
         onToggleFocus={() => setFocusRequested((value) => !value)}

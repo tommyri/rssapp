@@ -79,6 +79,8 @@ export function PullToRefresh({ children }: { children: ReactNode }) {
     if (shouldRefresh) refresh();
   }
 
+  const indicatorActive = refreshing || pullDistance > 0;
+
   return (
     <div
       className="relative"
@@ -87,9 +89,14 @@ export function PullToRefresh({ children }: { children: ReactNode }) {
       onTouchEnd={onTouchEnd}
       onTouchCancel={resetPull}
     >
+      {/* The indicator paints above the (unpositioned) list content, so at
+          rest it depends on being covered — which focus mode's slim header no
+          longer does. It only becomes visible while a pull owns the screen. */}
       <div
         aria-live="polite"
-        className="pointer-events-none absolute inset-x-0 top-0 flex h-16 items-center justify-center gap-2 text-xs text-muted-foreground"
+        className={`pointer-events-none absolute inset-x-0 top-0 flex h-16 items-center justify-center gap-2 text-xs text-muted-foreground transition-opacity duration-150 ${
+          indicatorActive ? "opacity-100" : "opacity-0"
+        }`}
       >
         <RefreshCwIcon
           className={`size-4 ${refreshing ? "animate-spin" : ""}`}

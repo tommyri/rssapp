@@ -70,6 +70,7 @@ export function ArticleRowActions({
 
   return (
     <div
+      data-reader-actions={placement}
       className={`flex flex-wrap items-center gap-2 border-border/60 text-xs ${placementClasses}`}
     >
       {item.url ? (

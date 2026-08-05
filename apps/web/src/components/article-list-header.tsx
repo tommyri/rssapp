@@ -13,6 +13,8 @@ interface ArticleListHeaderProps {
   toggleHref: string;
   showingAll: boolean;
   expanded: boolean;
+  /** Title of the open article, shown in the reading strip once width allows. */
+  expandedTitle: string | null;
   readingProgress: number;
   focusMode: boolean;
   onToggleFocus: () => void;
@@ -28,6 +30,7 @@ export function ArticleListHeader({
   toggleHref,
   showingAll,
   expanded,
+  expandedTitle,
   readingProgress,
   focusMode,
   onToggleFocus,
@@ -84,6 +87,19 @@ export function ArticleListHeader({
           data-reader-reading-strip
           className="mt-3 flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground"
         >
+          {/* Context for long reads after the headline scrolls away. Purely
+              visual (the real title heads the article), so hidden from
+              assistive tech; the focus-mode CSS shows it once width allows. */}
+          {expandedTitle ? (
+            <span
+              aria-hidden
+              data-reader-focus-title
+              title={expandedTitle}
+              className="max-w-[38%] min-w-0 truncate text-xs font-medium text-foreground/90"
+            >
+              {expandedTitle}
+            </span>
+          ) : null}
           <div className="flex min-w-48 flex-1 items-center gap-2">
             <span className="shrink-0 tabular-nums">
               Reading {Math.round(readingProgress * 100)}%
@@ -106,7 +122,7 @@ export function ArticleListHeader({
               layout hides that row in focus mode, it surfaces here instead
               (visibility is owned by the focus-mode CSS in globals.css). */}
           {statusMessage ? (
-            <span data-reader-focus-status>{statusMessage}</span>
+            <output data-reader-focus-status>{statusMessage}</output>
           ) : null}
           <button
             type="button"

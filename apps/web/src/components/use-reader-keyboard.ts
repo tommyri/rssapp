@@ -104,6 +104,13 @@ export function useReaderKeyboard({
           event.preventDefault();
           void handlers.markOlderThanCurrent();
           return;
+        case "f":
+          // Focus mode only means something with an article open; arming it
+          // invisibly from the list would surprise on the next expand.
+          if (!expandedIdRef.current) return;
+          event.preventDefault();
+          setFocusRequested((value) => !value);
+          return;
         default:
           return;
       }
