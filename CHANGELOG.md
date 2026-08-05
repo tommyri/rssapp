@@ -5,6 +5,14 @@ version section verbatim, so this file is the release record rather than an afte
 
 ## [Unreleased]
 
+### Changed
+
+- Posts read during the current visit now stay in the unread list instead of
+  disappearing one by one as you move to the next article. The list clears them the next
+  time it is opened — navigating to another feed or view, or reloading the page. Marking
+  a post unread, external read changes from other clients, and **Mark all read** behave
+  as before.
+
 ## [2026.7.6] - 2026-07-26
 
 ### Fixed
