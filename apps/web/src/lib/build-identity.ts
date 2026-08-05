@@ -1,3 +1,4 @@
+import { execSync } from "node:child_process";
 import packageJson from "../../package.json";
 
 const calendarVersionPattern = /^\d{4}\.(?:[1-9]|1[0-2])\.[1-9]\d*$/;
@@ -54,4 +55,40 @@ export function getBuildIdentity(
     revision,
     shortRevision: revision?.slice(0, 12) ?? null,
   };
+}
+
+let checkoutRevisionCache: string | null | undefined;
+
+function git(command: string): string {
+  return execSync(command, {
+    stdio: ["ignore", "pipe", "ignore"],
+    timeout: 2_000,
+  })
+    .toString()
+    .trim();
+}
+
+/**
+ * Where no revision is baked in (local `next dev`, prod-from-source), the git
+ * checkout itself can still answer "which code is this installation running?"
+ * — the whole point of the App information footer, and the question support
+ * conversations otherwise get stuck on. Best-effort and cached per process:
+ * without a git checkout or binary it stays null and the footer keeps its
+ * plain "Local development" label. A dirty tree is called out, since local
+ * modifications make the hash alone an incomplete answer.
+ */
+export function checkoutRevision(): string | null {
+  if (checkoutRevisionCache !== undefined) return checkoutRevisionCache;
+  try {
+    const head = git("git rev-parse HEAD").toLowerCase();
+    if (!sourceRevisionPattern.test(head)) {
+      checkoutRevisionCache = null;
+      return checkoutRevisionCache;
+    }
+    const dirty = git("git status --porcelain") !== "";
+    checkoutRevisionCache = `${head.slice(0, 12)}${dirty ? " (modified)" : ""}`;
+  } catch {
+    checkoutRevisionCache = null;
+  }
+  return checkoutRevisionCache;
 }

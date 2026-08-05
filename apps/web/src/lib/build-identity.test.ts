@@ -1,5 +1,6 @@
+import { execSync } from "node:child_process";
 import { describe, expect, it } from "vitest";
-import { getBuildIdentity } from "@/lib/build-identity";
+import { checkoutRevision, getBuildIdentity } from "@/lib/build-identity";
 import packageJson from "../../package.json";
 
 describe("getBuildIdentity", () => {
@@ -35,5 +36,21 @@ describe("getBuildIdentity", () => {
       revision: null,
       shortRevision: null,
     });
+  });
+});
+
+describe("checkoutRevision", () => {
+  it("reports this checkout's HEAD as a short hash, flagging local edits", () => {
+    // The test itself runs inside a git checkout, so the probe must resolve —
+    // and its answer must match git's, including the dirty marker.
+    const head = execSync("git rev-parse HEAD").toString().trim().toLowerCase();
+    const dirty = execSync("git status --porcelain").toString().trim() !== "";
+    expect(checkoutRevision()).toBe(
+      `${head.slice(0, 12)}${dirty ? " (modified)" : ""}`,
+    );
+  });
+
+  it("is stable across calls (cached per process)", () => {
+    expect(checkoutRevision()).toBe(checkoutRevision());
   });
 });

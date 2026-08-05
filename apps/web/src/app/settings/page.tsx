@@ -26,7 +26,7 @@ import { users } from "@/db/schema";
 import { listApiAccessTokens } from "@/lib/api-access-tokens";
 import { normalizeArticleListDensity } from "@/lib/article-list-density";
 import { listActiveAuthSessions } from "@/lib/auth-sessions";
-import { getBuildIdentity } from "@/lib/build-identity";
+import { checkoutRevision, getBuildIdentity } from "@/lib/build-identity";
 import { getCurrentSessionId, getCurrentUserId } from "@/lib/current-user";
 import { normalizeEmbedLoadingPreferences } from "@/lib/embed-loading";
 import { hasGoogleIdentity } from "@/lib/google-auth";
@@ -78,7 +78,13 @@ export default async function SettingsPage({
   searchParams: Promise<{ section?: string; google?: string }>;
 }) {
   const params = await searchParams;
-  const buildIdentity = getBuildIdentity();
+  // Without a baked revision (local dev, prod-from-source), the git checkout
+  // still answers "which code is running?" — footer stays "Local development"
+  // only when even that is unavailable.
+  const bakedIdentity = getBuildIdentity();
+  const buildIdentity = bakedIdentity.shortRevision
+    ? bakedIdentity
+    : { ...bakedIdentity, shortRevision: checkoutRevision() };
   const active = parseSettingsSection(params.section);
   const activeLabel =
     SETTINGS_SECTIONS.find((s) => s.id === active)?.label ?? "Settings";
