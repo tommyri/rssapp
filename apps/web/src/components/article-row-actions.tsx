@@ -43,6 +43,11 @@ interface Props {
   fullTextUnavailable: boolean;
   labels: ReaderLabel[];
   handlers: ArticleRowActionHandlers;
+  /**
+   * The same actions bracket the article at both ends: deciding an article was
+   * a misclick shouldn't mean scrolling to its end to mark it unread again.
+   */
+  placement?: "top" | "bottom";
 }
 
 export function ArticleRowActions({
@@ -51,8 +56,11 @@ export function ArticleRowActions({
   fullTextUnavailable,
   labels,
   handlers,
+  placement = "bottom",
 }: Props) {
   const isPage = item.kind === "page";
+  const placementClasses =
+    placement === "top" ? "mb-5 border-b pb-4" : "mt-5 border-t pt-4";
   const readIcon = item.read ? (
     <CircleIcon className="size-3.5" />
   ) : (
@@ -61,7 +69,9 @@ export function ArticleRowActions({
   const readLabel = item.read ? "Mark unread" : "Mark read";
 
   return (
-    <div className="mt-5 flex flex-wrap items-center gap-2 border-t border-border/60 pt-4 text-xs">
+    <div
+      className={`flex flex-wrap items-center gap-2 border-border/60 text-xs ${placementClasses}`}
+    >
       {item.url ? (
         <ActionButton asLink href={item.url}>
           <ExternalLinkIcon className="size-3.5" />

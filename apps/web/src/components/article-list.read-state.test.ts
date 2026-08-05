@@ -300,13 +300,22 @@ describe("ArticleList deliberate read state", () => {
         throw new Error("Reader row is unavailable.");
 
       // Open (marks read), then close again so the row is no longer protected
-      // by being the expanded article.
+      // by being the expanded article. An open row closes through its own
+      // control — its title is the link to the original — so the collapsed
+      // row's button is gone by then.
       await act(async () => {
         rowButton.dispatchEvent(new ClickEvent("click", { bubbles: true }));
       });
+      const closeButton = mount.querySelector(
+        'li button[aria-label="Close article"]',
+      );
+      if (!closeButton) throw new Error("Close control is unavailable.");
       await act(async () => {
-        rowButton.dispatchEvent(new ClickEvent("click", { bubbles: true }));
+        closeButton.dispatchEvent(new ClickEvent("click", { bubbles: true }));
       });
+      expect(
+        mount.querySelector('li button[aria-label="Close article"]'),
+      ).toBeNull();
 
       // The refreshed unread-only snapshot no longer contains the read post.
       await act(async () => {

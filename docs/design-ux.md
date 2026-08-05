@@ -47,7 +47,8 @@ Sorting: newest-first globally and for folder/all views. A feed can opt into old
 - **System font stack by default** — Feedbin deliberately moved off font-CDNs for privacy; we get the same result for free. Settings now offers reader text size, serif/sans body font, and narrow/normal/wide reading columns without changing that default
 - Sanitized article HTML; images constrained to column width; **full-text extraction by default** runs in a durable background queue. Feed content renders immediately as the fallback, with a quiet preparing state and an unobtrusive retry only when a readable page cannot be obtained.
 - A single feed opens on its unread queue. At its end, **Continue with read history** appends a labelled section of older read articles; it does not silently change the current view or URL to “Show read.”
-- **Open original** is always one tap away (a link in the expanded article)
+- **Open original** is always one tap away: the open article's title is itself the link (new tab), and **Open original** stays in the action bar. Clicking anywhere else in the title area closes the article — two separate controls, because a link nested in a button is invalid and browsers won't follow it
+- **An article's actions bracket its content:** the same bar sits above and below, so abandoning a misclick never means scrolling to the end of a long post to reach **Mark unread**
 - **Keyboard shortcuts** (shipped July 2026): the Google Reader canon — `j`/`k`, `space`, `m`, `s`, `v`, bulk-read keys, `g`-chords, `/`, `?` (full keymap below)
 
 ## Read later & saved links

@@ -5,6 +5,14 @@ version section verbatim, so this file is the release record rather than an afte
 
 ## [Unreleased]
 
+### Added
+
+- An open article's title is now a link to the original, opening it in a new tab.
+  Clicking anywhere else in its title area still closes the article, as before.
+- An article's actions — **Mark unread**, **Star**, **Read later**, **Open original**,
+  **Labels**, and the rest — now appear above the article as well as below it. Deciding a
+  post was a misclick no longer means scrolling to the end of it to mark it unread again.
+
 ### Changed
 
 - Posts read during the current visit now stay in the unread list instead of
