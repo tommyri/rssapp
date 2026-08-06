@@ -14,6 +14,11 @@ import SwiftUI
 struct ReadingProgressBar: View {
     let progress: Double
 
+    /// The bar is the one thing on a reading screen that moves on its own. Reduce Motion turns
+    /// the smoothing off rather than the indicator: the fill still tracks the scroll, it just
+    /// arrives instead of travelling.
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     private var fraction: Double { ReadingProgressRule.clamp(progress) }
 
     var body: some View {
@@ -27,7 +32,7 @@ struct ReadingProgressBar: View {
             }
         }
         .frame(height: 2)
-        .animation(.linear(duration: 0.12), value: fraction)
+        .animation(reduceMotion ? nil : .linear(duration: 0.12), value: fraction)
         .accessibilityElement()
         .accessibilityLabel("Reading progress")
         .accessibilityValue(

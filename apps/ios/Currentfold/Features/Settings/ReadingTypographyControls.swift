@@ -31,6 +31,7 @@ struct ReadingTypographyButton: View {
 /// of the preference, so the two surfaces cannot drift.
 struct ReadingTypographyControls: View {
     @Environment(ReadingSettings.self) private var settings
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     var body: some View {
         @Bindable var settings = settings
@@ -45,7 +46,7 @@ struct ReadingTypographyControls: View {
             )
             Text("Applies to this iPhone. Article text still follows your system text size.")
                 .font(.footnote)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(BrandSecondaryInk.color)
                 .fixedSize(horizontal: false, vertical: true)
         }
     }
@@ -53,22 +54,38 @@ struct ReadingTypographyControls: View {
     /// Segmented, with the label above rather than beside it: three options at an
     /// accessibility text size do not fit next to a label, and a wrapped segmented control is
     /// worse than a stacked one.
+    ///
+    /// **Segmented stops at an accessibility size.** `UISegmentedControl` does not scale its
+    /// segment labels with Dynamic Type and does not grow past 32pt, so at `.accessibility3`
+    /// this was the one control on the screen still set at ordinary size, under the 44pt
+    /// target, beside type three times its height. Above that threshold the menu style takes
+    /// over: it scales, it clears the target, and it names the current value out loud. The
+    /// cost is that picking closes the menu — a real loss for a control meant for comparing,
+    /// and the smaller loss of the two.
+    @ViewBuilder
     private func picker<Option: ReadingTypographyOption>(
         _ title: String,
         selection: Binding<Option>,
         options: [Option]
     ) -> some View {
+        let choices = Picker(title, selection: selection) {
+            ForEach(options) { option in
+                Text(option.title).tag(option)
+            }
+        }
+        .labelsHidden()
+        .accessibilityLabel(title)
+
         VStack(alignment: .leading, spacing: 6) {
             Text(title)
                 .font(.subheadline)
-                .foregroundStyle(.secondary)
-            Picker(title, selection: selection) {
-                ForEach(options) { option in
-                    Text(option.title).tag(option)
-                }
+                .foregroundStyle(BrandSecondaryInk.color)
+            if dynamicTypeSize.isAccessibilitySize {
+                choices.pickerStyle(.menu)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            } else {
+                choices.pickerStyle(.segmented)
             }
-            .pickerStyle(.segmented)
-            .labelsHidden()
         }
     }
 }

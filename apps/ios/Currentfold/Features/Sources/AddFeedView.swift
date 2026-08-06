@@ -36,6 +36,10 @@ struct AddFeedView: View {
                 .currentfoldCanvas()
                 .navigationTitle(title)
                 .navigationBarTitleDisplayMode(.inline)
+                // Three of the four outcomes replace the form in place, and the fourth is a
+                // row that appears under it. None of them moves VoiceOver's focus, so each is
+                // spoken as it lands.
+                .announcesResult(model.spokenOutcome)
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) {
                         Button("Cancel") { dismiss() }
@@ -94,14 +98,16 @@ private extension AddFeedView {
                     the feed.
                     """
                 )
+                .foregroundStyle(BrandSecondaryInk.color)
             }
             .currentfoldRaisedRows()
 
             if let failure = model.failure {
                 Section {
                     Label(failure, systemImage: "exclamationmark.triangle")
-                        .foregroundStyle(.red)
+                        .foregroundStyle(BrandErrorInk.color)
                         .font(.subheadline)
+                        .accessibilityLabel("Error: \(failure)")
                 }
                 .currentfoldRaisedRows()
             }
@@ -127,7 +133,7 @@ private extension AddFeedView {
                 ProgressView()
                 Text("Looking for a feed…")
                     .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(BrandSecondaryInk.color)
             }
             .frame(minHeight: 44)
         } else {
@@ -164,14 +170,16 @@ private extension AddFeedView {
                 Text("Feeds on that page")
             } footer: {
                 Text("Nothing is followed yet. Pick the one you want.")
+                    .foregroundStyle(BrandSecondaryInk.color)
             }
             .currentfoldRaisedRows()
 
             if let failure = model.failure {
                 Section {
                     Label(failure, systemImage: "exclamationmark.triangle")
-                        .foregroundStyle(.red)
+                        .foregroundStyle(BrandErrorInk.color)
                         .font(.subheadline)
+                        .accessibilityLabel("Error: \(failure)")
                 }
                 .currentfoldRaisedRows()
             }
@@ -186,7 +194,8 @@ private extension AddFeedView {
 
     /// `Color.primary`, not the hierarchical `.primary`: inside a button label the hierarchical
     /// styles resolve to the *tint*, which would paint all three rows coral and make a set of
-    /// choices look like a set of links to somewhere else.
+    /// choices look like a set of links to somewhere else. The detail line takes the muted ink
+    /// for the same reason — a concrete colour, not a level.
     func candidateRow(_ candidate: APIFeedCandidate) -> some View {
         VStack(alignment: .leading, spacing: 3) {
             Text(candidate.displayTitle)
@@ -195,7 +204,7 @@ private extension AddFeedView {
             if let detail = candidate.displayDetail {
                 Text(detail)
                     .font(.subheadline)
-                    .foregroundStyle(Color.secondary)
+                    .foregroundStyle(BrandSecondaryInk.color)
                     .lineLimit(1)
             }
         }
@@ -214,6 +223,7 @@ private extension AddFeedView {
             Label("Now following \(subscription.title)", systemImage: "checkmark.circle")
         } description: {
             Text("Its articles are on the way into your Library.")
+                .foregroundStyle(BrandSecondaryInk.color)
         } actions: {
             Button("Show Articles") {
                 dismiss()
@@ -234,6 +244,7 @@ private extension AddFeedView {
                 subscription.map { "\($0.title) is already in your sources." }
                     ?? "That address resolves to a source this account already follows."
             )
+            .foregroundStyle(BrandSecondaryInk.color)
         } actions: {
             if let subscription {
                 Button("Show Articles") {

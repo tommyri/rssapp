@@ -13,7 +13,8 @@ import SwiftUI
 @Observable
 final class CurrentfoldTheme {
     var primaryLabel: Color { Color(uiColor: .label) }
-    var secondaryLabel: Color { Color(uiColor: .secondaryLabel) }
+    /// Not `.secondaryLabel` — see ``BrandSecondaryInk`` for the measurement that retired it.
+    var secondaryLabel: Color { BrandSecondaryInk.color }
 
     /// The accent as *ink*: link text, tinted controls, bar buttons, and the unread dot.
     /// Resolves per appearance from ``BrandAccentInk``. The accent never appears at full
@@ -58,10 +59,23 @@ struct BrandRGB: Sendable, Equatable {
     /// A single color that resolves itself per appearance. `UIColor`'s trait-resolving
     /// initializer rather than an `@Environment(\.colorScheme)` read, so the pair works in
     /// `ButtonStyle` bodies and `UIView` backgrounds too, not only inside a SwiftUI view.
-    static func pair(light: BrandRGB, dark: BrandRGB) -> Color {
+    ///
+    /// The high-contrast values are optional because most tokens do not need them: a token
+    /// that replaces a *system* color has to keep answering Increase Contrast the way the
+    /// color it replaced did, and a token that is already far past its floor does not.
+    static func pair(
+        light: BrandRGB,
+        dark: BrandRGB,
+        highContrastLight: BrandRGB? = nil,
+        highContrastDark: BrandRGB? = nil
+    ) -> Color {
         Color(
             uiColor: UIColor { traits in
-                traits.userInterfaceStyle == .dark ? dark.uiColor : light.uiColor
+                let wantsContrast = traits.accessibilityContrast == .high
+                if traits.userInterfaceStyle == .dark {
+                    return (wantsContrast ? highContrastDark ?? dark : dark).uiColor
+                }
+                return (wantsContrast ? highContrastLight ?? light : light).uiColor
             }
         )
     }
@@ -87,6 +101,93 @@ enum BrandAccentInk {
     /// chroma does clear AA on dark, but a saturated orange vibrates against near-black, so
     /// lightness goes up and chroma comes down.
     static let onDark = BrandRGB(red: 238, green: 145, blue: 121)
+
+    static let color = BrandRGB.pair(light: onLight, dark: onDark)
+}
+
+/// Muted text — previews, meta lines, footers, taglines, status lines — as brand `stone`
+/// rather than the platform's `.secondaryLabel`.
+///
+/// `.secondaryLabel` is 60%-alpha `#3C3C43`, which composites to **3.4:1** on our light
+/// canvas: below AA for text that is genuinely content (a snippet, a date, a reading
+/// estimate). Apple's own apps sit at roughly that number on their own white, so this is
+/// platform behaviour rather than a bug — but the article web view already sets its muted text
+/// in brand `stone` at 4.6:1, so keeping `.secondaryLabel` in the chrome meant the same
+/// sentence was legible inside the reader and not outside it.
+///
+/// brand-identity.md names `stone` "secondary brand material and muted metadata", and it
+/// clears AA on both light surfaces without touching the hierarchy: primary label is ~19.9:1
+/// on paper, so a 4.6:1 secondary is still, visibly, a step down.
+///
+/// Values are `ArticlePalette.mutedLight`/`mutedDark` — one muted ink for the whole product.
+///
+/// **Increase Contrast is answered**, because the color this replaces answered it: the system
+/// darkens `.secondaryLabel` when the setting is on, and a static token would have silently
+/// stopped doing that for the reader who asked for help most explicitly.
+enum BrandSecondaryInk {
+    /// Brand `stone`: 4.6:1 on paper, 4.7:1 on a raised cell.
+    static let onLight = BrandRGB(red: 120, green: 113, blue: 108)
+    /// `stone` lightened 30% toward white: 6.7:1 on the dark canvas, 6.2:1 on a raised cell.
+    static let onDark = BrandRGB(red: 160, green: 156, blue: 152)
+    /// `stone` mixed 40% with brand `ink`: 7.8:1 on paper.
+    static let onLightHighContrast = BrandRGB(red: 83, green: 78, blue: 74)
+    /// ``onDark`` mixed 40% with brand `paper`: 10.1:1 on the dark canvas.
+    static let onDarkHighContrast = BrandRGB(red: 196, green: 193, blue: 189)
+
+    static let color = BrandRGB.pair(
+        light: onLight,
+        dark: onDark,
+        highContrastLight: onLightHighContrast,
+        highContrastDark: onDarkHighContrast
+    )
+}
+
+/// Error text, as the platform's red where it clears AA and a darkened red where it does not.
+///
+/// `UIColor.systemRed` in light is `#FF383C`, which measures **3.4:1** on brand paper — the
+/// same value on the platform's own white, so nothing is broken; it simply misses the floor
+/// this app holds, and it lands on the sentence that tells a reader why they could not sign
+/// in. In dark, `#FF4245` measures 5.3:1 on the canvas and 4.9:1 on a raised cell, so there is
+/// nothing to fix and the token is the platform's own value: a floor token exists to hold the
+/// floor, not to repaint a color that already clears it.
+///
+/// No Increase Contrast variant, unlike ``BrandSecondaryInk``, and this is measured rather than
+/// assumed: the platform's own high-contrast red (`#E9152D`) is **4.3:1** on paper — still
+/// under the floor, and weaker than this token's ordinary 5.6:1. There is nothing to switch to.
+///
+/// Only *text* uses this. A destructive **fill** — a swipe action, a `.destructive` role — is a
+/// non-text object at a 3:1 floor, which the platform's red clears in both appearances; those
+/// keep `Color.red`, because the platform owns the meaning of that surface.
+enum BrandErrorInk {
+    /// The platform's light `systemRed` mixed 25% with black, matching ``BrandAccentInk``'s
+    /// own derivation: 5.6:1 on paper, 5.8:1 on a raised cell.
+    static let onLight = BrandRGB(red: 191, green: 42, blue: 45)
+    /// The platform's dark `systemRed`, unmodified: 5.3:1 on the canvas, 4.9:1 raised.
+    static let onDark = BrandRGB(red: 255, green: 66, blue: 69)
+
+    static let color = BrandRGB.pair(light: onLight, dark: onDark)
+}
+
+/// The star's yellow, deepened for light.
+///
+/// A row's star is the only thing that says an article is starred, which makes it a graphical
+/// object at WCAG's 3:1 floor — and `systemYellow` `#FFCC00` measures **1.4:1** on paper. It
+/// was the weakest mark in the app by a wide margin, and at `.caption2` it is also the
+/// smallest. Dark needs no help: `#FFD600` is 12.9:1 on the canvas.
+///
+/// The light value is not invented: it is `systemYellow` as the platform itself resolves it
+/// under **Increase Contrast** (`#A16A00`), adopted as our ordinary value because our canvas
+/// needs it all the time. Apple's answer to "this yellow is too light to mean anything" is a
+/// deep gold, and borrowing it keeps the star recognisably the system's colour rather than a
+/// hue this app made up. It measures 4.4:1 on paper and 4.5:1 on a raised cell.
+///
+/// One value per appearance for the whole verb, so the swipe action moves with the marker
+/// rather than keeping a yellow the row no longer uses.
+enum BrandStarInk {
+    /// `systemYellow` as the platform resolves it under Increase Contrast, light.
+    static let onLight = BrandRGB(red: 161, green: 106, blue: 0)
+    /// The platform's dark `systemYellow`, unmodified: 12.9:1 on the canvas, 11.9:1 raised.
+    static let onDark = BrandRGB(red: 255, green: 214, blue: 0)
 
     static let color = BrandRGB.pair(light: onLight, dark: onDark)
 }
@@ -191,7 +292,9 @@ enum ReadStateIcon {
 enum StarIcon {
     static let starred = "star.fill"
     static let unstarred = "star"
-    static let tint = Color.yellow
+    /// ``BrandStarInk``, not `Color.yellow`: the system's yellow is 1.4:1 on paper and a row
+    /// marker has to clear 3:1. Dark keeps the platform's value.
+    static let tint = BrandStarInk.color
 
     /// Controls show the state the tap produces, matching ``ReadStateIcon``.
     static func toggle(isStarred: Bool) -> String {

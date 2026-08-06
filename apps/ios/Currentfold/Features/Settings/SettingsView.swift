@@ -35,16 +35,26 @@ struct SettingsView: View {
                     size — it never replaces it. Also available as Aa while reading.
                     """
                 )
+                .foregroundStyle(BrandSecondaryInk.color)
             }
             .currentfoldRaisedRows()
 
             Section {
-                LabeledContent("Name", value: account.displayName ?? "Not set")
-                LabeledContent("Email", value: account.email)
+                // `LabeledContent(_:value:)` draws its value in the platform's secondary
+                // label; here the value *is* the content, so it takes the muted ink that
+                // clears AA on this canvas.
+                LabeledContent("Name") {
+                    Text(account.displayName ?? "Not set")
+                        .foregroundStyle(BrandSecondaryInk.color)
+                }
+                LabeledContent("Email") {
+                    Text(account.email).foregroundStyle(BrandSecondaryInk.color)
+                }
             } header: {
                 Text("Account")
             } footer: {
                 Text("Your account, on every device you sign in on.")
+                    .foregroundStyle(BrandSecondaryInk.color)
             }
             .currentfoldRaisedRows()
 
@@ -58,6 +68,7 @@ struct SettingsView: View {
                     This securely removes this device session. It does not delete your account.
                     """
                 )
+                .foregroundStyle(BrandSecondaryInk.color)
             }
             .currentfoldRaisedRows()
         }

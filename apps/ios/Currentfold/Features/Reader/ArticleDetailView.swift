@@ -18,11 +18,12 @@ struct ArticleDetailView: View {
             if let article = store.article(id: articleID) {
                 readerView(for: article)
             } else {
-                ContentUnavailableView(
-                    "Article unavailable",
-                    systemImage: "doc.questionmark",
-                    description: Text("This article is no longer in the list you opened it from.")
-                )
+                ContentUnavailableView {
+                    Label("Article unavailable", systemImage: "doc.questionmark")
+                } description: {
+                    Text("This article is no longer in the list you opened it from.")
+                        .foregroundStyle(BrandSecondaryInk.color)
+                }
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -128,6 +129,7 @@ struct ArticleDetailView: View {
             Label("No readable copy", systemImage: "doc.text.magnifyingglass")
         } description: {
             Text("This article arrived without its full text. The original page has the rest.")
+                .foregroundStyle(BrandSecondaryInk.color)
         } actions: {
             if let url = article.canonicalUrl ?? article.url {
                 Link("Open Original", destination: url)
@@ -149,22 +151,25 @@ private struct ArticleHeader: View {
         VStack(alignment: .leading, spacing: 8) {
             Text(article.title)
                 .font(.system(.title, design: .serif, weight: .semibold))
-            HStack(spacing: 5) {
-                Text(article.feed.title)
-                if let author = article.author {
-                    Text("·")
-                    Text(author)
-                }
-                if let readingTime = article.readingTimeLabel {
-                    Text("·")
-                    Text(readingTime)
-                }
-            }
-            .font(.subheadline)
-            .foregroundStyle(.secondary)
+                .accessibilityAddTraits(.isHeader)
+
+            // One `Text`, not an `HStack` of them: separate views each get their own share of
+            // the width, so at an accessibility size the line became four hyphenated columns
+            // ("Exam-ple Source · Exam-ple Author · 4 min read") instead of a wrapping
+            // sentence. Joining first also means VoiceOver reads one meta line rather than
+            // stopping on a lone middle dot.
+            Text(metaLine)
+                .font(.subheadline)
+                .foregroundStyle(BrandSecondaryInk.color)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding()
+    }
+
+    private var metaLine: String {
+        [article.feed.title, article.author, article.readingTimeLabel]
+            .compactMap(\.self)
+            .joined(separator: " · ")
     }
 }
 

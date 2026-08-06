@@ -49,6 +49,7 @@ struct EmptyArticleListView: View {
                 articles land here.
                 """
             )
+            .foregroundStyle(BrandSecondaryInk.color)
         } actions: {
             Button("Add a Source") { isAddingSource = true }
                 .buttonStyle(.primaryAction)
@@ -61,6 +62,7 @@ struct EmptyArticleListView: View {
             Label("You’re all caught up", systemImage: "checkmark.circle")
         } description: {
             Text("Nothing unread \(inScope). New articles appear as your sources publish them.")
+                .foregroundStyle(BrandSecondaryInk.color)
         } actions: {
             Button("Show All Articles") { show(.all) }
                 .buttonStyle(.primaryAction)
@@ -72,6 +74,7 @@ struct EmptyArticleListView: View {
             Label("Nothing to read yet", systemImage: "text.page")
         } description: {
             Text("No articles \(inScope) yet. They appear here as they are published.")
+                .foregroundStyle(BrandSecondaryInk.color)
         } actions: {
             Button("Check for New Articles") {
                 Task { await store.reload(scope: destination.scope) }
@@ -90,6 +93,7 @@ struct EmptyArticleListView: View {
                 Swipe a row and tap Star, or star it while reading.
                 """
             )
+            .foregroundStyle(BrandSecondaryInk.color)
         } actions: {
             Button("Show Unread") { show(.unread) }
                 .buttonStyle(.primaryAction)
@@ -116,6 +120,7 @@ struct EmptyArticleListView: View {
                     Swipe a row \(inScope) to the left to put it here.
                     """
             )
+            .foregroundStyle(BrandSecondaryInk.color)
         } actions: {
             Button("Show Unread") { show(.unread) }
                 .buttonStyle(.primaryAction)

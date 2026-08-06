@@ -47,6 +47,30 @@ final class AddFeedModel {
         !isResolving && !url.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
+    /// The stage as one spoken sentence.
+    ///
+    /// Three of the four answers replace the form in place and the fourth appears as a row
+    /// under it; none of them moves VoiceOver's focus, so the sheet announces this instead
+    /// (`announcesResult`). It lives on the model rather than in the view because it is the
+    /// same four-way decision the view already renders, and a sentence nobody can see is
+    /// exactly the kind of thing that rots quietly unless a test reads it.
+    var spokenOutcome: String? {
+        if let failure { return "Error: \(failure)" }
+        switch stage {
+        case .entry:
+            return nil
+        case let .choosing(candidates):
+            return """
+            \(candidates.count) feeds found. Nothing is followed yet — pick the one you want.
+            """
+        case let .added(subscription):
+            return "Now following \(subscription.title)."
+        case let .alreadyFollowing(subscription):
+            return subscription.map { "You already follow \($0.title)." }
+                ?? "You already follow that source."
+        }
+    }
+
     func submit() async {
         await resolve(url.trimmingCharacters(in: .whitespacesAndNewlines))
     }

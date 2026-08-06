@@ -40,6 +40,10 @@ struct SavedPageCell: View {
                 removeAction.tint(SavedPageIcon.removeTint)
             }
             .contextMenu { menu }
+            // The same verbs as VoiceOver custom actions, matching an article row: neither a
+            // swipe nor a context menu reaches the accessibility tree on its own, and Remove
+            // is the one verb here that has no other door.
+            .accessibilityActions { menu }
         }
     }
 
@@ -80,6 +84,11 @@ struct SavedPageCell: View {
         } label: {
             Label(SavedPageIcon.retryTitle, systemImage: SavedPageIcon.retry)
                 .font(.subheadline)
+                // `.controlSize(.small)` drew a 28pt chip — the right visual weight for a
+                // secondary offer inside a row, and eight points under the recommended
+                // target. The label carries the height instead, so the chip stays quiet and
+                // the tap target does not.
+                .frame(minWidth: 44, minHeight: 34)
         }
         .buttonStyle(.bordered)
         .controlSize(.small)

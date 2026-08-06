@@ -15,9 +15,9 @@ struct VerificationLinkView: View {
                 )
             } description: {
                 if let message {
-                    Text(message)
+                    Text(message).foregroundStyle(BrandSecondaryInk.color)
                 } else if let error = session.authErrorMessage {
-                    Text(error)
+                    Text(error).foregroundStyle(BrandSecondaryInk.color)
                 } else {
                     ProgressView()
                 }
@@ -30,6 +30,7 @@ struct VerificationLinkView: View {
                 }
             }
             .currentfoldCanvas()
+            .announcesResult(message ?? session.authErrorMessage)
             .task {
                 guard message == nil, !didVerify else { return }
                 if let result = await session.verifyEmail(token: token) {
@@ -58,7 +59,7 @@ struct PasswordResetLinkView: View {
                 ContentUnavailableView {
                     Label("Password Updated", systemImage: "checkmark.circle")
                 } description: {
-                    Text(successMessage)
+                    Text(successMessage).foregroundStyle(BrandSecondaryInk.color)
                 } actions: {
                     Button("Continue to Sign In") { session.dismissAuthLink() }
                         .buttonStyle(.primaryAction)
@@ -77,23 +78,27 @@ struct PasswordResetLinkView: View {
                 SecureField("New password", text: $password)
                     .textContentType(.newPassword)
                     .focused($passwordFocused)
+                    .accessibilityLabel("New password")
                 SecureField("Confirm new password", text: $confirmation)
                     .textContentType(.newPassword)
+                    .accessibilityLabel("Confirm new password")
             } footer: {
-                Text("Use at least 8 characters.")
+                Text("Use at least 8 characters.").foregroundStyle(BrandSecondaryInk.color)
             }
             .currentfoldRaisedRows()
 
             if attemptedSubmit, let validationMessage {
                 Section {
                     Label(validationMessage, systemImage: "exclamationmark.circle")
-                        .foregroundStyle(.red)
+                        .foregroundStyle(BrandErrorInk.color)
+                        .accessibilityLabel("Error: \(validationMessage)")
                 }
                 .currentfoldRaisedRows()
             } else if let message = session.authErrorMessage {
                 Section {
                     Label(message, systemImage: "exclamationmark.circle")
-                        .foregroundStyle(.red)
+                        .foregroundStyle(BrandErrorInk.color)
+                        .accessibilityLabel("Error: \(message)")
                 }
                 .currentfoldRaisedRows()
             }
@@ -119,6 +124,7 @@ struct PasswordResetLinkView: View {
         .currentfoldCanvas()
         .navigationTitle("Reset Password")
         .navigationBarTitleDisplayMode(.inline)
+        .announcesResult(session.authErrorMessage)
         .onAppear { passwordFocused = true }
     }
 

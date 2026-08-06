@@ -15,6 +15,7 @@ struct SavedPageRow: View {
 
     @ScaledMetric(relativeTo: .headline) private var dotDiameter = 7
     @ScaledMetric(relativeTo: .headline) private var dotTopInset = 8
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
@@ -28,7 +29,7 @@ struct SavedPageRow: View {
                 Text(entry.page.title)
                     .font(.headline)
                     .fontWeight(entry.page.state.read || entry.isRemoved ? .regular : .semibold)
-                    .foregroundStyle(entry.isRemoved ? AnyShapeStyle(.secondary) : AnyShapeStyle(.primary))
+                    .foregroundStyle(entry.isRemoved ? AnyShapeStyle(BrandSecondaryInk.color) : AnyShapeStyle(.primary))
                     .lineLimit(3)
 
                 secondLine
@@ -55,12 +56,12 @@ struct SavedPageRow: View {
         if let status = statusText {
             Text(status)
                 .font(.subheadline)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(BrandSecondaryInk.color)
                 .lineLimit(2)
         } else if let preview = entry.page.preview, !preview.isEmpty {
             Text(preview)
                 .font(.subheadline)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(BrandSecondaryInk.color)
                 .lineLimit(2)
         }
     }
@@ -81,18 +82,17 @@ struct SavedPageRow: View {
         }
     }
 
+    /// The marker rides *inside* the string rather than beside it in an `HStack`: once the
+    /// line is allowed to wrap, a sibling image centres itself against three lines of text and
+    /// the meta line stops looking like a line. As an attachment it simply leads the first
+    /// word, the way it always did.
     private var metaLine: some View {
-        HStack(spacing: 5) {
-            Image(systemName: SavedPageIcon.marker)
-                .font(.caption2)
-                .foregroundStyle(.secondary)
-                .accessibilityHidden(true)
-
-            Text(metaParts.joined(separator: " · "))
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-                .lineLimit(1)
-        }
+        (Text(Image(systemName: SavedPageIcon.marker)) + Text(" " + metaParts.joined(separator: " · ")))
+            .font(.subheadline)
+            .foregroundStyle(BrandSecondaryInk.color)
+            // Matching ``ArticleRow``: one line to scan past, uncapped when one line would be
+            // three words and an ellipsis.
+            .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 1)
     }
 
     private var metaParts: [String] {

@@ -195,6 +195,54 @@ final class AddFeedTests: XCTestCase {
         XCTAssertNil(model.failure)
     }
 
+    // MARK: - What the sheet says out loud
+
+    /// Every outcome of this sheet is a change of pixels, not a change of screen, so each one
+    /// is announced. A sentence nobody can see is exactly what rots unless a test reads it.
+    func testEveryOutcomeHasSomethingToAnnounceAndTheFormItselfHasNot() {
+        let store = ReaderTestStore.make()
+        XCTAssertNil(AddFeedModel(store: store, stage: .entry).spokenOutcome)
+        XCTAssertEqual(
+            AddFeedModel(store: store, stage: .added(.fixture)).spokenOutcome,
+            "Now following Example Source."
+        )
+        XCTAssertEqual(
+            AddFeedModel(store: store, stage: .alreadyFollowing(.fixture)).spokenOutcome,
+            "You already follow Example Source."
+        )
+        XCTAssertEqual(
+            AddFeedModel(store: store, stage: .alreadyFollowing(nil)).spokenOutcome,
+            "You already follow that source."
+        )
+        XCTAssertEqual(
+            AddFeedModel(
+                store: store,
+                stage: .choosing([.postsFixture, .commentsFixture])
+            ).spokenOutcome,
+            "2 feeds found. Nothing is followed yet — pick the one you want."
+        )
+    }
+
+    /// The refusal is a row that appears halfway up a form, and it is the one outcome a reader
+    /// has to act on.
+    func testAServerRefusalIsAnnouncedAsAnError() async {
+        let discovery = SourceDiscovery()
+        await discovery.stub(
+            "example.com",
+            refusal: .rejected(
+                status: 422,
+                code: "feed_not_found",
+                message: "No feed advertised on that page."
+            )
+        )
+        let model = AddFeedModel(store: ReaderTestStore.make(discovery: discovery))
+
+        model.url = "example.com"
+        await model.submit()
+
+        XCTAssertEqual(model.spokenOutcome, "Error: No feed advertised on that page.")
+    }
+
     // MARK: - Host matching
 
     func testHostsCompareWithoutSchemeOrWww() {

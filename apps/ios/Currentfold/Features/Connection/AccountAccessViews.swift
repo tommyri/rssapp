@@ -29,7 +29,7 @@ struct RegistrationView: View {
                 ContentUnavailableView {
                     Label("Check Your Email", systemImage: "envelope.badge")
                 } description: {
-                    Text(confirmationMessage)
+                    Text(confirmationMessage).foregroundStyle(BrandSecondaryInk.color)
                 } actions: {
                     Button("Send Another Email") {
                         Task {
@@ -64,33 +64,39 @@ struct RegistrationView: View {
                     .focused($focusedField, equals: .email)
                     .submitLabel(.next)
                     .onSubmit { focusedField = .password }
+                    .accessibilityLabel("Email")
 
                 SecureField("Password", text: $password)
                     .textContentType(.newPassword)
                     .focused($focusedField, equals: .password)
                     .submitLabel(.next)
                     .onSubmit { focusedField = .confirmation }
+                    .accessibilityLabel("Password")
 
                 SecureField("Confirm password", text: $passwordConfirmation)
                     .textContentType(.newPassword)
                     .focused($focusedField, equals: .confirmation)
                     .submitLabel(.go)
                     .onSubmit(createAccount)
+                    .accessibilityLabel("Confirm password")
             } footer: {
                 Text("Use at least 8 characters. You’ll verify the address before signing in.")
+                    .foregroundStyle(BrandSecondaryInk.color)
             }
             .currentfoldRaisedRows()
 
             if attemptedSubmit, let validationMessage {
                 Section {
                     Label(validationMessage, systemImage: "exclamationmark.circle")
-                        .foregroundStyle(.red)
+                        .foregroundStyle(BrandErrorInk.color)
+                        .accessibilityLabel("Error: \(validationMessage)")
                 }
                 .currentfoldRaisedRows()
             } else if let message = session.authErrorMessage {
                 Section {
                     Label(message, systemImage: "exclamationmark.circle")
-                        .foregroundStyle(.red)
+                        .foregroundStyle(BrandErrorInk.color)
+                        .accessibilityLabel("Error: \(message)")
                 }
                 .currentfoldRaisedRows()
             }
@@ -120,6 +126,7 @@ struct RegistrationView: View {
         }
         .currentfoldCanvas()
         .task { await session.loadAuthProviders() }
+        .announcesResult(session.authErrorMessage)
     }
 
     private var validationMessage: String? {
@@ -163,7 +170,7 @@ struct PasswordRecoveryView: View {
                 ContentUnavailableView {
                     Label("Check Your Email", systemImage: "envelope.badge")
                 } description: {
-                    Text(confirmationMessage)
+                    Text(confirmationMessage).foregroundStyle(BrandSecondaryInk.color)
                 }
                 .currentfoldCanvas()
             } else {
@@ -189,15 +196,18 @@ struct PasswordRecoveryView: View {
                     .focused($emailFocused)
                     .submitLabel(.send)
                     .onSubmit(requestReset)
+                    .accessibilityLabel("Email")
             } footer: {
                 Text("We’ll send a secure link if the address belongs to an account.")
+                    .foregroundStyle(BrandSecondaryInk.color)
             }
             .currentfoldRaisedRows()
 
             if let message = session.authErrorMessage {
                 Section {
                     Label(message, systemImage: "exclamationmark.circle")
-                        .foregroundStyle(.red)
+                        .foregroundStyle(BrandErrorInk.color)
+                        .accessibilityLabel("Error: \(message)")
                 }
                 .currentfoldRaisedRows()
             }
@@ -212,6 +222,7 @@ struct PasswordRecoveryView: View {
             .listRowBackground(Color.clear)
         }
         .currentfoldCanvas()
+        .announcesResult(session.authErrorMessage)
     }
 
     private func requestReset() {

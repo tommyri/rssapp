@@ -39,11 +39,12 @@ struct SavedPageDetailView: View {
             if let entry = store.savedPage(id: savedPageID) {
                 readerView(for: entry)
             } else {
-                ContentUnavailableView(
-                    "Saved page unavailable",
-                    systemImage: "doc.questionmark",
-                    description: Text("This page is no longer in the queue you opened it from.")
-                )
+                ContentUnavailableView {
+                    Label("Saved page unavailable", systemImage: "doc.questionmark")
+                } description: {
+                    Text("This page is no longer in the queue you opened it from.")
+                        .foregroundStyle(BrandSecondaryInk.color)
+                }
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -63,6 +64,14 @@ struct SavedPageDetailView: View {
             ToolbarItem(placement: .topBarTrailing) { overflowMenu(entry) }
         }
         .sensoryFeedback(.impact(weight: .light), trigger: triageTapCount)
+        // The waiting screen changes its own copy when the poll gives up, with nothing else
+        // moving — the one change on this screen a reader would otherwise have to re-read to
+        // notice.
+        .announcesResult(
+            copyStoppedArriving
+                ? "Still fetching a readable copy. Check again, or read the original."
+                : nil
+        )
         .task(id: savedPageID) {
             tracker.begin(at: store.resumePosition(for: entryID))
             store.beginReading(entryID)
@@ -161,6 +170,7 @@ struct SavedPageDetailView: View {
                     ? "This one is taking a while. It keeps going on the server — check back, or read the original."
                     : "Currentfold is pulling a readable copy of this page. It usually takes a few seconds."
             )
+            .foregroundStyle(BrandSecondaryInk.color)
         } actions: {
             if copyStoppedArriving {
                 Button("Check Again") { checkAgain() }
@@ -177,6 +187,7 @@ struct SavedPageDetailView: View {
             Label("No readable copy", systemImage: "doc.text.magnifyingglass")
         } description: {
             Text(reason ?? "Currentfold couldn’t fetch this page. The original still has it.")
+                .foregroundStyle(BrandSecondaryInk.color)
         } actions: {
             Button(SavedPageIcon.retryTitle) {
                 commit { await store.retrySavedPage(savedPageID: entry.id) }
@@ -193,6 +204,7 @@ struct SavedPageDetailView: View {
             Label("Nothing readable here", systemImage: "doc.text.magnifyingglass")
         } description: {
             Text("Currentfold found no article text on this page. The original has whatever is there.")
+                .foregroundStyle(BrandSecondaryInk.color)
         } actions: {
             Link(SavedPageIcon.openOriginalTitle, destination: entry.page.url)
                 .buttonStyle(.primaryAction)
@@ -249,29 +261,31 @@ private struct SavedPageHeader: View {
         VStack(alignment: .leading, spacing: 8) {
             Text(page.title)
                 .font(.system(.title, design: .serif, weight: .semibold))
-            HStack(spacing: 5) {
-                Image(systemName: SavedPageIcon.marker)
-                    .font(.caption)
-                    .accessibilityHidden(true)
-                Text(page.siteName)
-                if let author = page.author {
-                    Text("·")
-                    Text(author)
-                }
-                if let displayDate = page.displayDate {
-                    Text("·")
-                    Text("saved \(displayDate)")
-                }
-                if let readingTime = page.readingTimeLabel {
-                    Text("·")
-                    Text(readingTime)
-                }
-            }
-            .font(.subheadline)
-            .foregroundStyle(.secondary)
+                .accessibilityAddTraits(.isHeader)
+
+            // One `Text` with the marker inlined, for the reason given in `ArticleHeader`:
+            // as separate views this line collapsed into five hyphenated columns at an
+            // accessibility size. The marker rides inside the string as an attachment so it
+            // stays beside the site name when the line wraps, and "Saved page" is spoken
+            // because the symbol itself is decoration.
+            (Text(Image(systemName: SavedPageIcon.marker)) + Text(" " + metaLine))
+                .font(.subheadline)
+                .foregroundStyle(BrandSecondaryInk.color)
+                .accessibilityLabel("Saved page, \(metaLine)")
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding()
+    }
+
+    private var metaLine: String {
+        [
+            page.siteName,
+            page.author,
+            page.displayDate.map { "saved \($0)" },
+            page.readingTimeLabel,
+        ]
+        .compactMap(\.self)
+        .joined(separator: " · ")
     }
 }
 

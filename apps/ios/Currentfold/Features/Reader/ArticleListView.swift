@@ -27,6 +27,7 @@ struct ArticleListView: View {
     let destination: ArticleListDestination
 
     @Environment(ReaderStore.self) private var store
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     /// Set once per view instance, which is what makes a fresh navigation a fresh visit while
     /// a push to an article — or a trip to another tab — leaves the session's rows in place.
     @State private var hasOpenedList = false
@@ -64,6 +65,7 @@ struct ArticleListView: View {
         }
         .sensoryFeedback(.impact(weight: .light), trigger: triageCommitCount)
         .sensoryFeedback(.success, trigger: sweepCount)
+        .announcesResult(sweepResult)
         .confirmationDialog(
             Text(pendingSweep?.confirmationTitle(scope: destination.title) ?? ""),
             isPresented: Binding(
@@ -158,6 +160,11 @@ private extension ArticleListView {
             starAction(article).tint(StarIcon.tint)
         }
         .contextMenu { rowMenu(article) }
+        // The same menu, again, as VoiceOver custom actions. SwiftUI publishes neither a
+        // swipe action nor a context menu to the accessibility tree, so without this the only
+        // way to star an article was a gesture a VoiceOver reader cannot perform. One builder
+        // feeds both surfaces, so a verb cannot exist in one and not the other.
+        .accessibilityActions { rowMenu(article) }
     }
 
     func savedPageCell(_ entry: SavedPageEntry) -> some View {
@@ -168,7 +175,7 @@ private extension ArticleListView {
         ContentUnavailableView {
             Label("Couldn’t load articles", systemImage: "exclamationmark.triangle")
         } description: {
-            Text(message)
+            Text(message).foregroundStyle(BrandSecondaryInk.color)
         } actions: {
             Button("Try Again") { Task { await store.reload(scope: destination.scope) } }
                 .buttonStyle(.primaryAction)
@@ -302,7 +309,9 @@ private extension ArticleListView {
     }
 
     /// The result, stated once and then gone. Loud enough to answer "did that do anything?",
-    /// quiet enough that it is not a dialog.
+    /// quiet enough that it is not a dialog. Also spoken — see `announcesResult`, because a
+    /// capsule that fades in two and a half seconds is not feedback a VoiceOver reader can
+    /// find.
     @ViewBuilder
     var sweepReceipt: some View {
         if let sweepResult {
@@ -310,9 +319,26 @@ private extension ArticleListView {
                 .font(.footnote)
                 .padding(.horizontal, 14)
                 .padding(.vertical, 9)
-                .background(.thinMaterial, in: Capsule())
+                .background(receiptSurface, in: Capsule())
+                .overlay(receiptEdge)
                 .padding(.bottom, 24)
                 .transition(.opacity)
+        }
+    }
+
+    /// Reduce Transparency asks for no blur, and a material with the blur taken away is a flat
+    /// grey that does not belong to either canvas. The opaque answer is the app's own raised
+    /// surface — which in light mode is only a hair above the canvas, so the capsule borrows
+    /// the structure trick the rest of the app uses and takes an edge instead of relying on
+    /// its fill to be found.
+    var receiptSurface: AnyShapeStyle {
+        reduceTransparency ? AnyShapeStyle(BrandSurface.raised) : AnyShapeStyle(.thinMaterial)
+    }
+
+    @ViewBuilder
+    var receiptEdge: some View {
+        if reduceTransparency {
+            Capsule().strokeBorder(Color(uiColor: .separator))
         }
     }
 

@@ -33,6 +33,36 @@ private struct CurrentfoldCanvas: ViewModifier {
     }
 }
 
+// MARK: - Transient feedback
+
+extension View {
+    /// Speaks a result that the screen only *shows*.
+    ///
+    /// Three answers in this app arrive as a change of pixels rather than a change of screen:
+    /// the mark-all-read receipt (a capsule that fades after two and a half seconds), the four
+    /// endings of Add a Source, and a sign-in refusal that appears as a new row in a form. A
+    /// VoiceOver reader has no reason to go looking for any of them, and the receipt is gone
+    /// before they could. `AccessibilityNotification.Announcement` is how the platform says a
+    /// thing out loud without moving focus, which matters here — focus is on the control that
+    /// caused the result, and that is where it should stay.
+    ///
+    /// Posted on *change*, so re-rendering the same message does not repeat it.
+    func announcesResult(_ message: String?) -> some View {
+        modifier(AnnouncesResult(message: message))
+    }
+}
+
+private struct AnnouncesResult: ViewModifier {
+    let message: String?
+
+    func body(content: Content) -> some View {
+        content.onChange(of: message) { _, updated in
+            guard let updated, !updated.isEmpty else { return }
+            AccessibilityNotification.Announcement(updated).post()
+        }
+    }
+}
+
 // MARK: - The prominent call to action
 
 extension ButtonStyle where Self == PrimaryActionButtonStyle {

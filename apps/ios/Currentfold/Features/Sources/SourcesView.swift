@@ -19,7 +19,7 @@ struct SourcesView: View {
                 ContentUnavailableView {
                     Label("Couldn’t load sources", systemImage: "exclamationmark.triangle")
                 } description: {
-                    Text(message)
+                    Text(message).foregroundStyle(BrandSecondaryInk.color)
                 } actions: {
                     Button("Try Again") { Task { await store.loadSubscriptions() } }
                         .buttonStyle(.primaryAction)
@@ -34,6 +34,7 @@ struct SourcesView: View {
                         Its articles land in your Library.
                         """
                     )
+                    .foregroundStyle(BrandSecondaryInk.color)
                 } actions: {
                     Button("Add a Source") { isAddingSource = true }
                         .buttonStyle(.primaryAction)
@@ -132,7 +133,7 @@ private struct SourceRow: View {
                     if subscription.paused {
                         Text("Paused")
                             .font(.caption)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(BrandSecondaryInk.color)
                     }
                 }
                 Spacer()
@@ -149,7 +150,7 @@ private struct UnreadCountText: View {
         if count > 0 {
             Text(UnreadCountFormat.label(count))
                 .font(.subheadline.monospacedDigit())
-                .foregroundStyle(.secondary)
+                .foregroundStyle(BrandSecondaryInk.color)
                 .accessibilityLabel(UnreadCountFormat.accessibilityLabel(count))
         }
     }

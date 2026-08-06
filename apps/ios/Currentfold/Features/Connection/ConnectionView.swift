@@ -35,6 +35,10 @@ struct AuthenticationView: View {
                 .listRowSeparator(.hidden)
 
                 Section {
+                    // A placeholder is not a name: it is the field's *value* to UIKit, so it
+                    // stops being spoken the moment there is something typed, and VoiceOver
+                    // then announces an unnamed text field. Every field on the front door
+                    // carries its own label for that reason.
                     TextField("Email", text: $email)
                         .textContentType(.username)
                         .keyboardType(.emailAddress)
@@ -43,19 +47,21 @@ struct AuthenticationView: View {
                         .focused($focusedField, equals: .email)
                         .submitLabel(.next)
                         .onSubmit { focusedField = .password }
+                        .accessibilityLabel("Email")
 
                     SecureField("Password", text: $password)
                         .textContentType(.password)
                         .focused($focusedField, equals: .password)
                         .submitLabel(.go)
                         .onSubmit(signIn)
+                        .accessibilityLabel("Password")
                 }
                 .currentfoldRaisedRows()
 
                 if let message = session.authErrorMessage {
                     Section {
                         Label(message, systemImage: "exclamationmark.circle")
-                            .foregroundStyle(.red)
+                            .foregroundStyle(BrandErrorInk.color)
                             .accessibilityLabel("Sign-in error: \(message)")
 
                         if session.needsEmailVerification, !email.isEmpty {
@@ -72,7 +78,7 @@ struct AuthenticationView: View {
                 if let noticeMessage {
                     Section {
                         Label(noticeMessage, systemImage: "envelope")
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(BrandSecondaryInk.color)
                     }
                     .currentfoldRaisedRows()
                 }
@@ -119,6 +125,9 @@ struct AuthenticationView: View {
                 }
             }
             .task { await session.loadAuthProviders() }
+            // A refusal appears as a new row halfway up a form; nothing moves focus to it.
+            .announcesResult(session.authErrorMessage)
+            .announcesResult(noticeMessage)
             .onChange(of: email) { _, _ in clearFeedback() }
             .onChange(of: password) { _, _ in clearFeedback() }
         }

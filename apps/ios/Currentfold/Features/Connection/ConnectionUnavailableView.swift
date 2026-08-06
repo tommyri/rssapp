@@ -11,6 +11,7 @@ struct ConnectionUnavailableView: View {
             Label("Currentfold Is Unavailable", systemImage: "network.slash")
         } description: {
             Text(message ?? "Check your internet connection and try again.")
+                .foregroundStyle(BrandSecondaryInk.color)
         } actions: {
             Button("Try Again") {
                 Task { await retry() }

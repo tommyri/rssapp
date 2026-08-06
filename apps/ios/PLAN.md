@@ -96,14 +96,20 @@ Applies across all phases; items here are independently shippable polish.
 - [x] **Empty states with a next action** — *(done 5 Aug)* no-sources vs
       nothing-published states distinguished; "Add Sources on the Web" link until
       native add-feed lands; copy per brand voice.
-- [ ] **Accessibility audit** — VoiceOver walkthrough of triage + reading, Dynamic Type
-      XL on every screen, contrast check in both appearances. Blocking for TestFlight.
-      ~~Known finding (5 Aug): prominent CTA contrast ~2.9:1~~ **fixed 6 Aug** by the
-      design-language pass (`PrimaryActionButtonStyle`, contrast test-pinned).
-      **Open audit items (6 Aug, recorded in design-ux-ios.md):** system red error text
-      ~3.3:1 on light canvas (darker error ink vs accept platform value); `.secondary`
-      labels ~3.3:1 in light (platform behavior); light-mode raised-card separation is
-      subtle (1.03 luminance ratio) — check on a real device in bright light.
+- [x] **Accessibility audit** — *(done 6 Aug, rulings in design-ux-ios.md §"The other
+      three inks")* Three new measured ink tokens: `BrandErrorInk` (error text 5.6:1
+      light where system red was 3.4:1; fills stay platform red at the 3:1 non-text
+      floor), `BrandSecondaryInk` (brand `stone`, 4.6:1 — the same muted grey the
+      article already used, applied at ~40 sites), `BrandStarInk` (deep gold = iOS's
+      own Increase-Contrast yellow; plain systemYellow was 1.4:1 on paper). Plus: row
+      verbs exposed as VoiceOver custom actions, transient results announced,
+      unnamed-field labels, 44pt Retry, Reduce Motion/Transparency fallbacks,
+      Dynamic-Type fixes (joined header Text, meta-line cap lifted at a11y sizes, Aa
+      segmented → menu picker). 22 new floor tests; accepted exceptions recorded with
+      numbers (swipe-label white, Settings picker values, segmented control height).
+      **Still device-or-human-only:** real VoiceOver walkthrough (order/announcement
+      feel), bright-daylight raised-card check, share-extension card render, and a
+      contract gap — article HTML carries no `lang`, so VoiceOver guesses the voice.
 - [ ] **iPad decision** (open) — `TabView` on iPad is a stretched phone. Either commit
       to `NavigationSplitView` (sidebar → list → article maps perfectly) or ship
       TestFlight iPhone-only (`TARGETED_DEVICE_FAMILY = 1`) and design iPad properly

@@ -14,6 +14,7 @@ struct ArticleRow: View {
     /// shrinking into a speck at accessibility sizes.
     @ScaledMetric(relativeTo: .headline) private var dotDiameter = 7
     @ScaledMetric(relativeTo: .headline) private var dotTopInset = 8
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
@@ -33,7 +34,7 @@ struct ArticleRow: View {
                 if let preview = article.preview, !preview.isEmpty {
                     Text(preview)
                         .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(BrandSecondaryInk.color)
                         .lineLimit(2)
                 }
 
@@ -56,8 +57,8 @@ struct ArticleRow: View {
                 if !metaParts.isEmpty {
                     Text(metaText)
                         .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
+                        .foregroundStyle(BrandSecondaryInk.color)
+                        .lineLimit(metaLineLimit)
                 }
 
                 if hasMarkers {
@@ -71,6 +72,16 @@ struct ArticleRow: View {
                 }
             }
         }
+    }
+
+    /// One line at ordinary sizes, because the meta line's job is to be scanned past. At an
+    /// accessibility size one line is three words and an ellipsis — the feed name, the date and
+    /// the estimate are content, and losing two of the three to keep a shape is the wrong
+    /// trade. Uncapped rather than raised to a bigger number: there are at most three
+    /// fragments, so "as many lines as they need" has a known ceiling. The spoken label
+    /// carries all of them either way.
+    private var metaLineLimit: Int? {
+        dynamicTypeSize.isAccessibilitySize ? nil : 1
     }
 
     private var hasMarkers: Bool {

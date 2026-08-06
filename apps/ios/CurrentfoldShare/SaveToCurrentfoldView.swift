@@ -11,32 +11,42 @@ struct SaveToCurrentfoldView: View {
     let close: () -> Void
 
     var body: some View {
-        VStack(spacing: 16) {
-            symbol
-            VStack(spacing: 6) {
-                Text(headline)
-                    .font(.system(.title3, design: .serif, weight: .semibold))
-                    .multilineTextAlignment(.center)
-                if let detail {
-                    Text(detail)
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
+        ScrollView {
+            VStack(spacing: 16) {
+                symbol
+                VStack(spacing: 6) {
+                    Text(headline)
+                        .font(.system(.title3, design: .serif, weight: .semibold))
                         .multilineTextAlignment(.center)
-                        .lineLimit(3)
+                        .accessibilityAddTraits(.isHeader)
+                    if let detail {
+                        // No line cap. The three endings that carry a sentence — the server's
+                        // rate-limit message, "sign in first", a failure — are the whole point
+                        // of stopping the sheet, and at an accessibility size three lines cut
+                        // them in half. A card too small for the answer scrolls instead.
+                        Text(detail)
+                            .font(.subheadline)
+                            .foregroundStyle(BrandSecondaryInk.color)
+                            .multilineTextAlignment(.center)
+                    }
+                }
+
+                if model.isFinished, dismissTitle != nil {
+                    Button(dismissTitle ?? "Done", action: close)
+                        .buttonStyle(.primaryAction)
+                        .padding(.top, 4)
                 }
             }
-
-            if model.isFinished, dismissTitle != nil {
-                Button(dismissTitle ?? "Done", action: close)
-                    .buttonStyle(.primaryAction)
-                    .padding(.top, 4)
-            }
+            .padding(32)
+            .frame(maxWidth: .infinity)
         }
-        .padding(32)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .currentfoldCanvas()
         .accessibilityElement(children: .contain)
         .accessibilityLabel(spokenSummary)
+        // A share sheet that answers and dismisses itself gives VoiceOver nothing to find, so
+        // the answer is spoken as it lands.
+        .announcesResult(model.isFinished ? spokenSummary : nil)
     }
 
     @ViewBuilder
@@ -56,7 +66,7 @@ struct SaveToCurrentfoldView: View {
         case .limited, .signedOut, .nothingToSave, .failed:
             Image(systemName: "exclamationmark.triangle")
                 .font(.largeTitle)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(BrandSecondaryInk.color)
         }
     }
 

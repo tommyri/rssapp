@@ -191,11 +191,19 @@ final class PrimaryActionContrastTests: XCTestCase {
 }
 
 @MainActor
-private func resolved(_ color: Color, _ style: UIUserInterfaceStyle) -> RGB {
-    RGB(UIColor(color).resolvedColor(with: UITraitCollection(userInterfaceStyle: style)))
+func resolved(
+    _ color: Color,
+    _ style: UIUserInterfaceStyle,
+    contrast: UIAccessibilityContrast = .normal
+) -> RGB {
+    let traits = UITraitCollection { mutable in
+        mutable.userInterfaceStyle = style
+        mutable.accessibilityContrast = contrast
+    }
+    return RGB(UIColor(color).resolvedColor(with: traits))
 }
 
-private func assertSameColor(
+func assertSameColor(
     _ actual: RGB,
     _ expected: RGB,
     file: StaticString = #filePath,
@@ -226,7 +234,7 @@ final class UnreadCountFormatTests: XCTestCase {
     }
 }
 
-private struct RGB {
+struct RGB {
     static let black = RGB(red: 0, green: 0, blue: 0)
     static let white = RGB(red: 1, green: 1, blue: 1)
 
@@ -264,6 +272,23 @@ private struct RGB {
         var alpha: CGFloat = 0
         uiColor.getRed(&red, green: &green, blue: &blue, alpha: &alpha)
         self.init(red: Double(red), green: Double(green), blue: Double(blue))
+    }
+
+    /// The platform's label and separator colours are partly transparent, so what a reader
+    /// actually sees is the composite over whatever surface is behind them — which, in this
+    /// app, is never the surface those colours were tuned against.
+    init(_ uiColor: UIColor, over background: RGB) {
+        var red: CGFloat = 0
+        var green: CGFloat = 0
+        var blue: CGFloat = 0
+        var alpha: CGFloat = 0
+        uiColor.getRed(&red, green: &green, blue: &blue, alpha: &alpha)
+        let opacity = Double(alpha)
+        self.init(
+            red: Double(red) * opacity + background.red * (1 - opacity),
+            green: Double(green) * opacity + background.green * (1 - opacity),
+            blue: Double(blue) * opacity + background.blue * (1 - opacity)
+        )
     }
 
     @MainActor
