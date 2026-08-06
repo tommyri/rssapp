@@ -32,6 +32,17 @@ const requiredOperations = new Map([
   ["PATCH /api/v1/articles/starred-state", "updateArticleStarredState"],
   ["PATCH /api/v1/articles/read-later-state", "updateArticleReadLaterState"],
   ["POST /api/v1/articles/mark-all-read", "markAllArticlesRead"],
+  ["PATCH /api/v1/articles/reading-progress", "updateArticleReadingProgress"],
+  ["POST /api/v1/subscriptions", "createSubscription"],
+  ["GET /api/v1/saved-pages", "listSavedPages"],
+  ["POST /api/v1/saved-pages", "createSavedPage"],
+  ["PATCH /api/v1/saved-pages/read-state", "updateSavedPageReadState"],
+  [
+    "PATCH /api/v1/saved-pages/reading-progress",
+    "updateSavedPageReadingProgress",
+  ],
+  ["DELETE /api/v1/saved-pages/{id}", "removeSavedPage"],
+  ["POST /api/v1/saved-pages/{id}/retry", "retrySavedPageExtraction"],
 ]);
 
 const operationIds = new Set();
@@ -71,6 +82,25 @@ const fixtureSchemas = new Map([
   ["read-later-state-response.json", "ReadLaterStateResponse"],
   ["mark-all-read-request.json", "MarkAllReadRequest"],
   ["mark-all-read-response.json", "MarkAllReadResponse"],
+  ["article-reading-progress-request.json", "ArticleReadingProgressUpdate"],
+  ["article-reading-progress-response.json", "ArticleReadingProgressResponse"],
+  ["subscription-create-request.json", "SubscriptionCreateRequest"],
+  ["subscription-created-response.json", "SubscriptionCreateResponse"],
+  ["subscription-candidates-response.json", "SubscriptionCreateResponse"],
+  ["saved-page-page.json", "SavedPagePage"],
+  ["saved-page-create-request.json", "SavedPageCreateRequest"],
+  ["saved-page-create-response.json", "SavedPageCreateResponse"],
+  ["saved-page-response.json", "SavedPageResponse"],
+  ["saved-page-read-state-request.json", "SavedPageReadStateUpdate"],
+  ["saved-page-read-state-response.json", "SavedPageReadStateResponse"],
+  [
+    "saved-page-reading-progress-request.json",
+    "SavedPageReadingProgressUpdate",
+  ],
+  [
+    "saved-page-reading-progress-response.json",
+    "SavedPageReadingProgressResponse",
+  ],
 ]);
 
 function resolveSchema(schema) {

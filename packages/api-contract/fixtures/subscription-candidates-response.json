@@ -1,0 +1,19 @@
+{
+  "data": {
+    "status": "candidates",
+    "candidates": [
+      {
+        "url": "https://example.com/feed.xml",
+        "title": "Example Source — Posts"
+      },
+      {
+        "url": "https://example.com/comments/feed.xml",
+        "title": "Example Source — Comments"
+      },
+      {
+        "url": "https://example.com/notes.json",
+        "title": null
+      }
+    ]
+  }
+}

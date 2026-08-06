@@ -25,12 +25,28 @@ function attr(tag: string, name: string): string | null {
   return bare ? bare[1] : null;
 }
 
+export interface FeedAlternate {
+  url: string;
+  /**
+   * The `title` attribute of the `<link>`, which is what a page uses to tell
+   * "Posts" apart from "Comments". Null when the page did not label the feed.
+   */
+  title: string | null;
+}
+
 /**
- * Find feed URLs declared in an HTML page's <link rel="alternate"> tags,
- * resolved to absolute URLs against the page URL.
+ * Feeds declared in an HTML page's <link rel="alternate"> tags, resolved to
+ * absolute URLs against the page URL and carrying whatever label the page gave
+ * them. Duplicate URLs collapse to their first (labelled) occurrence.
+ *
+ * The label matters because it is the only feed name available without fetching
+ * every candidate: a picker built from this list costs no extra requests.
  */
-export function discoverFeedLinks(html: string, baseUrl: string): string[] {
-  const links: string[] = [];
+export function discoverFeedAlternates(
+  html: string,
+  baseUrl: string,
+): FeedAlternate[] {
+  const found = new Map<string, FeedAlternate>();
   for (const match of html.matchAll(/<link\b[^>]*>/gi)) {
     const tag = match[0];
     const rel = attr(tag, "rel")?.toLowerCase();
@@ -40,12 +56,23 @@ export function discoverFeedLinks(html: string, baseUrl: string): string[] {
     const href = attr(tag, "href");
     if (!href) continue;
     try {
-      links.push(new URL(href, baseUrl).toString());
+      const url = new URL(href, baseUrl).toString();
+      if (found.has(url)) continue;
+      const title = attr(tag, "title")?.trim();
+      found.set(url, { url, title: title ? title : null });
     } catch {
       // Skip malformed hrefs.
     }
   }
-  return links;
+  return [...found.values()];
+}
+
+/**
+ * Find feed URLs declared in an HTML page's <link rel="alternate"> tags,
+ * resolved to absolute URLs against the page URL.
+ */
+export function discoverFeedLinks(html: string, baseUrl: string): string[] {
+  return discoverFeedAlternates(html, baseUrl).map((link) => link.url);
 }
 
 export function looksLikeHtml(

@@ -1,0 +1,70 @@
+{
+  "data": [
+    {
+      "id": "31",
+      "url": "https://example.org/essays/the-quiet-web",
+      "title": "The quiet web",
+      "siteName": "Example Essays",
+      "author": "Example Author",
+      "savedAt": "2026-07-24T09:15:00.000Z",
+      "extraction": {
+        "status": "ready",
+        "error": null
+      },
+      "content": {
+        "html": "<p>A saved page reads exactly like a feed article: the same sanitized markup, the same column, the same triage verbs. Only the meta line differs, because a saved page has a save time rather than a publication date.</p>"
+      },
+      "preview": "A saved page reads exactly like a feed article: the same sanitized markup, the same column, the same triage verbs. Only the meta line differs, because a saved page has a save time rather than a publication date.",
+      "readingTime": 1,
+      "state": {
+        "read": false,
+        "readingProgress": 0.42
+      }
+    },
+    {
+      "id": "30",
+      "url": "https://example.net/long-read",
+      "title": "https://example.net/long-read",
+      "siteName": "example.net",
+      "author": null,
+      "savedAt": "2026-07-24T08:02:00.000Z",
+      "extraction": {
+        "status": "pending",
+        "error": null
+      },
+      "content": {
+        "html": null
+      },
+      "preview": null,
+      "readingTime": null,
+      "state": {
+        "read": false,
+        "readingProgress": null
+      }
+    },
+    {
+      "id": "29",
+      "url": "https://example.com/members-only",
+      "title": "https://example.com/members-only",
+      "siteName": "example.com",
+      "author": null,
+      "savedAt": "2026-07-23T19:40:00.000Z",
+      "extraction": {
+        "status": "failed",
+        "error": "Could not fetch page: HTTP 403 Forbidden"
+      },
+      "content": {
+        "html": null
+      },
+      "preview": null,
+      "readingTime": null,
+      "state": {
+        "read": true,
+        "readingProgress": null
+      }
+    }
+  ],
+  "pagination": {
+    "nextCursor": "eyJ2ZXJzaW9uIjoxLCJzYXZlZEF0IjoiMjAyNi0wNy0yM1QxOTo0MDowMC4wMDBaIiwic2F2ZWRQYWdlSWQiOiIyOSJ9"
+  }
+}

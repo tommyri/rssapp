@@ -369,6 +369,61 @@
             "$ref": "#/components/responses/Unauthorized"
           }
         }
+      },
+      "post": {
+        "operationId": "createSubscription",
+        "summary": "Follow a source from any site or feed URL",
+        "description": "Resolves a pasted URL with the same autodiscovery the web uses: a YouTube channel or playlist, a feed address, or a page advertising one in <link rel=\"alternate\">, falling back to probing the common feed paths. Two outcomes are successful and are told apart by data.status rather than by the status code. `subscribed` (201) carries the new subscription in the shape listSubscriptions returns. `candidates` (200) means the page advertised more than one feed and nothing was subscribed: present the list and POST the chosen candidate url back to this operation.",
+        "tags": ["Reader"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SubscriptionCreateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Several feeds were advertised; nothing was subscribed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubscriptionCreateResponse"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "The account now follows this source",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubscriptionCreateResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/InvalidRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "409": {
+            "$ref": "#/components/responses/AlreadySubscribed"
+          },
+          "422": {
+            "$ref": "#/components/responses/FeedNotFound"
+          }
+        }
       }
     },
     "/api/v1/articles": {
@@ -632,6 +687,321 @@
           }
         }
       }
+    },
+    "/api/v1/articles/reading-progress": {
+      "patch": {
+        "operationId": "updateArticleReadingProgress",
+        "summary": "Store where reading stopped in an article batch",
+        "description": "Persists the resume position behind state.readingProgress. Batched like the other article mutations so a client can flush buffered positions in one validated request; a repeated articleId is rejected rather than resolved, since two positions for one article contradict each other. The response reports what was stored, which is not always what was sent: a fraction near either end of an article is stored as null, because resuming at the very top or the very end is worse than not resuming.",
+        "tags": ["Reader"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ArticleReadingProgressUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The positions that were stored",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ArticleReadingProgressResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/InvalidRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/ArticleNotFound"
+          }
+        }
+      }
+    },
+    "/api/v1/saved-pages": {
+      "get": {
+        "operationId": "listSavedPages",
+        "summary": "List saved pages newest-saved-first",
+        "description": "One keyset page of the account's saved web pages, ordered by save time. This is the second half of the unified Read later queue: a client merges it with GET /articles?filter=readLater by comparing savedAt against an article's publishedAt (falling back to createdAt), which is the same merge the web performs in memory. Every row carries what it needs to be drawn and read inline — no follow-up request per row.",
+        "tags": ["Reader"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 50
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "description": "Opaque continuation returned by the previous response. Article cursors and saved-page cursors are not interchangeable.",
+            "schema": {
+              "type": "string",
+              "maxLength": 512
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A keyset-paginated saved-page page",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SavedPagePage"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/InvalidRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      },
+      "post": {
+        "operationId": "createSavedPage",
+        "summary": "Save any URL to the Read later queue",
+        "description": "Stores the link and starts fetching a readable copy in the background, so the response returns immediately — a share sheet must not wait on a publisher. The page therefore comes back with extraction.status `pending` in the ordinary case; poll listSavedPages, or retry a `failed` one. Saving is idempotent per account and canonicalized URL: saving something already in the queue returns the existing page with alreadySaved true and 200 instead of 201, and does not re-fetch it. Saves share one per-account budget with the web's bookmark and paste field.",
+        "tags": ["Reader"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SavedPageCreateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "This URL was already saved; the existing page is returned unchanged",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SavedPageCreateResponse"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "The page was saved and its readable copy is being fetched",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SavedPageCreateResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/InvalidRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "429": {
+            "$ref": "#/components/responses/SaveLimitReached"
+          }
+        }
+      }
+    },
+    "/api/v1/saved-pages/read-state": {
+      "patch": {
+        "operationId": "updateSavedPageReadState",
+        "summary": "Set read state for a saved-page batch",
+        "description": "The saved-page half of the queue's read verb; feed articles use PATCH /articles/read-state. This operation is idempotent and validates the whole batch before writing.",
+        "tags": ["Reader"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SavedPageReadStateUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The resulting state and affected saved-page IDs",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SavedPageReadStateResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/InvalidRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/SavedPageNotFound"
+          }
+        }
+      }
+    },
+    "/api/v1/saved-pages/reading-progress": {
+      "patch": {
+        "operationId": "updateSavedPageReadingProgress",
+        "summary": "Store where reading stopped in a saved-page batch",
+        "description": "The saved-page counterpart of PATCH /articles/reading-progress, with the same rules: distinct ids, whole-batch validation, and a response reporting the stored position rather than the submitted one.",
+        "tags": ["Reader"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SavedPageReadingProgressUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The positions that were stored",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SavedPageReadingProgressResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/InvalidRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/SavedPageNotFound"
+          }
+        }
+      }
+    },
+    "/api/v1/saved-pages/{id}": {
+      "delete": {
+        "operationId": "removeSavedPage",
+        "summary": "Remove a saved page from Read later",
+        "description": "Remove is the read-later-only verb: a saved page is in the queue by existing, so there is no flag to clear the way a flagged feed article has one. Deleting it also deletes its readable copy and any annotations on it.",
+        "tags": ["Reader"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/OpaqueId"
+            }
+          }
+        ],
+        "responses": {
+          "204": { "description": "The saved page is gone" },
+          "400": {
+            "$ref": "#/components/responses/InvalidRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/SavedPageNotFound"
+          }
+        }
+      }
+    },
+    "/api/v1/saved-pages/{id}/retry": {
+      "post": {
+        "operationId": "retrySavedPageExtraction",
+        "summary": "Fetch a failed saved page's readable copy again",
+        "description": "A deliberate retry, which is not the same as the automatic ones: it clears the attempt budget and any backoff first, so a page that gave up hours ago genuinely tries again. Unlike saving, this waits for the outcome and returns the page with its new extraction status; the status can still be `pending` when the background sweep claimed the page first.",
+        "tags": ["Reader"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/OpaqueId"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The saved page after the retry",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SavedPageResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/InvalidRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/SavedPageNotFound"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -717,6 +1087,51 @@
       },
       "ScopeNotFound": {
         "description": "The named subscription or folder is not available to this account. The error code is `scope_not_found`.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            }
+          }
+        }
+      },
+      "SavedPageNotFound": {
+        "description": "At least one saved page is not available to this account. The error code is `saved_page_not_found`.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            }
+          }
+        }
+      },
+      "SaveLimitReached": {
+        "description": "The account's save budget for the current window is spent. The error code is `save_limit_reached`; Retry-After gives the seconds to wait. The budget is shared with the web's bookmark and paste field, since all three make the server fetch a URL the reader chose.",
+        "headers": {
+          "Retry-After": {
+            "schema": { "type": "integer", "minimum": 0 }
+          }
+        },
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            }
+          }
+        }
+      },
+      "AlreadySubscribed": {
+        "description": "The resolved feed is one this account already follows. The error code is `already_subscribed`.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            }
+          }
+        }
+      },
+      "FeedNotFound": {
+        "description": "No feed could be resolved from that URL. The error code is `feed_not_found`; the message says what was tried or why fetching failed.",
         "content": {
           "application/json": {
             "schema": {
@@ -1385,6 +1800,325 @@
                 "minimum": 0,
                 "description": "How many articles changed from unread to read."
               }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      "ReaderUrl": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 2048,
+        "description": "A URL a reader typed, pasted, or shared. Stored canonicalized: the scheme is added when missing, the host is lowercased, and tracking parameters and the fragment are dropped, so the same link shared twice is one entry."
+      },
+      "SubscriptionCreateRequest": {
+        "type": "object",
+        "required": ["url"],
+        "properties": {
+          "url": { "$ref": "#/components/schemas/ReaderUrl" }
+        },
+        "additionalProperties": false,
+        "examples": [
+          { "url": "https://example.com" },
+          { "url": "https://example.com/feed.xml" },
+          { "url": "https://www.youtube.com/@someone" }
+        ]
+      },
+      "FeedCandidate": {
+        "type": "object",
+        "required": ["url", "title"],
+        "properties": {
+          "url": { "type": "string", "format": "uri" },
+          "title": {
+            "type": ["string", "null"],
+            "description": "The label the page gave this feed, which is how \"Posts\" is told from \"Comments\". Null when the page did not label it; show the URL instead."
+          }
+        },
+        "additionalProperties": false
+      },
+      "SubscriptionCreateResponse": {
+        "type": "object",
+        "required": ["data"],
+        "properties": {
+          "data": {
+            "oneOf": [
+              {
+                "type": "object",
+                "required": ["status", "subscription"],
+                "properties": {
+                  "status": { "const": "subscribed" },
+                  "subscription": {
+                    "$ref": "#/components/schemas/Subscription"
+                  }
+                },
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "required": ["status", "candidates"],
+                "properties": {
+                  "status": { "const": "candidates" },
+                  "candidates": {
+                    "type": "array",
+                    "minItems": 2,
+                    "items": { "$ref": "#/components/schemas/FeedCandidate" }
+                  }
+                },
+                "additionalProperties": false
+              }
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "ReadingProgress": {
+        "type": ["number", "null"],
+        "minimum": 0,
+        "maximum": 1,
+        "description": "How far through the readable body the reader got, or null for no resumable position."
+      },
+      "ArticleReadingProgressEntry": {
+        "type": "object",
+        "required": ["articleId", "readingProgress"],
+        "properties": {
+          "articleId": { "$ref": "#/components/schemas/OpaqueId" },
+          "readingProgress": { "$ref": "#/components/schemas/ReadingProgress" }
+        },
+        "additionalProperties": false
+      },
+      "ArticleReadingProgressUpdate": {
+        "type": "object",
+        "required": ["positions"],
+        "properties": {
+          "positions": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 100,
+            "description": "One entry per article. The articleIds must be distinct: two positions for one article contradict each other and the request is rejected rather than resolved.",
+            "items": {
+              "$ref": "#/components/schemas/ArticleReadingProgressEntry"
+            }
+          }
+        },
+        "additionalProperties": false
+      },
+      "ArticleReadingProgressResponse": {
+        "type": "object",
+        "required": ["data"],
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/ArticleReadingProgressUpdate"
+          }
+        },
+        "additionalProperties": false
+      },
+      "SavedPageIdBatch": {
+        "type": "array",
+        "minItems": 1,
+        "maxItems": 100,
+        "items": {
+          "$ref": "#/components/schemas/OpaqueId"
+        }
+      },
+      "SavedPageReadStateUpdate": {
+        "type": "object",
+        "required": ["savedPageIds", "read"],
+        "properties": {
+          "savedPageIds": { "$ref": "#/components/schemas/SavedPageIdBatch" },
+          "read": { "type": "boolean" }
+        },
+        "additionalProperties": false
+      },
+      "SavedPageReadStateResponse": {
+        "type": "object",
+        "required": ["data"],
+        "properties": {
+          "data": { "$ref": "#/components/schemas/SavedPageReadStateUpdate" }
+        },
+        "additionalProperties": false
+      },
+      "SavedPageReadingProgressEntry": {
+        "type": "object",
+        "required": ["savedPageId", "readingProgress"],
+        "properties": {
+          "savedPageId": { "$ref": "#/components/schemas/OpaqueId" },
+          "readingProgress": { "$ref": "#/components/schemas/ReadingProgress" }
+        },
+        "additionalProperties": false
+      },
+      "SavedPageReadingProgressUpdate": {
+        "type": "object",
+        "required": ["positions"],
+        "properties": {
+          "positions": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 100,
+            "description": "One entry per saved page; the savedPageIds must be distinct.",
+            "items": {
+              "$ref": "#/components/schemas/SavedPageReadingProgressEntry"
+            }
+          }
+        },
+        "additionalProperties": false
+      },
+      "SavedPageReadingProgressResponse": {
+        "type": "object",
+        "required": ["data"],
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/SavedPageReadingProgressUpdate"
+          }
+        },
+        "additionalProperties": false
+      },
+      "SavedPageExtractionStatus": {
+        "type": "string",
+        "enum": ["pending", "ready", "failed"],
+        "description": "`pending` means a readable copy is still being fetched — including while a transient failure waits out its backoff, which is deliberately not shown as a failure. `ready` means content.html is the copy. `failed` is terminal until retrySavedPageExtraction is called."
+      },
+      "SavedPage": {
+        "type": "object",
+        "required": [
+          "id",
+          "url",
+          "title",
+          "siteName",
+          "author",
+          "savedAt",
+          "extraction",
+          "content",
+          "preview",
+          "readingTime",
+          "state"
+        ],
+        "properties": {
+          "id": { "$ref": "#/components/schemas/OpaqueId" },
+          "url": {
+            "type": "string",
+            "format": "uri",
+            "description": "The canonicalized address; also the Open original target."
+          },
+          "title": {
+            "type": "string",
+            "description": "The extracted title, falling back to the URL. Never empty, and available before extraction finishes."
+          },
+          "siteName": {
+            "type": "string",
+            "description": "What a row shows where a feed article shows its feed: the publisher name from extraction, else the URL's host without a www prefix."
+          },
+          "author": { "type": ["string", "null"] },
+          "savedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When the link was saved. This is the sort key of this stream and the value to merge against an article's publishedAt (or createdAt) in the unified Read later queue."
+          },
+          "extraction": {
+            "type": "object",
+            "required": ["status", "error"],
+            "properties": {
+              "status": {
+                "$ref": "#/components/schemas/SavedPageExtractionStatus"
+              },
+              "error": {
+                "type": ["string", "null"],
+                "description": "Why the copy could not be fetched. Non-null only when status is `failed`; while pending, a stored transient error is withheld because it is about to be retried."
+              }
+            },
+            "additionalProperties": false
+          },
+          "content": {
+            "type": "object",
+            "required": ["html"],
+            "properties": {
+              "html": {
+                "type": ["string", "null"],
+                "description": "The sanitized readable copy, safe to render directly. Null until status is `ready`."
+              }
+            },
+            "additionalProperties": false
+          },
+          "preview": {
+            "type": ["string", "null"],
+            "maxLength": 221,
+            "description": "Row snippet, computed by the same function as an article's. Null while there is no copy to preview."
+          },
+          "readingTime": {
+            "type": ["integer", "null"],
+            "minimum": 1,
+            "description": "Whole minutes at 225 words per minute, computed as for articles. Null while there is no copy to measure."
+          },
+          "state": {
+            "type": "object",
+            "required": ["read", "readingProgress"],
+            "description": "A saved page is in Read later by existing, so there is no readLater flag to carry, and it cannot be starred; Remove is its only exit.",
+            "properties": {
+              "read": { "type": "boolean" },
+              "readingProgress": {
+                "$ref": "#/components/schemas/ReadingProgress"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      "SavedPagePage": {
+        "type": "object",
+        "required": ["data", "pagination"],
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/SavedPage" }
+          },
+          "pagination": {
+            "type": "object",
+            "required": ["nextCursor"],
+            "properties": {
+              "nextCursor": { "type": ["string", "null"] }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      "SavedPageCreateRequest": {
+        "type": "object",
+        "required": ["url"],
+        "properties": {
+          "url": { "$ref": "#/components/schemas/ReaderUrl" }
+        },
+        "additionalProperties": false
+      },
+      "SavedPageCreateResponse": {
+        "type": "object",
+        "required": ["data"],
+        "properties": {
+          "data": {
+            "type": "object",
+            "required": ["alreadySaved", "savedPage"],
+            "properties": {
+              "alreadySaved": {
+                "type": "boolean",
+                "description": "True when this URL was already in the queue. The existing page is returned unchanged and nothing is re-fetched."
+              },
+              "savedPage": { "$ref": "#/components/schemas/SavedPage" }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      "SavedPageResponse": {
+        "type": "object",
+        "required": ["data"],
+        "properties": {
+          "data": {
+            "type": "object",
+            "required": ["savedPage"],
+            "properties": {
+              "savedPage": { "$ref": "#/components/schemas/SavedPage" }
             },
             "additionalProperties": false
           }

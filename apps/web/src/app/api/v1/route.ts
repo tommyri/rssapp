@@ -21,6 +21,12 @@ export async function GET() {
         "articleStarredState",
         "articleReadLaterState",
         "articleMarkAllRead",
+        "articleReadingProgress",
+        "savedPages",
+        "savedPageRetry",
+        "savedPageReadState",
+        "savedPageReadingProgress",
+        "subscriptionCreate",
       ],
       links: {
         openApi: "/api/v1/openapi.json",

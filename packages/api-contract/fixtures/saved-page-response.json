@@ -1,0 +1,25 @@
+{
+  "data": {
+    "savedPage": {
+      "id": "29",
+      "url": "https://example.com/members-only",
+      "title": "Members only",
+      "siteName": "Example",
+      "author": "Example Author",
+      "savedAt": "2026-07-23T19:40:00.000Z",
+      "extraction": {
+        "status": "ready",
+        "error": null
+      },
+      "content": {
+        "html": "<p>The retry succeeded on the second attempt, so the reader gets the copy the first fetch could not obtain.</p>"
+      },
+      "preview": "The retry succeeded on the second attempt, so the reader gets the copy the first fetch could not obtain.",
+      "readingTime": null,
+      "state": {
+        "read": true,
+        "readingProgress": null
+      }
+    }
+  }
+}

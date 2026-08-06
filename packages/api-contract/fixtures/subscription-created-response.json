@@ -1,0 +1,17 @@
+{
+  "data": {
+    "status": "subscribed",
+    "subscription": {
+      "id": "7",
+      "title": "Example Source",
+      "feed": {
+        "id": "3",
+        "url": "https://example.com/feed.xml",
+        "siteUrl": "https://example.com"
+      },
+      "folder": null,
+      "unreadCount": 25,
+      "paused": false
+    }
+  }
+}

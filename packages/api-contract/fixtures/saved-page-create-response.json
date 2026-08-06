@@ -1,0 +1,26 @@
+{
+  "data": {
+    "alreadySaved": false,
+    "savedPage": {
+      "id": "31",
+      "url": "https://example.org/essays/the-quiet-web",
+      "title": "https://example.org/essays/the-quiet-web",
+      "siteName": "example.org",
+      "author": null,
+      "savedAt": "2026-07-24T09:15:00.000Z",
+      "extraction": {
+        "status": "pending",
+        "error": null
+      },
+      "content": {
+        "html": null
+      },
+      "preview": null,
+      "readingTime": null,
+      "state": {
+        "read": false,
+        "readingProgress": null
+      }
+    }
+  }
+}

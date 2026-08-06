@@ -1,0 +1,8 @@
+{
+  "data": {
+    "positions": [
+      { "articleId": "42", "readingProgress": 0.42 },
+      { "articleId": "43", "readingProgress": null }
+    ]
+  }
+}

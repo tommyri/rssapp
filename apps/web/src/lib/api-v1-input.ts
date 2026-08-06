@@ -9,6 +9,11 @@ export interface ApiArticleCursor {
   articleId: number;
 }
 
+export interface ApiSavedPageCursor {
+  savedAt: Date;
+  savedPageId: number;
+}
+
 /**
  * Which slice of the stream to return. `all` is the default and the behaviour
  * this endpoint has always had; the rest name a single reader view so clients
@@ -74,6 +79,56 @@ const readLaterStateBody = z
   })
   .strict();
 
+const savedPageIdBatch = z.array(opaqueId).min(1).max(100);
+
+/**
+ * A resume position, or null for "there is nothing worth resuming". The server
+ * decides which of the two a fraction actually is (`storedReadingProgress`), so
+ * this only has to reject values that are not fractions at all.
+ */
+const readingProgressValue = z.number().finite().min(0).max(1).nullable();
+
+const articleProgressBatch = z
+  .array(
+    z
+      .object({ articleId: opaqueId, readingProgress: readingProgressValue })
+      .strict(),
+  )
+  .min(1)
+  .max(100);
+
+const savedPageProgressBatch = z
+  .array(
+    z
+      .object({ savedPageId: opaqueId, readingProgress: readingProgressValue })
+      .strict(),
+  )
+  .min(1)
+  .max(100);
+
+const readingProgressBody = z
+  .object({ positions: articleProgressBatch })
+  .strict();
+
+const savedPageReadingProgressBody = z
+  .object({ positions: savedPageProgressBatch })
+  .strict();
+
+const savedPageReadStateBody = z
+  .object({ savedPageIds: savedPageIdBatch, read: z.boolean() })
+  .strict();
+
+/**
+ * A URL a reader typed or shared. Length-capped because it is stored and later
+ * fetched; the scheme, host, and address policy are enforced further in, by
+ * `canonicalizeUrl` and the guarded fetch, rather than duplicated here.
+ */
+const readerSuppliedUrl = z.string().trim().min(1).max(2048);
+
+const savedPageCreateBody = z.object({ url: readerSuppliedUrl }).strict();
+
+const subscriptionCreateBody = z.object({ url: readerSuppliedUrl }).strict();
+
 /**
  * A bulk sweep has to name its scope: an absent scope would make an empty body
  * mean "mark this whole account read", which is not a mistake a client should
@@ -131,6 +186,44 @@ export function decodeApiArticleCursor(value: string): ApiArticleCursor | null {
     const articleId = positiveInteger(decoded.articleId);
     if (Number.isNaN(sortAt.getTime()) || articleId === null) return null;
     return { sortAt, articleId };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Saved pages page by save time, not publication time, so their cursor carries
+ * different keys from an article cursor. Deliberately not interchangeable: a
+ * cursor from the wrong stream decodes to null and is rejected as invalid
+ * rather than quietly restarting the page.
+ */
+export function encodeApiSavedPageCursor(cursor: ApiSavedPageCursor): string {
+  return Buffer.from(
+    JSON.stringify({
+      version: 1,
+      savedAt: cursor.savedAt.toISOString(),
+      savedPageId: String(cursor.savedPageId),
+    }),
+  ).toString("base64url");
+}
+
+export function decodeApiSavedPageCursor(
+  value: string,
+): ApiSavedPageCursor | null {
+  if (!value || value.length > MAX_CURSOR_LENGTH) return null;
+  try {
+    const decoded = JSON.parse(Buffer.from(value, "base64url").toString());
+    if (
+      decoded?.version !== 1 ||
+      typeof decoded.savedAt !== "string" ||
+      typeof decoded.savedPageId !== "string"
+    ) {
+      return null;
+    }
+    const savedAt = new Date(decoded.savedAt);
+    const savedPageId = positiveInteger(decoded.savedPageId);
+    if (Number.isNaN(savedAt.getTime()) || savedPageId === null) return null;
+    return { savedAt, savedPageId };
   } catch {
     return null;
   }
@@ -227,6 +320,96 @@ export function parseApiReadLaterStateBody(
     articleIds: [...new Set(parsed.data.articleIds)],
     readLater: parsed.data.readLater,
   };
+}
+
+export interface ApiSavedPageListQuery {
+  limit: number;
+  cursor: ApiSavedPageCursor | null;
+}
+
+export function parseApiSavedPageListQuery(
+  searchParams: URLSearchParams,
+): ApiSavedPageListQuery | null {
+  const rawLimit = searchParams.get("limit");
+  const limit = rawLimit
+    ? positiveInteger(rawLimit, MAX_PAGE_LIMIT)
+    : DEFAULT_PAGE_LIMIT;
+  if (limit === null) return null;
+
+  const rawCursor = searchParams.get("cursor");
+  const cursor = rawCursor ? decodeApiSavedPageCursor(rawCursor) : null;
+  if (rawCursor && cursor === null) return null;
+
+  return { limit, cursor };
+}
+
+/** An opaque id taken from a path segment, e.g. `/saved-pages/{id}`. */
+export function parseApiOpaqueId(value: string): number | null {
+  return positiveInteger(value);
+}
+
+export function parseApiSavedPageCreateBody(
+  value: unknown,
+): { url: string } | null {
+  const parsed = savedPageCreateBody.safeParse(value);
+  return parsed.success ? { url: parsed.data.url } : null;
+}
+
+export function parseApiSubscriptionCreateBody(
+  value: unknown,
+): { url: string } | null {
+  const parsed = subscriptionCreateBody.safeParse(value);
+  return parsed.success ? { url: parsed.data.url } : null;
+}
+
+export function parseApiSavedPageReadStateBody(
+  value: unknown,
+): { savedPageIds: number[]; read: boolean } | null {
+  const parsed = savedPageReadStateBody.safeParse(value);
+  if (!parsed.success) return null;
+  return {
+    savedPageIds: [...new Set(parsed.data.savedPageIds)],
+    read: parsed.data.read,
+  };
+}
+
+export interface ApiArticleProgress {
+  articleId: number;
+  readingProgress: number | null;
+}
+
+export interface ApiSavedPageProgress {
+  savedPageId: number;
+  readingProgress: number | null;
+}
+
+/**
+ * Unlike the boolean batches, a progress batch carries a different value per
+ * id, so a repeated id is a contradiction rather than a duplicate to collapse.
+ * Rejecting it is the only answer that cannot silently store the wrong one.
+ */
+function hasDuplicateIds(ids: number[]): boolean {
+  return new Set(ids).size !== ids.length;
+}
+
+export function parseApiReadingProgressBody(
+  value: unknown,
+): { positions: ApiArticleProgress[] } | null {
+  const parsed = readingProgressBody.safeParse(value);
+  if (!parsed.success) return null;
+  const positions = parsed.data.positions;
+  if (hasDuplicateIds(positions.map((entry) => entry.articleId))) return null;
+  return { positions };
+}
+
+export function parseApiSavedPageReadingProgressBody(
+  value: unknown,
+): { positions: ApiSavedPageProgress[] } | null {
+  const parsed = savedPageReadingProgressBody.safeParse(value);
+  if (!parsed.success) return null;
+  const positions = parsed.data.positions;
+  if (hasDuplicateIds(positions.map((entry) => entry.savedPageId))) return null;
+  return { positions };
 }
 
 export function parseApiMarkAllReadBody(

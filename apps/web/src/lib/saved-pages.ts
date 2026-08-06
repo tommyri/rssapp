@@ -368,14 +368,156 @@ export async function setSavedPageReadingProgress(
     .where(and(eq(savedPages.id, id), eq(savedPages.userId, userId)));
 }
 
-/** Delete one saved page (user-scoped). */
+/**
+ * Delete one saved page (user-scoped). True when a row was actually this
+ * account's and went away, so a caller that has to answer "did that exist?" —
+ * an API DELETE, say — does not need a second lookup to find out.
+ */
 export async function removeSavedPage(
   userId: number,
   id: number,
-): Promise<void> {
-  await db
+): Promise<boolean> {
+  const deleted = await db
     .delete(savedPages)
-    .where(and(eq(savedPages.id, id), eq(savedPages.userId, userId)));
+    .where(and(eq(savedPages.id, id), eq(savedPages.userId, userId)))
+    .returning({ id: savedPages.id });
+  return deleted.length > 0;
+}
+
+export interface SavedPageCursor {
+  savedAt: Date;
+  savedPageId: number;
+}
+
+export interface SavedPagePage {
+  pages: SavedPage[];
+  /** The last row of a full page, so the caller can mint a continuation. */
+  nextCursor: SavedPageCursor | null;
+}
+
+/**
+ * One keyset page of a user's saved pages, newest-saved-first.
+ *
+ * The web loads the whole list and merges it with flagged articles in memory
+ * (`listReadLater`), which a phone cannot do. `(saved_at, id)` is the same order
+ * the web sorts by and is covered by `saved_pages_user_saved_idx`, so a cursor
+ * over it stays a range scan rather than an offset walk.
+ */
+export async function listSavedPagePage(
+  userId: number,
+  limit: number,
+  cursor: SavedPageCursor | null,
+): Promise<SavedPagePage> {
+  const conditions = [eq(savedPages.userId, userId)];
+  if (cursor) {
+    conditions.push(
+      sql`(${savedPages.savedAt}, ${savedPages.id}) < (${cursor.savedAt}, ${cursor.savedPageId})`,
+    );
+  }
+
+  const rows = await db
+    .select(columns)
+    .from(savedPages)
+    .where(and(...conditions))
+    .orderBy(desc(savedPages.savedAt), desc(savedPages.id))
+    .limit(limit + 1);
+
+  const visible = rows.slice(0, limit);
+  const last = visible.at(-1);
+  return {
+    pages: visible,
+    nextCursor:
+      rows.length > limit && last
+        ? { savedAt: last.savedAt, savedPageId: last.id }
+        : null,
+  };
+}
+
+type SavedPageTransaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
+
+/**
+ * True only when every id is one of this account's saved pages. Run inside the
+ * writing transaction, the same way article batches are validated, so a batch
+ * naming someone else's page cannot half-apply.
+ */
+async function ownsEverySavedPage(
+  tx: SavedPageTransaction,
+  userId: number,
+  distinctIds: number[],
+): Promise<boolean> {
+  const owned = await tx
+    .select({ id: savedPages.id })
+    .from(savedPages)
+    .where(
+      and(eq(savedPages.userId, userId), inArray(savedPages.id, distinctIds)),
+    );
+  return owned.length === distinctIds.length;
+}
+
+/**
+ * Batched read state for saved pages, validated as one owned batch. Null means
+ * at least one id was not this account's and nothing was written.
+ */
+export async function setSavedPagesRead(
+  userId: number,
+  ids: number[],
+  read: boolean,
+): Promise<number[] | null> {
+  const distinctIds = [...new Set(ids)];
+  return db.transaction(async (tx) => {
+    if (!(await ownsEverySavedPage(tx, userId, distinctIds))) return null;
+    await tx
+      .update(savedPages)
+      .set({ read, readAt: read ? new Date() : null })
+      // The account is named again even though the check above already proved
+      // ownership: the write is then safe on its own terms, not only because a
+      // preceding query in the same transaction happened to be right.
+      .where(
+        and(eq(savedPages.userId, userId), inArray(savedPages.id, distinctIds)),
+      );
+    return distinctIds;
+  });
+}
+
+export interface SavedPageProgress {
+  savedPageId: number;
+  readingProgress: number | null;
+}
+
+/**
+ * Batched resume positions for saved pages, validated as one owned batch.
+ * Positions are already normalized by the caller; this only stores them, and
+ * the ids must already be distinct — the ownership count below compares against
+ * `positions.length`, so a repeated id would fail the batch rather than pass it.
+ *
+ * A statement per position, because each carries a different value. Bounded at
+ * a hundred and, in practice, one: a reader finishes one thing at a time and a
+ * client only ever batches what it buffered while offline.
+ */
+export async function setSavedPagesReadingProgress(
+  userId: number,
+  positions: SavedPageProgress[],
+): Promise<SavedPageProgress[] | null> {
+  const ids = positions.map((position) => position.savedPageId);
+  return db.transaction(async (tx) => {
+    if (!(await ownsEverySavedPage(tx, userId, ids))) return null;
+    const now = new Date();
+    for (const position of positions) {
+      await tx
+        .update(savedPages)
+        .set({
+          readingProgress: position.readingProgress,
+          readingProgressUpdatedAt: now,
+        })
+        .where(
+          and(
+            eq(savedPages.userId, userId),
+            eq(savedPages.id, position.savedPageId),
+          ),
+        );
+    }
+    return positions;
+  });
 }
 
 export type RetryResult =

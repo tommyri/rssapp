@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { discoverFeedLinks, youtubeFeedUrl } from "./discover";
+import {
+  discoverFeedAlternates,
+  discoverFeedLinks,
+  youtubeFeedUrl,
+} from "./discover";
 
 describe("youtubeFeedUrl", () => {
   it("resolves /channel/ URLs without needing HTML", () => {
@@ -65,5 +69,29 @@ describe("discoverFeedLinks", () => {
     const html =
       '<link rel="alternate" hreflang="en" href="/en"><link rel="stylesheet" href="/x.css">';
     expect(discoverFeedLinks(html, "https://example.com")).toEqual([]);
+  });
+
+  it("collapses a feed a page advertises twice", () => {
+    const html =
+      '<link rel="alternate" type="application/rss+xml" href="/feed.xml">' +
+      '<link rel="alternate" type="application/rss+xml" href="/feed.xml">';
+    expect(discoverFeedLinks(html, "https://example.com")).toEqual([
+      "https://example.com/feed.xml",
+    ]);
+  });
+});
+
+describe("discoverFeedAlternates", () => {
+  it("keeps the label a page gave each feed, so a picker needs no fetches", () => {
+    const html =
+      '<link rel="alternate" type="application/rss+xml" title="Posts" href="/feed.xml">' +
+      '<link rel="alternate" type="application/rss+xml" title=" Comments " href="/comments/feed.xml">' +
+      '<link rel="alternate" type="application/feed+json" href="/notes.json">';
+
+    expect(discoverFeedAlternates(html, "https://example.com/blog/")).toEqual([
+      { url: "https://example.com/feed.xml", title: "Posts" },
+      { url: "https://example.com/comments/feed.xml", title: "Comments" },
+      { url: "https://example.com/notes.json", title: null },
+    ]);
   });
 });

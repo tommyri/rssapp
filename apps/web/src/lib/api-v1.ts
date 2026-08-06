@@ -5,11 +5,13 @@ import { apiArticleSummary } from "@/lib/api-v1-article-summary";
 import {
   type ApiArticleCursor,
   type ApiArticleFilter,
+  type ApiArticleProgress,
   type ApiMarkAllReadRequest,
   encodeApiArticleCursor,
 } from "@/lib/api-v1-input";
 import { normalizeStoredArticleHtml } from "@/lib/feeds";
 import { markAllRead, type ReaderView } from "@/lib/reader";
+import { storedReadingProgress } from "@/lib/reading-progress";
 
 export interface ApiSubscription {
   id: string;
@@ -69,12 +71,15 @@ export interface ApiArticleQuery {
   folderId: number | null;
 }
 
-export async function listApiSubscriptions(
+async function apiSubscriptionRows(
   userId: number,
+  feedId: number | null,
 ): Promise<ApiSubscription[]> {
   const title = sql<
     string | null
   >`coalesce(${subscriptions.customTitle}, ${feeds.title})`;
+  const scope = [eq(subscriptions.userId, userId)];
+  if (feedId !== null) scope.push(eq(subscriptions.feedId, feedId));
   const rows = await db
     .select({
       id: subscriptions.id,
@@ -95,7 +100,7 @@ export async function listApiSubscriptions(
       itemStates,
       and(eq(itemStates.itemId, items.id), eq(itemStates.userId, userId)),
     )
-    .where(eq(subscriptions.userId, userId))
+    .where(and(...scope))
     .groupBy(subscriptions.id, feeds.id, folders.id)
     .orderBy(sql`${folders.name} asc nulls last`, asc(title));
 
@@ -114,6 +119,25 @@ export async function listApiSubscriptions(
     unreadCount: row.unreadCount,
     paused: row.paused,
   }));
+}
+
+export async function listApiSubscriptions(
+  userId: number,
+): Promise<ApiSubscription[]> {
+  return apiSubscriptionRows(userId, null);
+}
+
+/**
+ * The account's subscription to one feed, in the same shape the list returns —
+ * so a client that has just created one decodes exactly what it would have got
+ * from `GET /subscriptions` rather than a special creation payload.
+ */
+export async function getApiSubscriptionByFeed(
+  userId: number,
+  feedId: number,
+): Promise<ApiSubscription | null> {
+  const [subscription] = await apiSubscriptionRows(userId, feedId);
+  return subscription ?? null;
 }
 
 /**
@@ -384,6 +408,55 @@ export async function setApiArticleReadLaterState(
         set: { readLater, readLaterAt },
       });
     return distinctIds;
+  });
+}
+
+/**
+ * Batched resume positions for feed articles, validated as one owned batch like
+ * the boolean states. The web's own writer (`setItemReadingProgress`) trusts its
+ * caller for ownership because a server action already knows the reader; a
+ * bearer token does not, so the check is here.
+ *
+ * Each position is put through the reader's own `storedReadingProgress` rule
+ * first, so a native position means what a web position means: a fraction near
+ * either end is stored as null — "nothing worth resuming" — rather than as a
+ * position that would scroll a reader back to the top or to the end. The
+ * normalized values are what comes back, so a client can see what was kept.
+ */
+export async function setApiArticleReadingProgress(
+  userId: number,
+  positions: ApiArticleProgress[],
+): Promise<ApiArticleProgress[] | null> {
+  const normalized = positions.map((position) => ({
+    articleId: position.articleId,
+    readingProgress:
+      position.readingProgress === null
+        ? null
+        : storedReadingProgress(position.readingProgress),
+  }));
+  const distinctIds = normalized.map((position) => position.articleId);
+  return db.transaction(async (tx) => {
+    if (!(await ownsEveryArticle(tx, userId, distinctIds))) return null;
+
+    const readingProgressUpdatedAt = new Date();
+    await tx
+      .insert(itemStates)
+      .values(
+        normalized.map((position) => ({
+          userId,
+          itemId: position.articleId,
+          readingProgress: position.readingProgress,
+          readingProgressUpdatedAt,
+        })),
+      )
+      .onConflictDoUpdate({
+        target: [itemStates.userId, itemStates.itemId],
+        set: {
+          readingProgress: sql`excluded.reading_progress`,
+          readingProgressUpdatedAt,
+        },
+      });
+    return normalized;
   });
 }
 

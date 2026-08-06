@@ -2,6 +2,11 @@
 // only — internals (fetch/parse/sanitize/discover) stay private so the fetcher
 // can later move into its own process without touching callers (docs/business-option.md).
 
+export {
+  discoverFeedCandidates,
+  type FeedDiscovery,
+} from "./candidates";
+export type { FeedAlternate } from "./discover";
 export { sweepPendingFullContent } from "./full-content";
 export {
   type AddFeedResult,
