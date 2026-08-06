@@ -442,6 +442,10 @@ git push origin main
 
 # 2. Wait for CI to publish that exact commit. Test it in staging once staging
 #    exists; until then CI's own gate is the only check before the tag.
+#    Do not push anything else to main while waiting: a newer push cancels the
+#    run in flight, and a cancelled run never publishes its sha image. If that
+#    happens, re-run the cancelled workflow from the Actions tab — never move
+#    the release to a commit CI did not verify.
 # 3. Tag the same tested commit. Do not use --follow-tags with the main push:
 #    the release workflow needs the immutable sha image to exist first.
 git tag -a v2026.7.1 -m "rssapp 2026.7.1"

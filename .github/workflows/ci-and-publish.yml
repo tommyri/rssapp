@@ -5,6 +5,15 @@ on:
   push:
     branches: [main]
 
+# A newer push supersedes the run in flight: its verdict no longer gates anything,
+# and :edge would be overwritten by the newer image anyway. The one consequence is
+# that a superseded commit never gets its sha-<commit> image — deploy the newest
+# green sha, or re-run the cancelled workflow if that exact commit is needed (the
+# release flow tags a specific commit, so don't push over a release candidate).
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 

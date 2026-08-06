@@ -15,6 +15,12 @@ on:
       - "packages/brand/**"
       - ".github/workflows/ios.yml"
 
+# Pure verification with nothing published: a newer push makes the run in flight
+# moot, and macOS runner minutes are the expensive kind.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
