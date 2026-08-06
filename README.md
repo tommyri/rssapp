@@ -286,10 +286,12 @@ Starred, Read later and Search are never collapsed. On by default; toggle in
 
 ### First-party API
 
-Currentfold's native product API lives under `/api/v1`. The initial stable slice exposes
-service discovery, the current account, subscriptions, a cursor-paginated article
-stream, and idempotent batched read-state updates. Its OpenAPI 3.1 contract is maintained
-in `packages/api-contract/openapi.json` and served by every installation at
+Currentfold's native product API lives under `/api/v1`. It exposes service discovery, the
+current account, subscriptions, and the reader: a cursor-paginated article stream that can
+be filtered to Unread, Starred or Read later and scoped to one source or folder, with
+server-computed row previews and reading-time estimates, plus idempotent batched read,
+star and read-later updates and a scoped mark-all-read. Its OpenAPI 3.1 contract is
+maintained in `packages/api-contract/openapi.json` and served by every installation at
 `/api/v1/openapi.json`.
 
 Currentfold for iOS signs in directly with an account password or native Apple/Google

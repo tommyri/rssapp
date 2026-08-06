@@ -25,7 +25,7 @@ describe("GET /api/v1/articles", () => {
     });
     const response = await GET(
       new Request(
-        "https://currentfold.test/api/v1/articles?limit=25&unreadOnly=true&subscriptionId=9",
+        "https://currentfold.test/api/v1/articles?limit=25&filter=unread&subscriptionId=9&folderId=4",
       ),
     );
 
@@ -33,8 +33,25 @@ describe("GET /api/v1/articles", () => {
     expect(mocks.listArticles).toHaveBeenCalledWith(7, {
       limit: 25,
       cursor: null,
-      unreadOnly: true,
+      filter: "unread",
       subscriptionId: 9,
+      folderId: 4,
+    });
+  });
+
+  it("still serves the whole stream when no filter is named", async () => {
+    mocks.listArticles.mockResolvedValue({
+      data: [],
+      pagination: { nextCursor: null },
+    });
+    await GET(new Request("https://currentfold.test/api/v1/articles"));
+
+    expect(mocks.listArticles).toHaveBeenCalledWith(7, {
+      limit: 50,
+      cursor: null,
+      filter: "all",
+      subscriptionId: null,
+      folderId: null,
     });
   });
 
@@ -48,5 +65,14 @@ describe("GET /api/v1/articles", () => {
     expect(await response.json()).toMatchObject({
       error: { code: "invalid_query" },
     });
+  });
+
+  it("rejects an unknown filter rather than serving a different stream", async () => {
+    const response = await GET(
+      new Request("https://currentfold.test/api/v1/articles?filter=unopened"),
+    );
+
+    expect(response.status).toBe(400);
+    expect(mocks.listArticles).not.toHaveBeenCalled();
   });
 });

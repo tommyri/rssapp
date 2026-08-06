@@ -24,6 +24,9 @@ inventing legacy tags for them.
 | `GET` | `/api/v1/subscriptions` | List followed sources, folders, unread counts, and paused state. |
 | `GET` | `/api/v1/articles` | Read a newest-first, keyset-paginated article stream. |
 | `PATCH` | `/api/v1/articles/read-state` | Idempotently mark up to 100 owned articles read or unread. |
+| `PATCH` | `/api/v1/articles/starred-state` | Idempotently star or unstar up to 100 owned articles. |
+| `PATCH` | `/api/v1/articles/read-later-state` | Idempotently add up to 100 owned articles to Read later, or remove them. |
+| `POST` | `/api/v1/articles/mark-all-read` | Mark a whole scope read, optionally only its older part. |
 
 Resource IDs are decimal strings on the wire. They are opaque client identifiers, not a
 promise that storage will always use an integer. Cursors are also opaque: clients store
@@ -33,6 +36,57 @@ The source contract and stable response fixtures live in `packages/api-contract`
 `npm run contract:check` after changing it. The route implementation lives in
 `apps/web/src/app/api/v1`, with parsing, authentication, response, and reader-query
 boundaries in `apps/web/src/lib/api-v1*`.
+
+## Article lists
+
+`GET /api/v1/articles` returns one keyset page of the account's non-muted articles,
+ordered by publication date falling back to ingest date. Four optional parameters narrow
+it, and they compose with each other and with `cursor`:
+
+- `filter` — `all` (the default and the endpoint's original behaviour), `unread`,
+  `starred`, or `readLater`.
+- `subscriptionId` and `folderId` — one source, or every source filed in one folder.
+
+`unreadOnly=true` predates `filter` and still means `filter=unread`. Sending both is
+rejected when they contradict each other rather than resolved in favour of one. An
+unknown `subscriptionId` or `folderId` returns an empty page: a stale sidebar should not
+turn a read into an error.
+
+Two fields exist so a list row can be drawn without parsing article HTML on the device,
+and so a native row says what the web row says — both are computed by the same functions
+the web list uses (`articleSnippet`, `readingTimeMinutes`):
+
+- `preview` — a plain-text snippet with the boilerplate feeds repeat in their bodies
+  (a publication date the row already shows, the title again) removed, cut on a word
+  boundary, never mid-word. `null` when the body has nothing worth previewing.
+- `readingTime` — whole minutes at 225 words per minute, rounded up. `null` for a stub
+  entry under 30 words, where an estimate would be noise rather than information.
+
+List responses still carry `content.html`. Slimming the list to metadata and letting the
+detail view fetch the body would break existing clients, so it would need its own
+decision and a new field rather than a quiet removal.
+
+**Unread is the absence of a read state**, not a stored flag, so a `filter=unread` page
+reflects reads from every device the moment they happen. A client that wants the web's
+session-stable list — articles read during this visit staying in place until the view is
+reopened — keeps that behaviour in its own loaded page rather than asking the server for
+it.
+
+## Triage mutations
+
+The three batch endpoints take up to 100 `articleIds` and one boolean, and each sets
+exactly one state: `read`, `starred`, or `readLater`. Sending the wrong flag for a path is
+a `400`, not a silent no-op. Each validates the whole batch before writing, so an article
+outside the account fails the request with `404 article_not_found` rather than
+half-applying it. Read-later state is independent of read state, matching the web.
+
+`POST /api/v1/articles/mark-all-read` is the overload valve. Its `scope` is required —
+`all`, `subscription` with a `subscriptionId`, or `folder` with a `folderId` — since an
+omitted scope would let an empty body sweep an entire account. An optional `olderThan`
+instant marks only the articles sorted strictly before it, which is how a client offers
+"mark everything below this one read" or an older-than-a-day/week variant. The response
+echoes the scope and reports `markedCount`; a scope belonging to another account is
+`404 scope_not_found` rather than a successful sweep of nothing.
 
 ## Authentication
 
@@ -92,8 +146,8 @@ the web fallback. HTTPS links open the app when Universal Links are configured t
 
 ## Next slices
 
-Add complete user workflows rather than isolated fields: Read Later and saved pages,
-article detail and highlights/notes, reading and audio progress, labels, notifications,
-and settings. Provider account-management work before App Store distribution includes
-Apple authorization revocation during account deletion and native guidance for linking
-an email-colliding provider identity.
+Add complete user workflows rather than isolated fields: saved pages joining the unified
+Read later queue, article detail and highlights/notes, reading and audio progress, labels,
+notifications, and settings. Provider account-management work before App Store
+distribution includes Apple authorization revocation during account deletion and native
+guidance for linking an email-colliding provider identity.

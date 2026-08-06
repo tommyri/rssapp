@@ -12,6 +12,11 @@ version section verbatim, so this file is the release record rather than an afte
 - An article's actions — **Mark unread**, **Star**, **Read later**, **Open original**,
   **Labels**, and the rest — now appear above the article as well as below it. Deciding a
   post was a misclick no longer means scrolling to the end of it to mark it unread again.
+- The first-party API now carries the whole triage loop, so Currentfold apps can offer
+  it: article lists filter to Unread, Starred or Read later and narrow to one source or
+  folder; rows arrive with a ready-made preview and reading-time estimate computed the
+  same way the web computes them; and star, Read later and **Mark all read** — including
+  its older-than variants — are all writable in batches.
 
 ### Changed
 

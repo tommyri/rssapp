@@ -16,7 +16,11 @@ export async function GET() {
         "nativeProviderAuthentication",
         "subscriptions",
         "articleStream",
+        "articleStreamFilters",
         "articleReadState",
+        "articleStarredState",
+        "articleReadLaterState",
+        "articleMarkAllRead",
       ],
       links: {
         openApi: "/api/v1/openapi.json",

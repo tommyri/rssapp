@@ -16,9 +16,11 @@
         "siteUrl": "https://example.com"
       },
       "content": {
-        "html": "<p>A durable readable copy.</p>",
+        "html": "<p>A durable readable copy is kept of every article you follow, so a post you meant to read on the train is still there when the site has moved on, gone behind a wall, or quietly rewritten the page.</p><p>The reader stays out of the way: quiet chrome, generous whitespace, and a list you can scan in a single pass.</p>",
         "source": "full"
       },
+      "preview": "A durable readable copy is kept of every article you follow, so a post you meant to read on the train is still there when the site has moved on, gone behind a wall, or quietly rewritten the page. The reader stays out of…",
+      "readingTime": 1,
       "audio": null,
       "state": {
         "read": false,

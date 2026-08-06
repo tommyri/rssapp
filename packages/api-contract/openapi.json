@@ -375,7 +375,7 @@
       "get": {
         "operationId": "listArticles",
         "summary": "List articles newest first",
-        "description": "Returns subscribed, non-muted articles. Pass nextCursor unchanged to continue from the prior page.",
+        "description": "Returns subscribed, non-muted articles ordered by publication date, falling back to ingest date. Pass nextCursor unchanged to continue from the prior page. Filters compose with each other and with the cursor. An unknown subscriptionId or folderId returns an empty page rather than an error.",
         "tags": ["Reader"],
         "security": [
           {
@@ -403,8 +403,18 @@
             }
           },
           {
+            "name": "filter",
+            "in": "query",
+            "description": "Which slice of the stream to return. `unread` is the absence of a read state, so an article read on another device leaves the filtered stream; `starred` and `readLater` are explicit flags.",
+            "schema": {
+              "$ref": "#/components/schemas/ArticleFilter"
+            }
+          },
+          {
             "name": "unreadOnly",
             "in": "query",
+            "deprecated": true,
+            "description": "Superseded by filter=unread, and still honoured. Sending both is rejected when they disagree.",
             "schema": {
               "type": "boolean",
               "default": false
@@ -413,6 +423,15 @@
           {
             "name": "subscriptionId",
             "in": "query",
+            "description": "Only articles from this subscription.",
+            "schema": {
+              "$ref": "#/components/schemas/OpaqueId"
+            }
+          },
+          {
+            "name": "folderId",
+            "in": "query",
+            "description": "Only articles from subscriptions filed in this folder.",
             "schema": {
               "$ref": "#/components/schemas/OpaqueId"
             }
@@ -478,6 +497,138 @@
           },
           "404": {
             "$ref": "#/components/responses/ArticleNotFound"
+          }
+        }
+      }
+    },
+    "/api/v1/articles/starred-state": {
+      "patch": {
+        "operationId": "updateArticleStarredState",
+        "summary": "Set star state for an article batch",
+        "description": "This operation is idempotent. Every article must belong to a feed followed by the authenticated account.",
+        "tags": ["Reader"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StarredStateUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The resulting state and affected article IDs",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StarredStateResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/InvalidRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/ArticleNotFound"
+          }
+        }
+      }
+    },
+    "/api/v1/articles/read-later-state": {
+      "patch": {
+        "operationId": "updateArticleReadLaterState",
+        "summary": "Set read-later state for an article batch",
+        "description": "This operation is idempotent. Every article must belong to a feed followed by the authenticated account. Read-later state is independent of read state.",
+        "tags": ["Reader"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReadLaterStateUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The resulting state and affected article IDs",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReadLaterStateResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/InvalidRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/ArticleNotFound"
+          }
+        }
+      }
+    },
+    "/api/v1/articles/mark-all-read": {
+      "post": {
+        "operationId": "markAllArticlesRead",
+        "summary": "Mark a whole scope read",
+        "description": "Marks every unread, non-muted article in the scope read. The scope is required: there is no implicit account-wide default. With olderThan, only articles sorted strictly before that instant are marked, which is how a client marks everything below the article being read. Applying it twice is harmless; the second call reports 0.",
+        "tags": ["Reader"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MarkAllReadRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The scope that was swept and how many articles changed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MarkAllReadResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/InvalidRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/ScopeNotFound"
           }
         }
       }
@@ -555,7 +706,17 @@
         }
       },
       "ArticleNotFound": {
-        "description": "At least one article is not available to this account.",
+        "description": "At least one article is not available to this account. The error code is `article_not_found`.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            }
+          }
+        }
+      },
+      "ScopeNotFound": {
+        "description": "The named subscription or folder is not available to this account. The error code is `scope_not_found`.",
         "content": {
           "application/json": {
             "schema": {
@@ -570,6 +731,11 @@
         "type": "string",
         "pattern": "^[1-9][0-9]*$",
         "examples": ["42"]
+      },
+      "ArticleFilter": {
+        "type": "string",
+        "enum": ["all", "unread", "starred", "readLater"],
+        "default": "all"
       },
       "ServiceMetadataResponse": {
         "type": "object",
@@ -937,6 +1103,8 @@
           "createdAt",
           "feed",
           "content",
+          "preview",
+          "readingTime",
           "audio",
           "state"
         ],
@@ -985,6 +1153,18 @@
               }
             },
             "additionalProperties": false
+          },
+          "preview": {
+            "type": ["string", "null"],
+            "maxLength": 221,
+            "description": "Plain-text snippet for a list row, with the boilerplate a feed repeats in its body removed and never cut mid-word. Null when the body has nothing worth previewing.",
+            "examples": ["A durable readable copy of every article you follow."]
+          },
+          "readingTime": {
+            "type": ["integer", "null"],
+            "minimum": 1,
+            "description": "Estimated whole minutes to read at 225 words per minute, rounded up. Null for a stub entry under 30 words, where an estimate would be noise.",
+            "examples": [4]
           },
           "audio": {
             "oneOf": [
@@ -1041,12 +1221,7 @@
         "required": ["articleIds", "read"],
         "properties": {
           "articleIds": {
-            "type": "array",
-            "minItems": 1,
-            "maxItems": 100,
-            "items": {
-              "$ref": "#/components/schemas/OpaqueId"
-            }
+            "$ref": "#/components/schemas/ArticleIdBatch"
           },
           "read": {
             "type": "boolean"
@@ -1060,6 +1235,158 @@
         "properties": {
           "data": {
             "$ref": "#/components/schemas/ReadStateUpdate"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ArticleIdBatch": {
+        "type": "array",
+        "minItems": 1,
+        "maxItems": 100,
+        "items": {
+          "$ref": "#/components/schemas/OpaqueId"
+        }
+      },
+      "StarredStateUpdate": {
+        "type": "object",
+        "required": ["articleIds", "starred"],
+        "properties": {
+          "articleIds": {
+            "$ref": "#/components/schemas/ArticleIdBatch"
+          },
+          "starred": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "StarredStateResponse": {
+        "type": "object",
+        "required": ["data"],
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/StarredStateUpdate"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ReadLaterStateUpdate": {
+        "type": "object",
+        "required": ["articleIds", "readLater"],
+        "properties": {
+          "articleIds": {
+            "$ref": "#/components/schemas/ArticleIdBatch"
+          },
+          "readLater": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ReadLaterStateResponse": {
+        "type": "object",
+        "required": ["data"],
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/ReadLaterStateUpdate"
+          }
+        },
+        "additionalProperties": false
+      },
+      "MarkAllReadRequest": {
+        "description": "The scope discriminates the request: `all` takes no id, `subscription` requires subscriptionId, `folder` requires folderId, and no other combination is accepted.",
+        "oneOf": [
+          {
+            "type": "object",
+            "required": ["scope"],
+            "properties": {
+              "scope": { "const": "all" },
+              "olderThan": {
+                "type": "string",
+                "format": "date-time"
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": ["scope", "subscriptionId"],
+            "properties": {
+              "scope": { "const": "subscription" },
+              "subscriptionId": {
+                "$ref": "#/components/schemas/OpaqueId"
+              },
+              "olderThan": {
+                "type": "string",
+                "format": "date-time"
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": ["scope", "folderId"],
+            "properties": {
+              "scope": { "const": "folder" },
+              "folderId": {
+                "$ref": "#/components/schemas/OpaqueId"
+              },
+              "olderThan": {
+                "type": "string",
+                "format": "date-time"
+              }
+            },
+            "additionalProperties": false
+          }
+        ],
+        "examples": [
+          { "scope": "all" },
+          { "scope": "subscription", "subscriptionId": "7" },
+          { "scope": "folder", "folderId": "3" },
+          { "scope": "all", "olderThan": "2026-07-22T12:00:00.000Z" }
+        ]
+      },
+      "MarkAllReadResponse": {
+        "type": "object",
+        "required": ["data"],
+        "properties": {
+          "data": {
+            "type": "object",
+            "required": [
+              "scope",
+              "subscriptionId",
+              "folderId",
+              "olderThan",
+              "markedCount"
+            ],
+            "properties": {
+              "scope": {
+                "type": "string",
+                "enum": ["all", "subscription", "folder"]
+              },
+              "subscriptionId": {
+                "oneOf": [
+                  { "$ref": "#/components/schemas/OpaqueId" },
+                  { "type": "null" }
+                ]
+              },
+              "folderId": {
+                "oneOf": [
+                  { "$ref": "#/components/schemas/OpaqueId" },
+                  { "type": "null" }
+                ]
+              },
+              "olderThan": {
+                "type": ["string", "null"],
+                "format": "date-time"
+              },
+              "markedCount": {
+                "type": "integer",
+                "minimum": 0,
+                "description": "How many articles changed from unread to read."
+              }
+            },
+            "additionalProperties": false
           }
         },
         "additionalProperties": false
