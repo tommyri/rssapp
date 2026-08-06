@@ -15,7 +15,7 @@ struct ConnectionUnavailableView: View {
             Button("Try Again") {
                 Task { await retry() }
             }
-            .buttonStyle(.borderedProminent)
+            .buttonStyle(.primaryAction)
             .disabled(isRetrying)
 
             Button("Sign Out") {
@@ -23,5 +23,6 @@ struct ConnectionUnavailableView: View {
             }
             .buttonStyle(.bordered)
         }
+        .currentfoldCanvas()
     }
 }

@@ -15,6 +15,7 @@ struct CurrentfoldAPIClient: Sendable {
     var fetchSubscriptions: @Sendable (CurrentfoldConnection) async throws -> [APISubscription]
     var fetchArticles: @Sendable (
         CurrentfoldConnection,
+        ArticleQuery,
         String?
     ) async throws -> APIArticlePage
     var updateReadState: @Sendable (
@@ -22,6 +23,48 @@ struct CurrentfoldAPIClient: Sendable {
         [String],
         Bool
     ) async throws -> Void
+    var updateStarredState: @Sendable (
+        CurrentfoldConnection,
+        [String],
+        Bool
+    ) async throws -> Void
+    var updateReadLaterState: @Sendable (
+        CurrentfoldConnection,
+        [String],
+        Bool
+    ) async throws -> Void
+    var markAllRead: @Sendable (
+        CurrentfoldConnection,
+        APIMarkAllReadRequest
+    ) async throws -> APIMarkAllReadResult
+    var fetchSavedPages: @Sendable (
+        CurrentfoldConnection,
+        String?
+    ) async throws -> APIPage<APISavedPage>
+    var createSavedPage: @Sendable (
+        CurrentfoldConnection,
+        URL
+    ) async throws -> APISavedPageCreationResult
+    var deleteSavedPage: @Sendable (CurrentfoldConnection, String) async throws -> Void
+    var retrySavedPage: @Sendable (CurrentfoldConnection, String) async throws -> APISavedPage
+    var updateSavedPageReadState: @Sendable (
+        CurrentfoldConnection,
+        [String],
+        Bool
+    ) async throws -> Void
+    var createSubscription: @Sendable (
+        CurrentfoldConnection,
+        String
+    ) async throws -> APISubscriptionCreationResult
+    /// Answers with the positions the server *stored*, which is not always what was sent.
+    var updateArticleReadingProgress: @Sendable (
+        CurrentfoldConnection,
+        [APIArticleReadingProgressEntry]
+    ) async throws -> [APIArticleReadingProgressEntry]
+    var updateSavedPageReadingProgress: @Sendable (
+        CurrentfoldConnection,
+        [APISavedPageReadingProgressEntry]
+    ) async throws -> [APISavedPageReadingProgressEntry]
 }
 
 extension CurrentfoldAPIClient {
@@ -51,12 +94,26 @@ extension CurrentfoldAPIClient {
             fetchAccount: service.fetchAccount,
             fetchSubscriptions: service.fetchSubscriptions,
             fetchArticles: service.fetchArticles,
-            updateReadState: service.updateReadState
+            updateReadState: service.updateReadState,
+            updateStarredState: service.updateStarredState,
+            updateReadLaterState: service.updateReadLaterState,
+            markAllRead: service.markAllRead,
+            fetchSavedPages: service.fetchSavedPages,
+            createSavedPage: service.createSavedPage,
+            deleteSavedPage: service.deleteSavedPage,
+            retrySavedPage: service.retrySavedPage,
+            updateSavedPageReadState: service.updateSavedPageReadState,
+            createSubscription: service.createSubscription,
+            updateArticleReadingProgress: service.updateArticleReadingProgress,
+            updateSavedPageReadingProgress: service.updateSavedPageReadingProgress
         )
     }
 }
 
-private struct LiveCurrentfoldAPI: Sendable {
+struct LiveCurrentfoldAPI: Sendable {
+    /// One page is a comfortable scroll's worth; the contract's maximum is 100.
+    static let articlePageSize = 50
+
     let transport: APITransport
     let credentialStore: KeychainCredentialStore
 
@@ -197,9 +254,19 @@ private struct LiveCurrentfoldAPI: Sendable {
 
     func fetchArticles(
         connection: CurrentfoldConnection,
+        query: ArticleQuery,
         cursor: String?
     ) async throws -> APIArticlePage {
-        var queryItems = [URLQueryItem(name: "limit", value: "50")]
+        var queryItems = [
+            URLQueryItem(name: "limit", value: String(Self.articlePageSize)),
+            URLQueryItem(name: "filter", value: query.filter.rawValue),
+        ]
+        if let subscriptionID = query.scope.subscriptionID {
+            queryItems.append(URLQueryItem(name: "subscriptionId", value: subscriptionID))
+        }
+        if let folderID = query.scope.folderID {
+            queryItems.append(URLQueryItem(name: "folderId", value: folderID))
+        }
         if let cursor {
             queryItems.append(URLQueryItem(name: "cursor", value: cursor))
         }
@@ -215,13 +282,54 @@ private struct LiveCurrentfoldAPI: Sendable {
         articleIDs: [String],
         read: Bool
     ) async throws {
-        let body = ReadStateUpdate(articleIds: articleIDs, read: read)
-        let _: DataEnvelope<ReadStateUpdate> = try await transport.sendAuthorized(
+        let body = APIReadStateUpdate(articleIds: articleIDs, read: read)
+        let _: DataEnvelope<APIReadStateUpdate> = try await transport.sendAuthorized(
             connection: connection,
             path: "api/v1/articles/read-state",
             method: "PATCH",
             body: body
         )
+    }
+
+    func updateStarredState(
+        connection: CurrentfoldConnection,
+        articleIDs: [String],
+        starred: Bool
+    ) async throws {
+        let body = APIStarredStateUpdate(articleIds: articleIDs, starred: starred)
+        let _: DataEnvelope<APIStarredStateUpdate> = try await transport.sendAuthorized(
+            connection: connection,
+            path: "api/v1/articles/starred-state",
+            method: "PATCH",
+            body: body
+        )
+    }
+
+    func updateReadLaterState(
+        connection: CurrentfoldConnection,
+        articleIDs: [String],
+        readLater: Bool
+    ) async throws {
+        let body = APIReadLaterStateUpdate(articleIds: articleIDs, readLater: readLater)
+        let _: DataEnvelope<APIReadLaterStateUpdate> = try await transport.sendAuthorized(
+            connection: connection,
+            path: "api/v1/articles/read-later-state",
+            method: "PATCH",
+            body: body
+        )
+    }
+
+    func markAllRead(
+        connection: CurrentfoldConnection,
+        request: APIMarkAllReadRequest
+    ) async throws -> APIMarkAllReadResult {
+        let response: DataEnvelope<APIMarkAllReadResult> = try await transport.sendAuthorized(
+            connection: connection,
+            path: "api/v1/articles/mark-all-read",
+            method: "POST",
+            body: request
+        )
+        return response.data
     }
 
     private func emailOperation(
@@ -262,9 +370,4 @@ private struct TokenRequest: Encodable, Sendable {
 private struct PasswordResetRequest: Encodable, Sendable {
     let token: String
     let password: String
-}
-
-private struct ReadStateUpdate: Codable, Sendable {
-    let articleIds: [String]
-    let read: Bool
 }

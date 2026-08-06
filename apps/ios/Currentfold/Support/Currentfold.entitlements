@@ -10,5 +10,13 @@
 	<array>
 		<string>Default</string>
 	</array>
+	<!-- The app's own group stays first, so the default group new keychain items land in is
+	     exactly what it was before the share extension existed. The session is written to the
+	     shared group explicitly; see KeychainCredentialStore for the migration. -->
+	<key>keychain-access-groups</key>
+	<array>
+		<string>$(AppIdentifierPrefix)no.currentfold.reader</string>
+		<string>$(AppIdentifierPrefix)no.currentfold.reader.shared</string>
+	</array>
 </dict>
 </plist>

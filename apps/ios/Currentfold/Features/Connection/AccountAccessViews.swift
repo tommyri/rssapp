@@ -4,7 +4,6 @@ struct RegistrationView: View {
     let prefilledEmail: String
     let inviteToken: String?
     @Environment(SessionStore.self) private var session
-    @Environment(CurrentfoldTheme.self) private var theme
     @State private var email: String
     @State private var password = ""
     @State private var passwordConfirmation = ""
@@ -41,6 +40,7 @@ struct RegistrationView: View {
                     }
                     .disabled(session.isConnecting)
                 }
+                .currentfoldCanvas()
             } else {
                 registrationForm
             }
@@ -79,17 +79,20 @@ struct RegistrationView: View {
             } footer: {
                 Text("Use at least 8 characters. You’ll verify the address before signing in.")
             }
+            .currentfoldRaisedRows()
 
             if attemptedSubmit, let validationMessage {
                 Section {
                     Label(validationMessage, systemImage: "exclamationmark.circle")
                         .foregroundStyle(.red)
                 }
+                .currentfoldRaisedRows()
             } else if let message = session.authErrorMessage {
                 Section {
                     Label(message, systemImage: "exclamationmark.circle")
                         .foregroundStyle(.red)
                 }
+                .currentfoldRaisedRows()
             }
 
             Section {
@@ -99,7 +102,7 @@ struct RegistrationView: View {
                         if session.isConnecting {
                             ProgressView()
                         } else {
-                            Text("Create Account").fontWeight(.semibold)
+                            Text("Create Account")
                         }
                         Spacer()
                     }
@@ -108,13 +111,14 @@ struct RegistrationView: View {
                     session.isConnecting ||
                         email.isEmpty || password.isEmpty || passwordConfirmation.isEmpty
                 )
-                .buttonStyle(.borderedProminent)
-                .tint(theme.accent)
+                .buttonStyle(.primaryAction)
+                .controlSize(.large)
             }
             .listRowBackground(Color.clear)
 
             NativeProviderSignInSection(inviteToken: inviteToken)
         }
+        .currentfoldCanvas()
         .task { await session.loadAuthProviders() }
     }
 
@@ -144,7 +148,6 @@ struct RegistrationView: View {
 struct PasswordRecoveryView: View {
     let prefilledEmail: String
     @Environment(SessionStore.self) private var session
-    @Environment(CurrentfoldTheme.self) private var theme
     @State private var email: String
     @State private var confirmationMessage: String?
     @FocusState private var emailFocused: Bool
@@ -162,6 +165,7 @@ struct PasswordRecoveryView: View {
                 } description: {
                     Text(confirmationMessage)
                 }
+                .currentfoldCanvas()
             } else {
                 recoveryForm
             }
@@ -188,24 +192,26 @@ struct PasswordRecoveryView: View {
             } footer: {
                 Text("We’ll send a secure link if the address belongs to an account.")
             }
+            .currentfoldRaisedRows()
 
             if let message = session.authErrorMessage {
                 Section {
                     Label(message, systemImage: "exclamationmark.circle")
                         .foregroundStyle(.red)
                 }
+                .currentfoldRaisedRows()
             }
 
             Section {
                 Button("Send Reset Link", action: requestReset)
                     .frame(maxWidth: .infinity)
-                    .fontWeight(.semibold)
                     .disabled(session.isConnecting || email.isEmpty)
-                    .buttonStyle(.borderedProminent)
-                    .tint(theme.accent)
+                    .buttonStyle(.primaryAction)
+                    .controlSize(.large)
             }
             .listRowBackground(Color.clear)
         }
+        .currentfoldCanvas()
     }
 
     private func requestReset() {

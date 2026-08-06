@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- The shared group first, so it is this binary's default: everything the extension
+	     writes belongs to both targets. The app's own group is listed second so an existing
+	     sign-in can still be read on a phone that updated the app and reached the share sheet
+	     before ever opening the reader — see KeychainCredentialStore. -->
+	<key>keychain-access-groups</key>
+	<array>
+		<string>$(AppIdentifierPrefix)no.currentfold.reader.shared</string>
+		<string>$(AppIdentifierPrefix)no.currentfold.reader</string>
+	</array>
+</dict>
+</plist>

@@ -36,6 +36,7 @@ struct NativeProviderSignInSection: View {
                     .disabled(session.isConnecting)
                 }
             }
+            .currentfoldRaisedRows()
         }
     }
 

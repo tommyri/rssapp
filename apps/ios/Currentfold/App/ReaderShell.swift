@@ -10,6 +10,9 @@ struct ReaderShell: View {
     let account: APIAccount
     @State private var selectedTab: AppTab = .library
     @State private var readerStore: ReaderStore
+    /// Owned by the shell rather than by `SourcesView`, so adding a source from its toolbar
+    /// can push the new source's list — the sheet dismisses onto the list it just created.
+    @State private var sourcesPath: [ArticleListDestination] = []
     @Environment(CurrentfoldTheme.self) private var theme
 
     init(
@@ -31,8 +34,8 @@ struct ReaderShell: View {
             .tabItem { Label("Library", systemImage: "text.page") }
             .tag(AppTab.library)
 
-            NavigationStack {
-                SourcesView()
+            NavigationStack(path: $sourcesPath) {
+                SourcesView(path: $sourcesPath)
             }
             .tabItem { Label("Sources", systemImage: "dot.radiowaves.left.and.right") }
             .tag(AppTab.sources)
@@ -44,7 +47,7 @@ struct ReaderShell: View {
             .tag(AppTab.settings)
         }
         .environment(readerStore)
-        .tint(theme.accent)
+        .tint(theme.accentInk)
         .task { await readerStore.bootstrap() }
     }
 }

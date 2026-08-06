@@ -65,5 +65,7 @@ private struct LaunchView: View {
             ProgressView("Opening your reader…")
         }
         .padding(32)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .currentfoldCanvas()
     }
 }

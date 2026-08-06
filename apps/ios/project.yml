@@ -17,6 +17,15 @@ settings:
     SWIFT_VERSION: 6.0
     SWIFT_STRICT_CONCURRENCY: complete
     ENABLE_USER_SCRIPT_SANDBOXING: true
+settingGroups:
+  # Everything both binaries have to agree on. The share extension resolves its server the
+  # same way the app does — through AppConfiguration, out of its own Info.plist — so a build
+  # cannot point "Save to Currentfold" at a different Currentfold than the reader.
+  currentfoldService:
+    CURRENTFOLD_SERVER_URL: https://rssapp.badask.no
+    MARKETING_VERSION: 2026.7.3
+    CURRENT_PROJECT_VERSION: 1
+    TARGETED_DEVICE_FAMILY: "1,2"
 targets:
   Currentfold:
     type: application
@@ -29,22 +38,45 @@ targets:
       - package: CurrentfoldBrand
       - package: GoogleSignIn
         product: GoogleSignIn
+      - target: CurrentfoldShare
     settings:
+      groups:
+        - currentfoldService
       base:
         PRODUCT_BUNDLE_IDENTIFIER: no.currentfold.reader
         PRODUCT_NAME: Currentfold
         INFOPLIST_FILE: Currentfold/Support/Info.plist
         GENERATE_INFOPLIST_FILE: false
-        MARKETING_VERSION: 2026.7.3
-        CURRENT_PROJECT_VERSION: 1
-        TARGETED_DEVICE_FAMILY: "1,2"
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
-        CURRENTFOLD_SERVER_URL: https://rssapp.badask.no
         CURRENTFOLD_ASSOCIATED_DOMAIN: rssapp.badask.no
         CURRENTFOLD_GOOGLE_CLIENT_ID: ""
         CURRENTFOLD_GOOGLE_SERVER_CLIENT_ID: ""
         CURRENTFOLD_GOOGLE_REVERSED_CLIENT_ID: ""
         CODE_SIGN_ENTITLEMENTS: Currentfold/Support/Currentfold.entitlements
+  # "Save to Currentfold". Compiles the app's own Core and its three brand files rather than
+  # copying them: the extension speaks the same contract, keeps the same session, and paints
+  # the same canvas, and none of that is allowed to drift.
+  CurrentfoldShare:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: CurrentfoldShare
+      - path: Currentfold/Core
+      - path: Currentfold/App/AppConfiguration.swift
+      - path: Currentfold/App/BrandControls.swift
+      - path: Currentfold/App/CurrentfoldTheme.swift
+    dependencies:
+      - package: CurrentfoldBrand
+    settings:
+      groups:
+        - currentfoldService
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: no.currentfold.reader.share
+        PRODUCT_NAME: CurrentfoldShare
+        INFOPLIST_FILE: CurrentfoldShare/Support/Info.plist
+        GENERATE_INFOPLIST_FILE: false
+        CODE_SIGN_ENTITLEMENTS: CurrentfoldShare/Support/CurrentfoldShare.entitlements
+        SKIP_INSTALL: true
   CurrentfoldTests:
     type: bundle.unit-test
     platform: iOS

@@ -159,6 +159,7 @@ the card reports their availability without exposing a filesystem setting in a w
 ## Theming
 
 - Dark mode follows system, manual override (shipped; the Auto/Light/Dark picker lives in Settings); dark surfaces at `#121212–#1E1E1E`, not pure black (halation)
+- The iPhone app applies the same band from brand `deepInk`, and records its type scale, accent roles, verb tints, icon vocabulary and haptics in [design-ux-ios.md](design-ux-ios.md)
 - Light + dark done *well* beats a theme gallery; custom themes are a "later" at most
 
 ## Mobile web

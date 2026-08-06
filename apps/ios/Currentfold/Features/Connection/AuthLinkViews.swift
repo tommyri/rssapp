@@ -24,11 +24,12 @@ struct VerificationLinkView: View {
             } actions: {
                 if didVerify {
                     Button("Continue to Sign In") { session.dismissAuthLink() }
-                        .buttonStyle(.borderedProminent)
+                        .buttonStyle(.primaryAction)
                 } else if session.authErrorMessage != nil {
                     Button("Close") { session.dismissAuthLink() }
                 }
             }
+            .currentfoldCanvas()
             .task {
                 guard message == nil, !didVerify else { return }
                 if let result = await session.verifyEmail(token: token) {
@@ -45,7 +46,6 @@ struct VerificationLinkView: View {
 struct PasswordResetLinkView: View {
     let token: String
     @Environment(SessionStore.self) private var session
-    @Environment(CurrentfoldTheme.self) private var theme
     @State private var password = ""
     @State private var confirmation = ""
     @State private var successMessage: String?
@@ -61,8 +61,9 @@ struct PasswordResetLinkView: View {
                     Text(successMessage)
                 } actions: {
                     Button("Continue to Sign In") { session.dismissAuthLink() }
-                        .buttonStyle(.borderedProminent)
+                        .buttonStyle(.primaryAction)
                 }
+                .currentfoldCanvas()
                 .navigationTitle("Reset Password")
             } else {
                 passwordForm
@@ -81,17 +82,20 @@ struct PasswordResetLinkView: View {
             } footer: {
                 Text("Use at least 8 characters.")
             }
+            .currentfoldRaisedRows()
 
             if attemptedSubmit, let validationMessage {
                 Section {
                     Label(validationMessage, systemImage: "exclamationmark.circle")
                         .foregroundStyle(.red)
                 }
+                .currentfoldRaisedRows()
             } else if let message = session.authErrorMessage {
                 Section {
                     Label(message, systemImage: "exclamationmark.circle")
                         .foregroundStyle(.red)
                 }
+                .currentfoldRaisedRows()
             }
 
             Section {
@@ -106,13 +110,13 @@ struct PasswordResetLinkView: View {
                     }
                 }
                 .frame(maxWidth: .infinity)
-                .fontWeight(.semibold)
                 .disabled(session.isConnecting || password.isEmpty || confirmation.isEmpty)
-                .buttonStyle(.borderedProminent)
-                .tint(theme.accent)
+                .buttonStyle(.primaryAction)
+                .controlSize(.large)
             }
             .listRowBackground(Color.clear)
         }
+        .currentfoldCanvas()
         .navigationTitle("Reset Password")
         .navigationBarTitleDisplayMode(.inline)
         .onAppear { passwordFocused = true }

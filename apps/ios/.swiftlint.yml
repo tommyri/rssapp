@@ -1,5 +1,6 @@
 included:
   - Currentfold
+  - CurrentfoldShare
   - CurrentfoldTests
 
 line_length:

@@ -1,15 +1,52 @@
 import SwiftUI
 
+/// Settings, and the scope of every setting in it.
+///
+/// The web's settings are grouped by whether they follow the account or stay on the device,
+/// and each group says which. This keeps that: **Reading** is this device's, **Account** is the
+/// account's, and both footers say so out loud rather than leaving a reader to discover on
+/// their second phone that text size did not come with them.
 struct SettingsView: View {
     let account: APIAccount
+
     @Environment(SessionStore.self) private var session
+    @Environment(ReadingSettings.self) private var reading
 
     var body: some View {
+        @Bindable var reading = reading
+
         List {
-            Section("Account") {
+            Section {
+                Picker("Text Size", selection: $reading.typography.size) {
+                    ForEach(ReadingTextSize.allCases) { Text($0.title).tag($0) }
+                }
+                Picker("Font", selection: $reading.typography.font) {
+                    ForEach(ReadingBodyFont.allCases) { Text($0.title).tag($0) }
+                }
+                Picker("Column Width", selection: $reading.typography.width) {
+                    ForEach(ReadingColumnWidth.allCases) { Text($0.title).tag($0) }
+                }
+            } header: {
+                Text("Reading")
+            } footer: {
+                Text(
+                    """
+                    This device. Text size adjusts the article on top of your system text \
+                    size — it never replaces it. Also available as Aa while reading.
+                    """
+                )
+            }
+            .currentfoldRaisedRows()
+
+            Section {
                 LabeledContent("Name", value: account.displayName ?? "Not set")
                 LabeledContent("Email", value: account.email)
+            } header: {
+                Text("Account")
+            } footer: {
+                Text("Your account, on every device you sign in on.")
             }
+            .currentfoldRaisedRows()
 
             Section {
                 Button("Sign Out", role: .destructive) {
@@ -22,7 +59,17 @@ struct SettingsView: View {
                     """
                 )
             }
+            .currentfoldRaisedRows()
         }
+        .currentfoldCanvas()
         .navigationTitle("Settings")
     }
+}
+
+#Preview("Settings") {
+    NavigationStack {
+        SettingsView(account: .fixture)
+    }
+    .environment(ReadingSettings.ephemeral())
+    .environment(PreviewFixtures.sessionStore)
 }

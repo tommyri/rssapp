@@ -6,6 +6,7 @@ struct AuthenticationView: View {
     @State private var email = ""
     @State private var password = ""
     @State private var noticeMessage: String?
+    @State private var accountRoute: AccountRoute?
     @FocusState private var focusedField: Field?
 
     private enum Field: Hashable {
@@ -13,17 +14,27 @@ struct AuthenticationView: View {
         case password
     }
 
+    /// The two footer links push programmatically. A `NavigationLink` inside a form row
+    /// draws a disclosure chevron and reads as another Settings row; the front door wants
+    /// centered links under the primary action, so the push happens from a plain button.
+    private enum AccountRoute: Hashable {
+        case registration
+        case passwordRecovery
+    }
+
     var body: some View {
         NavigationStack {
             Form {
                 Section {
-                    BrandHeader()
+                    BrandHeader(layout: .masthead)
                         .listRowInsets(
-                            EdgeInsets(top: 28, leading: 16, bottom: 24, trailing: 16)
+                            EdgeInsets(top: 36, leading: 20, bottom: 28, trailing: 20)
                         )
                 }
+                .listRowBackground(Color.clear)
+                .listRowSeparator(.hidden)
 
-                Section("Sign in") {
+                Section {
                     TextField("Email", text: $email)
                         .textContentType(.username)
                         .keyboardType(.emailAddress)
@@ -39,6 +50,7 @@ struct AuthenticationView: View {
                         .submitLabel(.go)
                         .onSubmit(signIn)
                 }
+                .currentfoldRaisedRows()
 
                 if let message = session.authErrorMessage {
                     Section {
@@ -54,6 +66,7 @@ struct AuthenticationView: View {
                             }
                         }
                     }
+                    .currentfoldRaisedRows()
                 }
 
                 if let noticeMessage {
@@ -61,43 +74,68 @@ struct AuthenticationView: View {
                         Label(noticeMessage, systemImage: "envelope")
                             .foregroundStyle(.secondary)
                     }
+                    .currentfoldRaisedRows()
                 }
 
                 Section {
                     Button(action: signIn) {
-                        HStack {
-                            Spacer()
+                        ZStack {
+                            Text("Sign In")
+                                .opacity(session.isConnecting ? 0 : 1)
                             if session.isConnecting {
                                 ProgressView()
-                            } else {
-                                Text("Sign In")
-                                    .fontWeight(.semibold)
                             }
-                            Spacer()
                         }
+                        .frame(maxWidth: .infinity)
                     }
                     .disabled(session.isConnecting || email.isEmpty || password.isEmpty)
-                    .buttonStyle(.borderedProminent)
-                    .tint(theme.accent)
+                    .buttonStyle(.primaryAction)
+                    .controlSize(.large)
+                    .accessibilityLabel("Sign In")
                 }
                 .listRowBackground(Color.clear)
 
                 NativeProviderSignInSection(inviteToken: nil)
 
                 Section {
-                    NavigationLink("Create an Account") {
-                        RegistrationView(prefilledEmail: email)
+                    footerLink("Create an Account", weight: .semibold) {
+                        accountRoute = .registration
                     }
-                    NavigationLink("Forgot Password?") {
-                        PasswordRecoveryView(prefilledEmail: email)
+                    footerLink("Forgot Password?", weight: .regular) {
+                        accountRoute = .passwordRecovery
                     }
                 }
+                .listRowBackground(Color.clear)
+                .listRowSeparator(.hidden)
             }
-            .navigationTitle("Welcome")
+            .currentfoldCanvas()
+            .navigationBarTitleDisplayMode(.inline)
+            .navigationDestination(item: $accountRoute) { route in
+                switch route {
+                case .registration:
+                    RegistrationView(prefilledEmail: email)
+                case .passwordRecovery:
+                    PasswordRecoveryView(prefilledEmail: email)
+                }
+            }
             .task { await session.loadAuthProviders() }
             .onChange(of: email) { _, _ in clearFeedback() }
             .onChange(of: password) { _, _ in clearFeedback() }
         }
+    }
+
+    private func footerLink(
+        _ title: String,
+        weight: Font.Weight,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            Text(title)
+                .font(.subheadline.weight(weight))
+                .frame(maxWidth: .infinity, alignment: .center)
+                .padding(.vertical, 4)
+        }
+        .foregroundStyle(theme.accentInk)
     }
 
     private func signIn() {
