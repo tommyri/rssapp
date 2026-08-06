@@ -17,6 +17,9 @@ version section verbatim, so this file is the release record rather than an afte
   folder; rows arrive with a ready-made preview and reading-time estimate computed the
   same way the web computes them; and star, Read later and **Mark all read** — including
   its older-than variants — are all writable in batches.
+- Focused reading has a keyboard shortcut. **f** toggles it, and with nothing open it
+  starts focused reading on the article **j** would have opened. **f** and Escape now
+  appear in the **?** shortcuts overlay alongside the rest of the keyboard canon.
 
 ### Changed
 
@@ -25,6 +28,34 @@ version section verbatim, so this file is the release record rather than an afte
   time it is opened — navigating to another feed or view, or reloading the page. Marking
   a post unread, external read changes from other clients, and **Mark all read** behave
   as before.
+- Focused reading now clears everything but the article, on a phone as well as a desktop:
+  the view title, filters, saved-link form, pagination, and the other articles all step
+  aside, the sticky header shrinks to a slim strip carrying reading progress and an exit,
+  and the article takes the full column width. On wider screens the strip also carries
+  the open article's title, for context once the headline has scrolled away, and status
+  messages such as "Marked 12 read." appear there while the filters row is hidden.
+  Focus previously removed only the navigation chrome, which on a phone is a slim top bar
+  — entering it barely changed the picture.
+- A request to read focused now lasts as long as the view. Closing an article shows the
+  full list again, and opening the next one returns to focused reading rather than asking
+  for it once per article. Leaving the view clears it, as do **f**, Escape, and the
+  strip's exit.
+- The action bar above an open article steps back while focused; the copy below it stays.
+  Focus is committed reading rather than triage, and on a phone that bracket put three
+  rows of buttons before the first paragraph.
+- The **App information** footer in Settings now identifies an installation running from
+  a source checkout, showing its short revision and flagging a modified working tree. It
+  previously said only "Local development", which cannot answer the one question that
+  footer exists for — which code is this installation running?
+
+### Fixed
+
+- **k** at the top of an unread-only list now says where the earlier reads went instead
+  of silently reopening the same article. Articles read during the visit stay in the list
+  and **k** walks back through them; anything read before it — after a reload, a view
+  switch, or on another device — is under **Show read**.
+- The pull-to-refresh indicator no longer ghosts through the reading strip while focused.
+  It is visible only while a pull or a refresh is actually underway.
 
 ## [2026.7.6] - 2026-07-26
 
