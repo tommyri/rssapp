@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		04FE809AD87F7187E52ECC5D /* AccessibilityFloorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 194770DCA031A644768832DA /* AccessibilityFloorTests.swift */; };
 		0504E37B2029EF49BEDE440D /* mark-all-read-request.json in Resources */ = {isa = PBXBuildFile; fileRef = 3A6DCE6847CDBD9F947A42D6 /* mark-all-read-request.json */; };
 		07A46B47C7043C82A4B44965 /* saved-page-read-state-response.json in Resources */ = {isa = PBXBuildFile; fileRef = 16CF31C6E30A0C26F8283105 /* saved-page-read-state-response.json */; };
 		0888075AB74F942653222361 /* CurrentfoldAPIClient+SavedPages.swift in Sources */ = {isa = PBXBuildFile; fileRef = F6E244A03B097E163D3481F4 /* CurrentfoldAPIClient+SavedPages.swift */; };
@@ -86,7 +87,6 @@
 		9CD6D0B11E841F4081577AC1 /* saved-page-create-response.json in Resources */ = {isa = PBXBuildFile; fileRef = FD13F19C6DED1090B8B75D30 /* saved-page-create-response.json */; };
 		9DA01A1932DF8AE1F5009C60 /* ReaderEntryMerge.swift in Sources */ = {isa = PBXBuildFile; fileRef = BDB7524C1EEF95FDE24BDF99 /* ReaderEntryMerge.swift */; };
 		A038B546BA18AFEA6C2435E3 /* SourcesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF7732A55B038FE3BCBC7134 /* SourcesView.swift */; };
-		A11Y0F100R5B0114D0001000 /* AccessibilityFloorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A11Y0F100R5F1LE000020000 /* AccessibilityFloorTests.swift */; };
 		A448501FC15A4367123F8A79 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB787CA2DA1CAEC5D208C5B7 /* SettingsView.swift */; };
 		A662E13D296DA8BFDF36717C /* GoogleSignIn in Frameworks */ = {isa = PBXBuildFile; productRef = EC2331599D8174DECD5FE19F /* GoogleSignIn */; };
 		A81A7678DBA89263862435DC /* ServerAddressTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E804EBC3AF5C4420C155261C /* ServerAddressTests.swift */; };
@@ -168,6 +168,7 @@
 		16CF31C6E30A0C26F8283105 /* saved-page-read-state-response.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "saved-page-read-state-response.json"; sourceTree = "<group>"; };
 		17ACDB500B70F24B3BED2471 /* PreviewFixtures.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreviewFixtures.swift; sourceTree = "<group>"; };
 		1935DC85E1974ED45A332071 /* SaveToCurrentfoldView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SaveToCurrentfoldView.swift; sourceTree = "<group>"; };
+		194770DCA031A644768832DA /* AccessibilityFloorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccessibilityFloorTests.swift; sourceTree = "<group>"; };
 		1D4458876F9B539DB81712DF /* read-later-state-response.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "read-later-state-response.json"; sourceTree = "<group>"; };
 		1E21F64ECDADC386AC95AE1A /* ArticleDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArticleDetailView.swift; sourceTree = "<group>"; };
 		29DC492E8F8BB9C907F8AE2E /* ReaderStoreReadLaterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReaderStoreReadLaterTests.swift; sourceTree = "<group>"; };
@@ -176,7 +177,7 @@
 		3A6DCE6847CDBD9F947A42D6 /* mark-all-read-request.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "mark-all-read-request.json"; sourceTree = "<group>"; };
 		3B6555E6FD2006F034123DC1 /* subscription-create-request.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "subscription-create-request.json"; sourceTree = "<group>"; };
 		3C0F4B271969E4AEFB359264 /* ReadingSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReadingSettings.swift; sourceTree = "<group>"; };
-		3C8FF0A4C4D2D13D5F519A3C /* CurrentfoldShare.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = CurrentfoldShare.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		3C8FF0A4C4D2D13D5F519A3C /* CurrentfoldShare.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = CurrentfoldShare.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		3D31DFE52B674650E1C3CB05 /* read-state-request.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "read-state-request.json"; sourceTree = "<group>"; };
 		3E7A82DD928919EBAC68B9D0 /* saved-page-read-state-request.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "saved-page-read-state-request.json"; sourceTree = "<group>"; };
 		405370BC1F0BF3DD32638BC9 /* MarkAllReadSweep.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarkAllReadSweep.swift; sourceTree = "<group>"; };
@@ -196,7 +197,7 @@
 		71F436F98E06EDC8AFA411FD /* LibraryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryView.swift; sourceTree = "<group>"; };
 		72FAF91FC5529EA55ADA9A67 /* ShareViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareViewController.swift; sourceTree = "<group>"; };
 		735B5B7D91C343DD0F8EE2A9 /* APISavedPage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APISavedPage.swift; sourceTree = "<group>"; };
-		75C66FDF8A22B35C15229F71 /* Currentfold.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Currentfold.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		75C66FDF8A22B35C15229F71 /* Currentfold.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Currentfold.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		79029CB740F597263E09040C /* ArticleListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArticleListView.swift; sourceTree = "<group>"; };
 		791246CD134DA85C0938A187 /* APIModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIModels.swift; sourceTree = "<group>"; };
 		79C05B61CC3B7EA07DF5BAFA /* SavedPageDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SavedPageDetailView.swift; sourceTree = "<group>"; };
@@ -215,7 +216,6 @@
 		9CE39DF6247BC5D03A0F1DE9 /* BrandControls.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrandControls.swift; sourceTree = "<group>"; };
 		9CEA092BECAB7A7BC52FEBB4 /* starred-state-request.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "starred-state-request.json"; sourceTree = "<group>"; };
 		9D6AA44D589AC2F29B1C5180 /* starred-state-response.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "starred-state-response.json"; sourceTree = "<group>"; };
-		A11Y0F100R5F1LE000020000 /* AccessibilityFloorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccessibilityFloorTests.swift; sourceTree = "<group>"; };
 		A14A3C4290BC015C442A58B5 /* ShareExtensionEnvironment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareExtensionEnvironment.swift; sourceTree = "<group>"; };
 		A273C2CC1F63B6C32CF5B12F /* ReadingTypography.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReadingTypography.swift; sourceTree = "<group>"; };
 		A315BD303F91F42F5B35574F /* ReadingProgressQueue.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReadingProgressQueue.swift; sourceTree = "<group>"; };
@@ -237,7 +237,7 @@
 		CBA45AB3FA7CC4DB4606F709 /* ConnectionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConnectionView.swift; sourceTree = "<group>"; };
 		CD82734E5DE562A26C1D0216 /* ReaderStoreReadingProgressTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReaderStoreReadingProgressTests.swift; sourceTree = "<group>"; };
 		D4D71210C461157670C8F7E9 /* ReaderStoreTriageTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReaderStoreTriageTests.swift; sourceTree = "<group>"; };
-		D5B97009937BE6E79ED070B3 /* CurrentfoldTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = CurrentfoldTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		D5B97009937BE6E79ED070B3 /* CurrentfoldTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = CurrentfoldTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		D66D0E0ECE227785074F40FD /* ReadingProgressTracker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReadingProgressTracker.swift; sourceTree = "<group>"; };
 		D7615E9379F859AA28A78D02 /* APIContractFixtureTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIContractFixtureTests.swift; sourceTree = "<group>"; };
 		DC0206A23F16AAA1EB6FB1B2 /* SavedPageRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SavedPageRow.swift; sourceTree = "<group>"; };
@@ -290,11 +290,11 @@
 		00597F8AB62C102F407C1DE2 /* CurrentfoldTests */ = {
 			isa = PBXGroup;
 			children = (
+				194770DCA031A644768832DA /* AccessibilityFloorTests.swift */,
 				F66CB7D4F31E842453292AF2 /* AddFeedTests.swift */,
 				D7615E9379F859AA28A78D02 /* APIContractFixtureTests.swift */,
 				F17B741D37E09D435D0D438E /* APIReadingContractFixtureTests.swift */,
 				E8D34A12601924087F6F6D7C /* APITransportTests.swift */,
-				A11Y0F100R5F1LE000020000 /* AccessibilityFloorTests.swift */,
 				5691D6F491A1AF26DC827744 /* ArticlePaletteTests.swift */,
 				2F75500F206ED9484987F48F /* ContractFixtures.swift */,
 				83BF77C67FF1F99AA23203EB /* NativeAuthLinkTests.swift */,
@@ -634,6 +634,17 @@
 			attributes = {
 				BuildIndependentTargetsInParallel = YES;
 				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+					C4B7246FAFCC4EACA43644FA = {
+						DevelopmentTeam = K2Z3B4RGA8;
+					};
+					DDA3C03F507638CF34EC5077 = {
+						DevelopmentTeam = K2Z3B4RGA8;
+					};
+					F69955503FD63B5C15946CDC = {
+						DevelopmentTeam = K2Z3B4RGA8;
+					};
+				};
 			};
 			buildConfigurationList = FD2AE1802933E831F9DDC8D3 /* Build configuration list for PBXProject "Currentfold" */;
 			developmentRegion = en;
@@ -732,8 +743,8 @@
 				0C7B921AD5332F2ADA7D1DEE /* APIContractFixtureTests.swift in Sources */,
 				25CA290FE95304A8C1568714 /* APIReadingContractFixtureTests.swift in Sources */,
 				8798EE0ACA34225D737678DF /* APITransportTests.swift in Sources */,
+				04FE809AD87F7187E52ECC5D /* AccessibilityFloorTests.swift in Sources */,
 				25AD7DAB8CCDFFC88A0C6E5F /* AddFeedTests.swift in Sources */,
-				A11Y0F100R5B0114D0001000 /* AccessibilityFloorTests.swift in Sources */,
 				8E6A977CD210B74816B1A748 /* ArticlePaletteTests.swift in Sources */,
 				20CC7553DBBE30B10955510F /* ContractFixtures.swift in Sources */,
 				7CCC7F98ABC56C508FD532AF /* NativeAuthLinkTests.swift in Sources */,
@@ -840,7 +851,6 @@
 				CURRENTFOLD_GOOGLE_SERVER_CLIENT_ID = "";
 				CURRENTFOLD_SERVER_URL = "https://rssapp.badask.no";
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = "";
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Currentfold/Support/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -861,7 +871,6 @@
 				CODE_SIGN_ENTITLEMENTS = CurrentfoldShare/Support/CurrentfoldShare.entitlements;
 				CURRENTFOLD_SERVER_URL = "https://rssapp.badask.no";
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = "";
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = CurrentfoldShare/Support/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -882,7 +891,6 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
-				DEVELOPMENT_TEAM = "";
 				GENERATE_INFOPLIST_FILE = YES;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -902,7 +910,6 @@
 				CODE_SIGN_ENTITLEMENTS = CurrentfoldShare/Support/CurrentfoldShare.entitlements;
 				CURRENTFOLD_SERVER_URL = "https://rssapp.badask.no";
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = "";
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = CurrentfoldShare/Support/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -954,6 +961,7 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = K2Z3B4RGA8;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
@@ -988,7 +996,6 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
-				DEVELOPMENT_TEAM = "";
 				GENERATE_INFOPLIST_FILE = YES;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -1037,6 +1044,7 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = K2Z3B4RGA8;
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
@@ -1073,7 +1081,6 @@
 				CURRENTFOLD_GOOGLE_SERVER_CLIENT_ID = "";
 				CURRENTFOLD_SERVER_URL = "https://rssapp.badask.no";
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = "";
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Currentfold/Support/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
