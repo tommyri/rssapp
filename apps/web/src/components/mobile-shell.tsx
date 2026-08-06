@@ -52,7 +52,7 @@ export function MobileShell({ children }: { children: ReactNode }) {
           <MenuIcon className="size-5" />
         </button>
         <Link href="/" className="font-serif text-xl font-bold tracking-tight">
-          rssapp<span className="text-primary">.</span>
+          Currentfold
         </Link>
         <div className="ml-auto">
           <RefreshButton />
@@ -83,7 +83,7 @@ export function MobileShell({ children }: { children: ReactNode }) {
         {/* Mobile-only drawer header — the shared content's brand row is md+ only. */}
         <div className="flex shrink-0 items-center justify-between px-4 pt-4 pb-1 md:hidden">
           <span className="font-serif text-xl font-bold tracking-tight">
-            rssapp<span className="text-primary">.</span>
+            Currentfold
           </span>
           <button
             ref={closeRef}

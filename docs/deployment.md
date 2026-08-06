@@ -1,6 +1,6 @@
 # Deployment runbook
 
-This is the operational reference for rssapp. Follow it for the first VPS setup,
+This is the operational reference for Currentfold. Follow it for the first VPS setup,
 routine staging and production deployments, releases, and recovery. The VPS **never**
 builds application source: GitHub Actions tests `main` and publishes Linux images to
 GitHub Container Registry (GHCR); the VPS pulls a selected image and runs it with Docker
@@ -11,8 +11,8 @@ Compose.
 | Environment | Image | Update policy | Data |
 |---|---|---|---|
 | Local | Working-tree build | Manual | Local Docker volumes |
-| Staging — **not built yet** | `ghcr.io/tommyri/rssapp:edge` | Checks every five minutes | Separate `rssapp-staging` volumes and database |
-| Production | `ghcr.io/tommyri/rssapp:sha-<commit>` or a calendar-version tag | Explicit promotion only | Existing `rssapp` volumes and database |
+| Staging — **not built yet** | `ghcr.io/tommyri/currentfold:edge` | Checks every five minutes | Separate `currentfold-staging` volumes and database |
+| Production | `ghcr.io/tommyri/currentfold:sha-<commit>` or a calendar-version tag | Explicit promotion only | The `currentfold` Compose project's volumes and database |
 
 The `edge` tag changes whenever a verified commit reaches `main`; it is deliberately
 staging-only. A production deployment always names an immutable commit SHA or release
@@ -54,9 +54,14 @@ images and create releases. **Do not create a GitHub secret for CI.**
 4. Commit and push the workflow files to `main`.
 5. Open the **Actions** tab and wait for **CI and publish staging image** to succeed.
 
-That first successful `main` run publishes both `ghcr.io/tommyri/rssapp:edge` and the
-immutable `ghcr.io/tommyri/rssapp:sha-<full-commit-sha>` image. The Container package is
+That first successful `main` run publishes both `ghcr.io/tommyri/currentfold:edge` and the
+immutable `ghcr.io/tommyri/currentfold:sha-<full-commit-sha>` image. The Container package is
 private by default; that is expected for this private repository.
+
+Both workflows build their image path from `github.repository`, so the GHCR package name
+follows the repository name automatically. The paths written out above assume the
+repository has been renamed to `tommyri/currentfold`; until that rename happens, CI keeps
+publishing under the old package path and the pull commands below will not resolve.
 
 ## 2. Prepare the VPS
 
@@ -74,23 +79,23 @@ GHCR.
 
 ```bash
 sudo install -d -m 755 /opt
-git clone git@github.com:tommyri/rssapp.git /tmp/rssapp
-sudo mv /tmp/rssapp /opt/rssapp
+git clone git@github.com:tommyri/currentfold.git /tmp/currentfold
+sudo mv /tmp/currentfold /opt/currentfold
 ```
 
-If `/opt/rssapp` already exists, keep it as a clean checkout. Do not make server-specific
-edits to `compose.yaml`: private configuration belongs in `/etc/rssapp/*.env`. Before
+If `/opt/currentfold` already exists, keep it as a clean checkout. Do not make server-specific
+edits to `compose.yaml`: private configuration belongs in `/etc/currentfold/*.env`. Before
 adopting this setup, save and review any existing local diff, move the intended values
 into the environment file, then make the checkout clean. Routine image deployments never
-run `git pull`; update this checkout deliberately with `git -C /opt/rssapp pull --ff-only`
+run `git pull`; update this checkout deliberately with `git -C /opt/currentfold pull --ff-only`
 only when deployment configuration or scripts change.
 
 Create the protected configuration and backup directories:
 
 ```bash
-sudo install -d -m 700 /etc/rssapp /var/backups/rssapp
-sudo install -m 600 /dev/null /etc/rssapp/staging.env
-sudo install -m 600 /dev/null /etc/rssapp/production.env
+sudo install -d -m 700 /etc/currentfold /var/backups/currentfold
+sudo install -m 600 /dev/null /etc/currentfold/staging.env
+sudo install -m 600 /dev/null /etc/currentfold/production.env
 ```
 
 ### Reverse proxy and ports
@@ -100,14 +105,19 @@ VPS. Point each HTTPS hostname at its loopback port. For example, a host-install
 configuration can be:
 
 ```caddyfile
-rss.example.com {
+app.currentfold.com {
   reverse_proxy 127.0.0.1:3000
 }
 
-staging.rss.example.com {
+staging.currentfold.com {
   reverse_proxy 127.0.0.1:3001
 }
 ```
+
+`app.currentfold.com` is the canonical reader host. The apex `currentfold.com` is
+reserved for a future marketing site and must not be pointed at this origin.
+`staging.currentfold.com` is an illustration only: staging does not exist yet and its
+hostname is not a settled decision.
 
 Use the equivalent upstreams if you run Nginx. Do not expose port 5432, and do not change
 the app mapping to a public interface. HTTPS is required for browser push outside local
@@ -120,7 +130,7 @@ a dedicated token with only the ability to download package images:
 
 1. On GitHub, open **profile picture → Settings → Developer settings → Personal access
    tokens → Tokens (classic) → Generate new token (classic)**.
-2. Give it a descriptive note such as `rssapp VPS GHCR pull`.
+2. Give it a descriptive note such as `Currentfold VPS GHCR pull`.
 3. Choose an expiration that you will actively rotate (for example, one year), and add a
    calendar reminder before that date. A token that expires causes staging pulls and
    production deployments to fail until it is replaced.
@@ -131,7 +141,7 @@ a dedicated token with only the ability to download package images:
 
 The GitHub account that creates the token must itself be allowed to read this private
 repository/package. The token is only for the VPS Docker daemon—it is not an application
-secret and must not go in either rssapp environment file.
+secret and must not go in either Currentfold environment file.
 
 Log in once on the VPS as the same account that will run deployments. `sudo docker` stores
 the registry credential for root, which is correct because the deployment script also runs
@@ -144,11 +154,11 @@ printf '%s' "$GHCR_TOKEN" | sudo docker login ghcr.io -u tommyri --password-stdi
 unset GHCR_TOKEN
 
 # Run after the first main workflow has published an image.
-sudo docker pull ghcr.io/tommyri/rssapp:edge
+sudo docker pull ghcr.io/tommyri/currentfold:edge
 ```
 
 `Login Succeeded` confirms that Docker saved the credential in root's protected Docker
-configuration. Do not copy that credential into `/etc/rssapp/*.env`, the repository, a
+configuration. Do not copy that credential into `/etc/currentfold/*.env`, the repository, a
 shell profile, or a systemd unit.
 
 ### Rotate or revoke the token
@@ -172,17 +182,17 @@ openssl rand -hex 24      # Safe value for POSTGRES_PASSWORD
 openssl rand -base64 48   # Safe value for AUTH_SECRET
 ```
 
-Create `/etc/rssapp/staging.env` with values like these (replace every example secret):
+Create `/etc/currentfold/staging.env` with values like these (replace every example secret):
 
 ```dotenv
-APP_IMAGE=ghcr.io/tommyri/rssapp:edge
+APP_IMAGE=ghcr.io/tommyri/currentfold:edge
 APP_PORT=3001
-POSTGRES_USER=rssapp_staging
+POSTGRES_USER=currentfold_staging
 POSTGRES_PASSWORD=<different-random-hex-password>
-POSTGRES_DB=rssapp_staging
-DATABASE_URL=postgres://rssapp_staging:<same-password>@db:5432/rssapp_staging
+POSTGRES_DB=currentfold_staging
+DATABASE_URL=postgres://currentfold_staging:<same-password>@db:5432/currentfold_staging
 AUTH_SECRET=<different-long-random-secret>
-APP_URL=https://staging.rss.example.com
+APP_URL=https://staging.currentfold.com
 
 SCHEDULER_TICK_MS=60000
 BACKUP_INTERVAL_HOURS=24
@@ -200,24 +210,27 @@ VAPID_PUBLIC_KEY=
 VAPID_PRIVATE_KEY=
 ```
 
-Create `/etc/rssapp/production.env` with the same fields but:
+Create `/etc/currentfold/production.env` with the same fields but:
 
 ```dotenv
-APP_IMAGE=ghcr.io/tommyri/rssapp:sha-<tested-commit>
+APP_IMAGE=ghcr.io/tommyri/currentfold:sha-<tested-commit>
 APP_PORT=3000
-POSTGRES_USER=<existing-or-production-only-user>
+POSTGRES_USER=currentfold
 POSTGRES_PASSWORD=<production-password>
-POSTGRES_DB=<existing-or-production-only-database>
-DATABASE_URL=postgres://<same-user>:<same-password>@db:5432/<same-database>
+POSTGRES_DB=currentfold
+DATABASE_URL=postgres://currentfold:<same-password>@db:5432/currentfold
 AUTH_SECRET=<production-secret>
-APP_URL=https://rss.example.com
+APP_URL=https://app.currentfold.com
 ```
 
-For an existing production database, preserve its actual Postgres user, password, and
-database name in this first file. Changing `POSTGRES_PASSWORD` in Compose does **not**
-change the password inside an initialized Postgres volume. Rotate it later with an
-intentional `psql` password change, update `DATABASE_URL` at the same time, and restart
-the app.
+`currentfold` is also what `compose.yaml` falls back to when these are unset, so the
+production database and role names stay the same whether or not the environment file
+spells them out. The values in the file must match what is already inside the Postgres
+volume: the role and database are created once, on the volume's first initialization,
+and are not renamed by editing this file afterwards. Changing `POSTGRES_PASSWORD` in
+Compose likewise does **not** change the password inside an initialized volume. Rotate it
+with an intentional `psql` password change, update `DATABASE_URL` at the same time, and
+restart the app.
 
 Generate VAPID keys separately per HTTPS origin if browser push is enabled:
 
@@ -241,9 +254,10 @@ Apple configuration. To open those same links directly in the installed iOS app,
 `APPLE_TEAM_ID` to the 10-character Team ID shown in the Apple Developer account. The
 service then publishes `/.well-known/apple-app-site-association` for the
 `com.currentfold.reader` bundle identifier. The iOS build's
-`CURRENTFOLD_ASSOCIATED_DOMAIN` must match the hostname in `APP_URL`; change it in
-`apps/ios/project.yml`, regenerate the Xcode project, and sign with an App ID that has
-the Associated Domains capability.
+`CURRENTFOLD_ASSOCIATED_DOMAIN` must match the hostname in `APP_URL`; both are
+`app.currentfold.com` in `apps/ios/project.yml`. If either ever moves, change it there,
+run `npm run ios:generate`, and sign with an App ID that has the Associated Domains
+capability.
 
 To also enable **Sign in with Apple**, enable that capability for the same App ID and
 set the server audience to the native bundle identifier:
@@ -262,7 +276,7 @@ tracked deletion-time Apple authorization revocation flow.
 Verify the deployment before distributing a build:
 
 ```bash
-curl -i https://rss.example.com/.well-known/apple-app-site-association
+curl -i https://app.currentfold.com/.well-known/apple-app-site-association
 ```
 
 Expect `200`, `Content-Type: application/json`, and an `appID` beginning with the Apple
@@ -286,7 +300,7 @@ no Google API needs to be enabled for this feature.
    canonical `APP_URL` hostname:
 
    ```text
-   https://rss.example.com/api/auth/callback/google
+   https://app.currentfold.com/api/auth/callback/google
    ```
 
    The scheme, hostname, path, and trailing slash behavior must match exactly. The
@@ -307,7 +321,7 @@ no Google API needs to be enabled for this feature.
    production image so the server receives the new values.
 
    ```bash
-   sudo bash /opt/rssapp/scripts/deploy-image.sh production
+   sudo bash /opt/currentfold/scripts/deploy-image.sh production
    ```
 
 5. Visit `/login` or `/signup` on the matching HTTPS domain and select **Continue with
@@ -331,7 +345,7 @@ server has `AUTH_GOOGLE_ID` and all client build settings are present. Confirm s
 discovery with:
 
 ```bash
-curl https://rss.example.com/api/v1/auth/providers
+curl https://app.currentfold.com/api/v1/auth/providers
 ```
 
 Google identities are keyed by Google's stable account subject, never merely a matching
@@ -347,23 +361,23 @@ database-backed `/api/health` endpoint. It only replaces the app container: it n
 Postgres.
 
 ```bash
-# Staging reads APP_IMAGE=edge from /etc/rssapp/staging.env.
-sudo bash /opt/rssapp/scripts/deploy-image.sh staging
+# Staging reads APP_IMAGE=edge from /etc/currentfold/staging.env.
+sudo bash /opt/currentfold/scripts/deploy-image.sh staging
 
 # Promote an immutable image CI has verified (and staging has tested, once it exists).
-sudo bash /opt/rssapp/scripts/deploy-image.sh production \
-  ghcr.io/tommyri/rssapp:sha-<tested-full-commit-sha>
+sudo bash /opt/currentfold/scripts/deploy-image.sh production \
+  ghcr.io/tommyri/currentfold:sha-<tested-full-commit-sha>
 ```
 
 After either deployment, confirm the healthy HTTPS endpoint and inspect the relevant
 container if it failed:
 
 ```bash
-curl --fail --show-error https://staging.rss.example.com/api/health
-sudo docker logs --tail=200 rssapp-staging-app-1
+curl --fail --show-error https://staging.currentfold.com/api/health
+sudo docker logs --tail=200 currentfold-staging-app-1
 
-curl --fail --show-error https://rss.example.com/api/health
-sudo docker logs --tail=200 rssapp-app-1
+curl --fail --show-error https://app.currentfold.com/api/health
+sudo docker logs --tail=200 currentfold-app-1
 ```
 
 The health response contains `status: "ok"`, the calendar `version`, the full source
@@ -373,7 +387,7 @@ retain this non-sensitive identity, which helps distinguish a broken deployment 
 old one. These values are baked into the image by GitHub Actions; do not add them to the
 VPS environment file. Container names can vary with the Docker Compose version; if a
 name differs, use
-`sudo docker compose --project-name rssapp-staging ps` or `--project-name rssapp ps` to
+`sudo docker compose --project-name currentfold-staging ps` or `--project-name currentfold ps` to
 find it.
 
 ## 6. Let staging follow `main` (not set up yet)
@@ -385,18 +399,18 @@ Install the systemd unit and timer once. It pulls the current `edge` image every
 minutes; ordinary runs are safe no-ops when the image did not change.
 
 ```bash
-sudo cp /opt/rssapp/deploy/systemd/rssapp-staging.{service,timer} /etc/systemd/system/
+sudo cp /opt/currentfold/deploy/systemd/currentfold-staging.{service,timer} /etc/systemd/system/
 sudo systemctl daemon-reload
-sudo systemctl enable --now rssapp-staging.timer
-sudo systemctl list-timers rssapp-staging.timer
+sudo systemctl enable --now currentfold-staging.timer
+sudo systemctl list-timers currentfold-staging.timer
 ```
 
 Useful staging diagnostics:
 
 ```bash
-sudo systemctl status rssapp-staging.timer
-sudo journalctl -u rssapp-staging.service -n 100 --no-pager
-sudo bash /opt/rssapp/scripts/deploy-image.sh staging  # Run one update immediately.
+sudo systemctl status currentfold-staging.timer
+sudo journalctl -u currentfold-staging.service -n 100 --no-pager
+sudo bash /opt/currentfold/scripts/deploy-image.sh staging  # Run one update immediately.
 ```
 
 There is intentionally **no production timer**. Production only changes when a person
@@ -412,8 +426,8 @@ selects a tested immutable image.
 4. Promote the exact tested commit—use the full Git SHA shown by GitHub—to production:
 
    ```bash
-   sudo bash /opt/rssapp/scripts/deploy-image.sh production \
-     ghcr.io/tommyri/rssapp:sha-<tested-full-commit-sha>
+   sudo bash /opt/currentfold/scripts/deploy-image.sh production \
+     ghcr.io/tommyri/currentfold:sha-<tested-full-commit-sha>
    ```
 
 5. Test the production health endpoint and the user-facing change.
@@ -448,12 +462,12 @@ git push origin main
 #    the release to a commit CI did not verify.
 # 3. Tag the same tested commit. Do not use --follow-tags with the main push:
 #    the release workflow needs the immutable sha image to exist first.
-git tag -a v2026.7.1 -m "rssapp 2026.7.1"
+git tag -a v2026.7.1 -m "Currentfold 2026.7.1"
 git push origin v2026.7.1
 
 # 4. After the GitHub Release appears, promote the immutable release tag.
-sudo bash /opt/rssapp/scripts/deploy-image.sh production \
-  ghcr.io/tommyri/rssapp:2026.7.1
+sudo bash /opt/currentfold/scripts/deploy-image.sh production \
+  ghcr.io/tommyri/currentfold:2026.7.1
 ```
 
 If staging finds a defect after preparing a candidate, fix it on `main`, add the
@@ -463,15 +477,15 @@ an existing release tag to a different commit.
 ## 9. Backups, rollback, and recovery boundaries
 
 Every production deploy writes a timestamped `pg_dump` SQL backup to
-`/var/backups/rssapp` before the app image changes. Keep copies of those files off the
+`/var/backups/currentfold` before the app image changes. Keep copies of those files off the
 VPS as well as the app's scheduled JSON snapshots. Periodically test that the SQL backup
 can be restored into a disposable database; an untested backup is only a hope.
 
 To roll back application code, deploy the last known-good immutable SHA or calendar tag:
 
 ```bash
-sudo bash /opt/rssapp/scripts/deploy-image.sh production \
-  ghcr.io/tommyri/rssapp:sha-<last-known-good-full-commit-sha>
+sudo bash /opt/currentfold/scripts/deploy-image.sh production \
+  ghcr.io/tommyri/currentfold:sha-<last-known-good-full-commit-sha>
 ```
 
 Do **not** blindly roll back database migrations. A database restore is an incident

@@ -361,7 +361,7 @@ export async function sendTestNotificationDigest(
   await sendEmailMessage({
     to: claim.email,
     ...email,
-    idempotencyKey: `rssapp-digest-test-${userId}-${claim.claimedAt.getTime()}`,
+    idempotencyKey: `currentfold-digest-test-${userId}-${claim.claimedAt.getTime()}`,
   });
 }
 
@@ -638,7 +638,7 @@ async function deliverClaimed(
   try {
     const result = await sendEmailMessage({
       ...message,
-      idempotencyKey: `rssapp-notification-digest-${delivery.id}`,
+      idempotencyKey: `currentfold-notification-digest-${delivery.id}`,
     });
     await db.transaction(async (tx) => {
       await tx

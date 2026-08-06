@@ -47,7 +47,9 @@ async function readBackupPayload(request: Request): Promise<unknown> {
   try {
     return JSON.parse(new TextDecoder().decode(payload));
   } catch {
-    throw new BackupRestoreError("Choose a valid rssapp JSON backup file.");
+    throw new BackupRestoreError(
+      "Choose a valid Currentfold JSON backup file.",
+    );
   }
 }
 

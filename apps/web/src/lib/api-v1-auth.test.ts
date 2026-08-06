@@ -26,12 +26,12 @@ describe("first-party API authentication", () => {
   it("accepts only a bearer credential", async () => {
     mocks.authenticate.mockResolvedValue({ id: 7 });
     const request = new Request("https://currentfold.test/api/v1/me", {
-      headers: { Authorization: "Bearer rssapp_api_example" },
+      headers: { Authorization: "Bearer currentfold_api_example" },
     });
 
     expect(bearerCredential("GoogleLogin auth=legacy")).toBeNull();
     expect(await authenticateFirstPartyApiRequest(request)).toEqual({ id: 7 });
-    expect(mocks.authenticate).toHaveBeenCalledWith("rssapp_api_example");
+    expect(mocks.authenticate).toHaveBeenCalledWith("currentfold_api_example");
   });
 
   it("routes a native access credential through device-session auth", async () => {

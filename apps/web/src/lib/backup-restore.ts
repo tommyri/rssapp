@@ -32,7 +32,7 @@ import {
   type SubscriptionSettings,
 } from "@/lib/subscription-settings";
 
-const BACKUP_FORMAT = "rssapp-backup";
+const BACKUP_FORMAT = "currentfold-backup";
 const BACKUP_VERSION = 1;
 const IMPORT_BATCH_SIZE = 200;
 const MAX_LABEL_NAME_LENGTH = 40;
@@ -324,7 +324,9 @@ function validateReferences(backup: BackupDocument): void {
 export function parseBackupDocument(input: unknown): BackupDocument {
   const parsed = backupDocumentSchema.safeParse(input);
   if (!parsed.success) {
-    throw new BackupRestoreError("Choose a valid rssapp JSON backup file.");
+    throw new BackupRestoreError(
+      "Choose a valid Currentfold JSON backup file.",
+    );
   }
   validateReferences(parsed.data);
   return parsed.data;

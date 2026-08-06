@@ -22,7 +22,7 @@ export const DEFAULT_TYPOGRAPHY: ReaderTypography = {
   width: "normal",
 };
 
-export const READER_TYPOGRAPHY_KEY = "rssapp:readerTypography";
+export const READER_TYPOGRAPHY_KEY = "currentfold:readerTypography";
 
 const FONT_SIZE: Record<ReaderFontSize, string> = {
   small: "0.9375rem",

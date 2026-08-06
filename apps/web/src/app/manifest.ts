@@ -2,9 +2,10 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "rssapp",
-    short_name: "rssapp",
-    description: "A self-hosted RSS reader",
+    name: "Currentfold",
+    short_name: "Currentfold",
+    description:
+      "A focused reader for following, saving, and returning to the open web.",
     start_url: "/",
     display: "standalone",
     background_color: "#faf9f5",

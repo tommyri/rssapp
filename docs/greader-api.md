@@ -11,7 +11,7 @@ of a person's library.
 2. Create an app password and copy it immediately. It is intentionally shown
    only once.
 3. In a Google Reader-compatible client, use:
-   - **Server address:** `https://your-rssapp.example/api/greader`
+   - **Server address:** `https://app.currentfold.com/api/greader`
    - **Username:** the account email address
    - **Password:** the generated app password
 

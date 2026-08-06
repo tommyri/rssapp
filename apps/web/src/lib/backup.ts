@@ -37,7 +37,7 @@ function backupTimestamp(date: Date): string {
 
 /** A stable, portable name that contains no account details. */
 export function backupFilename(userId: number, date: Date): string {
-  return `rssapp-backup-user-${userId}-${backupTimestamp(date)}.json`;
+  return `currentfold-backup-user-${userId}-${backupTimestamp(date)}.json`;
 }
 
 /**
@@ -338,7 +338,7 @@ export async function exportUserBackup(userId: number) {
   }
 
   return {
-    format: "rssapp-backup",
+    format: "currentfold-backup",
     version: BACKUP_FORMAT_VERSION,
     exportedAt: new Date().toISOString(),
     user: {
@@ -451,7 +451,7 @@ async function pruneOldBackups(
   userId: number,
   retention: number,
 ): Promise<void> {
-  const prefix = `rssapp-backup-user-${userId}-`;
+  const prefix = `currentfold-backup-user-${userId}-`;
   const backupFiles = (await readdir(directory))
     .filter((file) => file.startsWith(prefix) && file.endsWith(".json"))
     .sort()

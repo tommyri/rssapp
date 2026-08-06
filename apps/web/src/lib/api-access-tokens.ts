@@ -4,7 +4,7 @@ import { db } from "@/db";
 import { apiAccessTokens, users } from "@/db/schema";
 
 const TOKEN_BYTES = 32;
-const TOKEN_PREFIX = "rssapp_api_";
+const TOKEN_PREFIX = "currentfold_api_";
 const DISPLAY_PREFIX_CHARS = 8;
 const LAST_USED_WRITE_INTERVAL_MS = 5 * 60 * 1000;
 

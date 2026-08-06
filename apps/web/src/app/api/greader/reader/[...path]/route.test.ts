@@ -70,9 +70,11 @@ describe("Google Reader adapter routes", () => {
     });
     const response = await GET(
       new Request(
-        "https://rssapp.test/api/greader/reader/api/0/subscription/list",
+        "https://currentfold.test/api/greader/reader/api/0/subscription/list",
         {
-          headers: { Authorization: "GoogleLogin auth=rssapp_api_example" },
+          headers: {
+            Authorization: "GoogleLogin auth=currentfold_api_example",
+          },
         },
       ),
       context(["api", "0", "subscription", "list"]),
@@ -95,7 +97,7 @@ describe("Google Reader adapter routes", () => {
     });
     const response = await GET(
       new Request(
-        "https://rssapp.test/api/greader/reader/api/0/stream/contents/user/-/state/com.google/reading-list?n=50&r=o&xt=user%2F-%2Fstate%2Fcom.google%2Fread",
+        "https://currentfold.test/api/greader/reader/api/0/stream/contents/user/-/state/com.google/reading-list?n=50&r=o&xt=user%2F-%2Fstate%2Fcom.google%2Fread",
       ),
       context([
         "api",
@@ -129,7 +131,7 @@ describe("Google Reader adapter routes", () => {
     });
     const response = await GET(
       new Request(
-        "https://rssapp.test/api/greader/reader/api/0/stream/items/ids?s=user%2F-%2Fstate%2Fcom.google%2Freading-list&n=100",
+        "https://currentfold.test/api/greader/reader/api/0/stream/items/ids?s=user%2F-%2Fstate%2Fcom.google%2Freading-list&n=100",
       ),
       context(["api", "0", "stream", "items", "ids"]),
     );
@@ -155,10 +157,13 @@ describe("Google Reader adapter routes", () => {
     formData.append("a", "user/-/state/com.google/read");
     formData.append("a", "user/-/label/Research");
     const response = await POST(
-      new Request("https://rssapp.test/api/greader/reader/api/0/edit-tag", {
-        method: "POST",
-        body: formData,
-      }),
+      new Request(
+        "https://currentfold.test/api/greader/reader/api/0/edit-tag",
+        {
+          method: "POST",
+          body: formData,
+        },
+      ),
       context(["api", "0", "edit-tag"]),
     );
 
@@ -174,7 +179,7 @@ describe("Google Reader adapter routes", () => {
   it("returns a plain 401 instead of redirecting a disconnected native client", async () => {
     mocks.authenticate.mockResolvedValue(null);
     const response = await GET(
-      new Request("https://rssapp.test/api/greader/reader/api/0/tag/list"),
+      new Request("https://currentfold.test/api/greader/reader/api/0/tag/list"),
       context(["api", "0", "tag", "list"]),
     );
 

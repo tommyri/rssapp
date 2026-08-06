@@ -89,7 +89,9 @@ export function OnboardingFlow({
   return (
     <div className="mx-auto w-full max-w-2xl space-y-8 px-4 py-10 md:py-16">
       <header className="space-y-2">
-        <p className="text-sm font-medium text-primary">Welcome to rssapp</p>
+        <p className="text-sm font-medium text-primary">
+          Welcome to Currentfold
+        </p>
         <h1 className="font-serif text-4xl font-bold tracking-tight">
           Set up your reader.
         </h1>

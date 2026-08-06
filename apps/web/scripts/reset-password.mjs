@@ -37,7 +37,7 @@ function databaseUrl() {
   } catch {
     // No .env — fall through to the dev default (src/db/config.ts).
   }
-  return "postgres://rssapp:rssapp@localhost:5433/rssapp";
+  return "postgres://currentfold:currentfold@localhost:5433/currentfold";
 }
 
 async function main() {

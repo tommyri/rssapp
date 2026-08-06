@@ -92,7 +92,7 @@ export async function GET(request: Request, context: Context) {
   if (endpoint === "token") {
     // The auth header is the actual protection. A non-empty token keeps legacy
     // clients that insist on this endpoint compatible without adding CSRF state.
-    return noStoreJson({ token: "rssapp" });
+    return noStoreJson({ token: "currentfold" });
   }
   if (endpoint === "user-info") {
     return noStoreJson({
@@ -122,7 +122,7 @@ export async function GET(request: Request, context: Context) {
   }
   if (endpoint === "subscription/export") {
     const entries = await subscriptionsForExport(principal.id);
-    return noStoreOpml(generateOpml("rssapp subscriptions", entries));
+    return noStoreOpml(generateOpml("Currentfold subscriptions", entries));
   }
   if (endpoint.startsWith("stream/contents/")) {
     const stream = streamFromRequest(endpoint.slice("stream/contents/".length));

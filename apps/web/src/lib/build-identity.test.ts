@@ -15,8 +15,8 @@ describe("getBuildIdentity", () => {
   it("returns the baked calendar version and normalized source revision", () => {
     expect(
       getBuildIdentity({
-        RSSAPP_VERSION: "2026.7.3",
-        RSSAPP_REVISION: "4CC354B7DD824F72BFA3DB88D8350A8A151F0505",
+        CURRENTFOLD_VERSION: "2026.7.3",
+        CURRENTFOLD_REVISION: "4CC354B7DD824F72BFA3DB88D8350A8A151F0505",
       }),
     ).toEqual({
       version: "2026.7.3",
@@ -28,8 +28,8 @@ describe("getBuildIdentity", () => {
   it("does not expose malformed deployment metadata", () => {
     expect(
       getBuildIdentity({
-        RSSAPP_VERSION: "latest<script>",
-        RSSAPP_REVISION: "not-a-commit",
+        CURRENTFOLD_VERSION: "latest<script>",
+        CURRENTFOLD_REVISION: "not-a-commit",
       }),
     ).toEqual({
       version: packageJson.version,

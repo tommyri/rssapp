@@ -1,17 +1,19 @@
 import { canonicalizeUrl } from "@/lib/canonical-url";
 import type { ReaderItem } from "@/lib/reader";
 
-const DATABASE_NAME = "rssapp-offline-library";
+const DATABASE_NAME = "currentfold-offline-library";
 const STORE_NAME = "articles";
 const MUTATION_STORE_NAME = "mutations";
 const SETTINGS_STORE_NAME = "settings";
 const DATABASE_VERSION = 3;
-const OFFLINE_OWNER_KEY = "rssapp:offline-owner";
-const OFFLINE_AUTO_DOWNLOAD_KEY = "rssapp:offline-read-later-auto-download";
+const OFFLINE_OWNER_KEY = "currentfold:offline-owner";
+const OFFLINE_AUTO_DOWNLOAD_KEY =
+  "currentfold:offline-read-later-auto-download";
 
 export type OfflineArticleSource = "manual" | "automatic";
 export type OfflineMutableField = "read" | "starred" | "readLater";
-export const OFFLINE_MUTATIONS_QUEUED_EVENT = "rssapp:offline-mutations-queued";
+export const OFFLINE_MUTATIONS_QUEUED_EVENT =
+  "currentfold:offline-mutations-queued";
 
 export interface OfflineArticle {
   key: string;

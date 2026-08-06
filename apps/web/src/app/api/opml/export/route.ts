@@ -5,12 +5,13 @@ import { subscriptionsForExport } from "@/lib/reader";
 export async function GET() {
   const userId = await getCurrentUserId();
   const entries = await subscriptionsForExport(userId);
-  const xml = generateOpml("rssapp subscriptions", entries);
+  const xml = generateOpml("Currentfold subscriptions", entries);
 
   return new Response(xml, {
     headers: {
       "content-type": "text/x-opml; charset=utf-8",
-      "content-disposition": 'attachment; filename="rssapp-subscriptions.opml"',
+      "content-disposition":
+        'attachment; filename="currentfold-subscriptions.opml"',
     },
   });
 }

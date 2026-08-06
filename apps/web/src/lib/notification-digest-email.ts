@@ -66,7 +66,7 @@ export function renderNotificationDigestEmail({
   const countLabel = `${items.length} ${items.length === 1 ? "article" : "articles"}`;
   const subject = test
     ? `Test digest: ${countLabel} from your notifications`
-    : `${countLabel} in your rssapp notifications`;
+    : `${countLabel} in your Currentfold notifications`;
 
   const textItems = visible.map((item) => {
     const title = item.title?.trim() || "Untitled article";
@@ -75,7 +75,7 @@ export function renderNotificationDigestEmail({
   });
   const text = [
     test
-      ? "This is a test of your rssapp email digest."
+      ? "This is a test of your Currentfold email digest."
       : "Your rule notifications",
     "",
     ...(textItems.length > 0
@@ -109,9 +109,9 @@ export function renderNotificationDigestEmail({
       ? `<p style="margin:20px 0 0;color:#78716c;font-size:13px">And ${remaining} more in your notifications.</p>`
       : "";
   const intro = test
-    ? "This is a test of your rssapp email digest."
+    ? "This is a test of your Currentfold email digest."
     : "Articles selected by the rules you created.";
-  const html = `<!doctype html><html><body style="margin:0;background:#f5f5f4;color:#1c1917;font-family:ui-sans-serif,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif"><div style="display:none;max-height:0;overflow:hidden">${escapeHtml(countLabel)} selected by your rules.</div><table role="presentation" width="100%" cellspacing="0" cellpadding="0"><tr><td align="center" style="padding:32px 16px"><table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:620px;background:#fff;border:1px solid #e7e5e4;border-radius:12px"><tr><td style="padding:30px"><div style="color:#ea7558;font-size:14px;font-weight:700;letter-spacing:.04em">rssapp.</div><h1 style="margin:12px 0 6px;font-family:Georgia,serif;font-size:28px;line-height:1.2">Your rule notifications</h1><p style="margin:0 0 12px;color:#78716c;font-size:14px;line-height:1.5">${escapeHtml(intro)}</p><table role="presentation" width="100%" cellspacing="0" cellpadding="0">${htmlItems || emptyHtml}</table>${moreHtml}<p style="margin:24px 0 0"><a href="${escapeHtml(inboxUrl)}" style="display:inline-block;background:#ea7558;color:#1c1917;padding:10px 16px;border-radius:7px;font-weight:650;text-decoration:none">View notifications</a></p></td></tr><tr><td style="padding:18px 30px;border-top:1px solid #e7e5e4;color:#a8a29e;font-size:12px;line-height:1.5">You enabled this digest for your verified account email. <a href="${escapeHtml(unsubscribeUrl)}" style="color:#78716c">Change or stop email digests</a>.</td></tr></table></td></tr></table></body></html>`;
+  const html = `<!doctype html><html><body style="margin:0;background:#f5f5f4;color:#1c1917;font-family:ui-sans-serif,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif"><div style="display:none;max-height:0;overflow:hidden">${escapeHtml(countLabel)} selected by your rules.</div><table role="presentation" width="100%" cellspacing="0" cellpadding="0"><tr><td align="center" style="padding:32px 16px"><table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:620px;background:#fff;border:1px solid #e7e5e4;border-radius:12px"><tr><td style="padding:30px"><div style="color:#ea7558;font-size:14px;font-weight:700;letter-spacing:.04em">Currentfold</div><h1 style="margin:12px 0 6px;font-family:Georgia,serif;font-size:28px;line-height:1.2">Your rule notifications</h1><p style="margin:0 0 12px;color:#78716c;font-size:14px;line-height:1.5">${escapeHtml(intro)}</p><table role="presentation" width="100%" cellspacing="0" cellpadding="0">${htmlItems || emptyHtml}</table>${moreHtml}<p style="margin:24px 0 0"><a href="${escapeHtml(inboxUrl)}" style="display:inline-block;background:#ea7558;color:#1c1917;padding:10px 16px;border-radius:7px;font-weight:650;text-decoration:none">View notifications</a></p></td></tr><tr><td style="padding:18px 30px;border-top:1px solid #e7e5e4;color:#a8a29e;font-size:12px;line-height:1.5">You enabled this digest for your verified account email. <a href="${escapeHtml(unsubscribeUrl)}" style="color:#78716c">Change or stop email digests</a>.</td></tr></table></td></tr></table></body></html>`;
 
   return {
     subject,

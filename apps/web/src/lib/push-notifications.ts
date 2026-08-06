@@ -146,9 +146,9 @@ function payloadForMatches(
   const [first] = matches;
   if (matches.length === 1) {
     return {
-      title: first.source ?? "rssapp",
+      title: first.source ?? "Currentfold",
       body: first.title ?? "A new article matched one of your rules.",
-      tag: `rssapp-rule-${first.id}`,
+      tag: `currentfold-rule-${first.id}`,
       url: `/?view=notifications&notification=${first.id}`,
     };
   }
@@ -156,9 +156,9 @@ function payloadForMatches(
     ? first.source
     : null;
   return {
-    title: "rssapp",
+    title: "Currentfold",
     body: `${matches.length} articles matched your rules${sharedSource ? ` in ${sharedSource}` : ""}.`,
-    tag: `rssapp-rule-batch-${matches.at(-1)?.id ?? first.id}`,
+    tag: `currentfold-rule-batch-${matches.at(-1)?.id ?? first.id}`,
     url: "/?view=notifications",
   };
 }

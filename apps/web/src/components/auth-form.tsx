@@ -44,7 +44,7 @@ export function AuthForm({
     <div className="w-full max-w-sm space-y-6">
       <div className="space-y-1 text-center">
         <h1 className="font-serif text-3xl font-bold tracking-tight">
-          rssapp<span className="text-primary">.</span>
+          Currentfold
         </h1>
         <p className="text-sm text-muted-foreground">
           {isSignup

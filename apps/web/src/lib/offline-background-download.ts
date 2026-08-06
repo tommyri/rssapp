@@ -1,8 +1,9 @@
 import type { OfflineReadLaterAutoDownloadLimit } from "@/lib/offline-library";
 
-export const OFFLINE_AUTOMATIC_DOWNLOAD_SYNC_TAG = "rssapp-offline-read-later";
+export const OFFLINE_AUTOMATIC_DOWNLOAD_SYNC_TAG =
+  "currentfold-offline-read-later";
 export const OFFLINE_AUTOMATIC_DOWNLOAD_PERIODIC_SYNC_TAG =
-  "rssapp-offline-read-later-periodic";
+  "currentfold-offline-read-later-periodic";
 
 const PERIODIC_AUTO_DOWNLOAD_MIN_INTERVAL = 12 * 60 * 60 * 1000;
 

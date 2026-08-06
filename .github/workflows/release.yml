@@ -71,5 +71,5 @@ jobs:
           } > "$RUNNER_TEMP/github-release-notes.md"
           gh release create "$TAG" \
             --target "$GITHUB_SHA" \
-            --title "rssapp $VERSION" \
+            --title "Currentfold $VERSION" \
             --notes-file "$RUNNER_TEMP/github-release-notes.md"

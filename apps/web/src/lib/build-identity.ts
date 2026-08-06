@@ -14,8 +14,8 @@ export interface BuildIdentity {
 }
 
 interface BuildIdentityEnvironment {
-  RSSAPP_VERSION?: string;
-  RSSAPP_REVISION?: string;
+  CURRENTFOLD_VERSION?: string;
+  CURRENTFOLD_REVISION?: string;
 }
 
 function buildVersion(value: string | undefined): string {
@@ -45,13 +45,13 @@ function sourceRevision(value: string | undefined): string | null {
  */
 export function getBuildIdentity(
   environment: BuildIdentityEnvironment = {
-    RSSAPP_VERSION: process.env.RSSAPP_VERSION,
-    RSSAPP_REVISION: process.env.RSSAPP_REVISION,
+    CURRENTFOLD_VERSION: process.env.CURRENTFOLD_VERSION,
+    CURRENTFOLD_REVISION: process.env.CURRENTFOLD_REVISION,
   },
 ): BuildIdentity {
-  const revision = sourceRevision(environment.RSSAPP_REVISION);
+  const revision = sourceRevision(environment.CURRENTFOLD_REVISION);
   return {
-    version: buildVersion(environment.RSSAPP_VERSION),
+    version: buildVersion(environment.CURRENTFOLD_VERSION),
     revision,
     shortRevision: revision?.slice(0, 12) ?? null,
   };

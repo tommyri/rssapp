@@ -20,7 +20,7 @@ boundary, and legal implications are refined.
 
 ## What the app preserves today
 
-The existing **Save to RSS app** path already provides a partial saved copy:
+The existing **Save to Currentfold** path already provides a partial saved copy:
 
 - `extractSavedPage` fetches the source, extracts readable content, sanitizes it, and
   stores the HTML, title, byline, site name, and excerpt in `saved_pages`.
@@ -36,7 +36,7 @@ distinction between a readable extraction and a durable copy.
 ## Product recommendation
 
 Treat this as **Preserve a copy** or **Saved copy**, not as a general-purpose web
-crawler. When the reader expresses durable intent, RSS App can capture a private,
+crawler. When the reader expresses durable intent, Currentfold can capture a private,
 immutable version containing:
 
 - sanitized readable HTML;
@@ -72,7 +72,7 @@ web crawler.
 
 Good signals of durable user intent include:
 
-- saving a URL through **Save to RSS app**;
+- saving a URL through **Save to Currentfold**;
 - adding a feed article to **Read later**;
 - choosing an explicit **Keep a copy** action;
 - optionally, creating a highlight or note.

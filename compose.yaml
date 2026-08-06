@@ -1,3 +1,8 @@
+# The project name prefixes every container, network, and volume. Set it
+# explicitly so the deployed identity does not depend on the checkout's
+# directory name; scripts/deploy-image.sh overrides it for staging.
+name: currentfold
+
 services:
   app:
     # GitHub Actions publishes immutable images to GHCR. Local development adds
@@ -41,9 +46,9 @@ services:
     image: postgres:17
     restart: unless-stopped
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-rssapp}
+      POSTGRES_USER: ${POSTGRES_USER:-currentfold}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in the selected environment file}
-      POSTGRES_DB: ${POSTGRES_DB:-rssapp}
+      POSTGRES_DB: ${POSTGRES_DB:-currentfold}
     volumes:
       - db-data:/var/lib/postgresql/data
     healthcheck:

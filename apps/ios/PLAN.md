@@ -244,9 +244,10 @@ embarrassing) and Sign in with Apple (membership-blocked; tracked in
 
 ## Sequencing realities
 
-- **TestFlight waits for the rebrand/domain migration** — `CURRENTFOLD_SERVER_URL` and
-  the associated domain are baked into the build; external testers must never install
-  a build pointed at `rssapp.badask.no`.
+- **TestFlight waits for the domain cutover** — `CURRENTFOLD_SERVER_URL` and the
+  associated domain are baked into the build. Both now point at
+  `app.currentfold.com`, which is the identity external testers must get; until the
+  cutover puts the reader on that host, a build simply cannot reach a server.
 - ~~**Apple Developer membership** gates Sign in with Apple and TestFlight
   distribution~~ **Enrolled 6 Aug 2026, approval pending** (signing against the paid
   team waits for Apple's confirmation email). Once active, unblocked: TestFlight distribution, APNs

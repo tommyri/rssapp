@@ -22,12 +22,12 @@ interface SchedulerState {
 // Stash state on globalThis so dev HMR reloading this module doesn't spawn a
 // second interval alongside the first.
 const globalRef = globalThis as unknown as {
-  __rssappScheduler?: SchedulerState;
+  __currentfoldScheduler?: SchedulerState;
 };
-if (!globalRef.__rssappScheduler) {
-  globalRef.__rssappScheduler = { timer: null, running: false };
+if (!globalRef.__currentfoldScheduler) {
+  globalRef.__currentfoldScheduler = { timer: null, running: false };
 }
-const state: SchedulerState = globalRef.__rssappScheduler;
+const state: SchedulerState = globalRef.__currentfoldScheduler;
 
 async function tick(): Promise<void> {
   // Skip if the previous tick is still running (a slow pass must not overlap).

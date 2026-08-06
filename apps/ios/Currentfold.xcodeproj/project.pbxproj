@@ -845,11 +845,11 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = Currentfold/Support/Currentfold.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
-				CURRENTFOLD_ASSOCIATED_DOMAIN = rssapp.badask.no;
+				CURRENTFOLD_ASSOCIATED_DOMAIN = app.currentfold.com;
 				CURRENTFOLD_GOOGLE_CLIENT_ID = "";
 				CURRENTFOLD_GOOGLE_REVERSED_CLIENT_ID = "";
 				CURRENTFOLD_GOOGLE_SERVER_CLIENT_ID = "";
-				CURRENTFOLD_SERVER_URL = "https://rssapp.badask.no";
+				CURRENTFOLD_SERVER_URL = "https://app.currentfold.com";
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Currentfold/Support/Info.plist;
@@ -869,7 +869,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = CurrentfoldShare/Support/CurrentfoldShare.entitlements;
-				CURRENTFOLD_SERVER_URL = "https://rssapp.badask.no";
+				CURRENTFOLD_SERVER_URL = "https://app.currentfold.com";
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = CurrentfoldShare/Support/Info.plist;
@@ -908,7 +908,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = CurrentfoldShare/Support/CurrentfoldShare.entitlements;
-				CURRENTFOLD_SERVER_URL = "https://rssapp.badask.no";
+				CURRENTFOLD_SERVER_URL = "https://app.currentfold.com";
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = CurrentfoldShare/Support/Info.plist;
@@ -1075,11 +1075,11 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = Currentfold/Support/Currentfold.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
-				CURRENTFOLD_ASSOCIATED_DOMAIN = rssapp.badask.no;
+				CURRENTFOLD_ASSOCIATED_DOMAIN = app.currentfold.com;
 				CURRENTFOLD_GOOGLE_CLIENT_ID = "";
 				CURRENTFOLD_GOOGLE_REVERSED_CLIENT_ID = "";
 				CURRENTFOLD_GOOGLE_SERVER_CLIENT_ID = "";
-				CURRENTFOLD_SERVER_URL = "https://rssapp.badask.no";
+				CURRENTFOLD_SERVER_URL = "https://app.currentfold.com";
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Currentfold/Support/Info.plist;

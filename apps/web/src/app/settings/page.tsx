@@ -131,7 +131,7 @@ export default async function SettingsPage({
   const proto = h.get("x-forwarded-proto") ?? "http";
   const origin = `${proto}://${host}`;
   const bookmarklet = `javascript:window.open('${origin}/save?url='+encodeURIComponent(location.href),'_blank');void 0`;
-  const bookmarkletHtml = `<a href="${escapeAttr(bookmarklet)}" class="inline-flex cursor-grab items-center gap-1.5 rounded-md border border-border bg-accent/60 px-3 py-1.5 text-sm font-medium no-underline">Save to rssapp</a>`;
+  const bookmarkletHtml = `<a href="${escapeAttr(bookmarklet)}" class="inline-flex cursor-grab items-center gap-1.5 rounded-md border border-border bg-accent/60 px-3 py-1.5 text-sm font-medium no-underline">Save to Currentfold</a>`;
 
   const sectionContent: Record<SettingsSectionId, React.ReactNode> = {
     reading: (

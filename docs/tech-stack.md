@@ -135,7 +135,7 @@ One deliberate detail: primary keys are `bigint` identity columns, not UUIDs. Th
    image while production promotes an immutable SHA or calendar-version tag. Managed
    long-running Node platforms remain viable; pure serverless (for example Vercel)
    conflicts with the in-process scheduler. The package calendar version and source
-   commit are baked into `RSSAPP_VERSION` / `RSSAPP_REVISION` and matching OCI labels;
+   commit are baked into `CURRENTFOLD_VERSION` / `CURRENTFOLD_REVISION` and matching OCI labels;
    Compose deliberately cannot override artifact identity from an environment file.
 2. **Production notification delivery validation** — browser push and email digests are
    implemented, but both need soak testing on the deployed HTTPS origin with real VAPID

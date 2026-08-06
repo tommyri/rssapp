@@ -26,7 +26,7 @@ fi
 
 xcrun simctl boot "$device_id" >/dev/null 2>&1 || true
 xcrun simctl bootstatus "$device_id" -b
-xcrun simctl terminate "$device_id" no.currentfold.reader >/dev/null 2>&1 || true
+xcrun simctl terminate "$device_id" com.currentfold.reader >/dev/null 2>&1 || true
 
 xcodebuild \
   -project "$project_dir/Currentfold.xcodeproj" \

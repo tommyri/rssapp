@@ -19,7 +19,7 @@ import {
 } from "@/lib/account-tokens";
 import { isGoogleAuthEnabled } from "@/lib/google-auth-config";
 
-const GOOGLE_OAUTH_INTENT_COOKIE = "rssapp-google-oauth-intent";
+const GOOGLE_OAUTH_INTENT_COOKIE = "currentfold-google-oauth-intent";
 export const GOOGLE_OAUTH_INTENT_TTL_MS = 10 * 60 * 1000;
 
 type GoogleIntentKind = "signup" | "link";

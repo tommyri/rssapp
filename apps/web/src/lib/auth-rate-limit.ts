@@ -70,7 +70,7 @@ export interface AuthRateLimitResult {
 }
 
 function rateLimitSecret(): string {
-  return process.env.AUTH_SECRET ?? "rssapp-development-rate-limit-secret";
+  return process.env.AUTH_SECRET ?? "currentfold-development-rate-limit-secret";
 }
 
 export function hashAuthRateLimitKey(bucket: string, key: string): string {

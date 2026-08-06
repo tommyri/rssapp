@@ -1,14 +1,14 @@
-const SHELL_CACHE = "rssapp-offline-shell-v6";
+const SHELL_CACHE = "currentfold-offline-shell-v1";
 const OFFLINE_PAGE = "/offline";
-const OFFLINE_DATABASE = "rssapp-offline-library";
+const OFFLINE_DATABASE = "currentfold-offline-library";
 const OFFLINE_DATABASE_VERSION = 3;
 const ARTICLE_STORE = "articles";
 const MUTATION_STORE = "mutations";
 const SETTINGS_STORE = "settings";
-const BACKGROUND_SYNC_TAG = "rssapp-offline-mutations";
-const AUTOMATIC_DOWNLOAD_SYNC_TAG = "rssapp-offline-read-later";
+const BACKGROUND_SYNC_TAG = "currentfold-offline-mutations";
+const AUTOMATIC_DOWNLOAD_SYNC_TAG = "currentfold-offline-read-later";
 const AUTOMATIC_DOWNLOAD_PERIODIC_SYNC_TAG =
-  "rssapp-offline-read-later-periodic";
+  "currentfold-offline-read-later-periodic";
 
 async function cacheOfflineShell() {
   const cache = await caches.open(SHELL_CACHE);
@@ -49,7 +49,7 @@ self.addEventListener("activate", (event) => {
           names
             .filter(
               (name) =>
-                name.startsWith("rssapp-offline-") && name !== SHELL_CACHE,
+                name.startsWith("currentfold-offline-") && name !== SHELL_CACHE,
             )
             .map((name) => caches.delete(name)),
         ),
@@ -252,13 +252,13 @@ function parsePushPayload(event) {
       self.location.origin,
     );
     return {
-      title: asPushText(value.title, "rssapp"),
+      title: asPushText(value.title, "Currentfold"),
       body: asPushText(value.body, "New articles matched your rules."),
       notificationId:
         Number.isSafeInteger(notificationId) && notificationId > 0
           ? notificationId
           : null,
-      tag: asPushText(value.tag, "rssapp-rule-alert"),
+      tag: asPushText(value.tag, "currentfold-rule-alert"),
       url:
         url.origin === self.location.origin
           ? `${url.pathname}${url.search}${url.hash}`
@@ -266,10 +266,10 @@ function parsePushPayload(event) {
     };
   } catch {
     return {
-      title: "rssapp",
+      title: "Currentfold",
       body: "New articles matched your rules.",
       notificationId: null,
-      tag: "rssapp-rule-alert",
+      tag: "currentfold-rule-alert",
       url: "/?view=notifications",
     };
   }

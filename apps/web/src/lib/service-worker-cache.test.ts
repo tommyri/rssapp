@@ -137,7 +137,7 @@ describe("service worker browser push", () => {
     await worker.push({
       title: "Engineering",
       body: "Kubernetes operator notes",
-      tag: "rssapp-rule-91",
+      tag: "currentfold-rule-91",
       notificationId: 91,
       url: "/?view=notifications&notification=91",
     });
@@ -152,7 +152,7 @@ describe("service worker browser push", () => {
             url: "/?view=notifications&notification=91",
           },
           icon: "/icon",
-          tag: "rssapp-rule-91",
+          tag: "currentfold-rule-91",
         },
       },
     ]);

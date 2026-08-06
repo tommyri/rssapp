@@ -254,7 +254,7 @@ export default async function Home({
             href="/"
             className="font-serif text-2xl font-bold tracking-tight"
           >
-            rssapp<span className="text-primary">.</span>
+            Currentfold
           </Link>
           <RefreshButton />
         </div>

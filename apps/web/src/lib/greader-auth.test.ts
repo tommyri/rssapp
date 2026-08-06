@@ -4,11 +4,13 @@ import { gReaderCredentialFromAuthorization } from "@/lib/greader-auth";
 describe("Google Reader authorization headers", () => {
   it("accepts the legacy and direct integration header forms", () => {
     expect(
-      gReaderCredentialFromAuthorization("GoogleLogin auth=rssapp_api_secret"),
-    ).toBe("rssapp_api_secret");
-    expect(gReaderCredentialFromAuthorization("Bearer rssapp_api_secret")).toBe(
-      "rssapp_api_secret",
-    );
+      gReaderCredentialFromAuthorization(
+        "GoogleLogin auth=currentfold_api_secret",
+      ),
+    ).toBe("currentfold_api_secret");
+    expect(
+      gReaderCredentialFromAuthorization("Bearer currentfold_api_secret"),
+    ).toBe("currentfold_api_secret");
   });
 
   it("rejects malformed values", () => {

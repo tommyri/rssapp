@@ -8,8 +8,8 @@ usage() {
   cat <<'EOF'
 Usage: scripts/deploy-image.sh <staging|production> [image]
 
-The selected environment file must exist at /etc/rssapp/<environment>.env by
-default. Set RSSAPP_CONFIG_DIR to use another directory. Passing an image
+The selected environment file must exist at /etc/currentfold/<environment>.env by
+default. Set CURRENTFOLD_CONFIG_DIR to use another directory. Passing an image
 temporarily overrides APP_IMAGE from that file; use this to promote a tested
 immutable sha-<commit> image to production.
 EOF
@@ -31,11 +31,11 @@ if [[ $# -eq 2 ]]; then
 fi
 
 repo_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-config_dir="${RSSAPP_CONFIG_DIR:-/etc/rssapp}"
+config_dir="${CURRENTFOLD_CONFIG_DIR:-/etc/currentfold}"
 env_file="${config_dir}/${environment}.env"
-project_name="rssapp"
+project_name="currentfold"
 if [[ "$environment" == "staging" ]]; then
-  project_name="rssapp-staging"
+  project_name="currentfold-staging"
 fi
 
 if [[ ! -r "$env_file" ]]; then
@@ -56,7 +56,7 @@ compose=(
 "${compose[@]}" up -d --wait db
 
 if [[ "$environment" == "production" ]]; then
-  backup_dir="${RSSAPP_DEPLOY_BACKUP_DIR:-/var/backups/rssapp}"
+  backup_dir="${CURRENTFOLD_DEPLOY_BACKUP_DIR:-/var/backups/currentfold}"
   mkdir -p "$backup_dir"
   backup_path="$backup_dir/predeploy-$(date -u +%Y%m%dT%H%M%SZ).sql.gz"
   temp_path="${backup_path}.tmp"

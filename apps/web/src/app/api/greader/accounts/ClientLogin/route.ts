@@ -30,6 +30,6 @@ export async function POST(request: Request) {
   // Many older clients require all three keys, even though they use Auth for
   // subsequent requests. Auth intentionally echoes the supplied app password.
   return noStoreText(
-    `SID=rssapp-${principal.id}\nLSID=rssapp-${principal.id}\nAuth=${password}\n`,
+    `SID=currentfold-${principal.id}\nLSID=currentfold-${principal.id}\nAuth=${password}\n`,
   );
 }

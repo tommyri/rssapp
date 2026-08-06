@@ -12,12 +12,14 @@ describe("API access token helpers", () => {
     const secret = createApiAccessTokenSecret();
 
     expect(isApiAccessTokenSecret(secret)).toBe(true);
-    expect(apiAccessTokenDisplayPrefix(secret)).toMatch(/^rssapp_api_.{8}…$/);
+    expect(apiAccessTokenDisplayPrefix(secret)).toMatch(
+      /^currentfold_api_.{8}…$/,
+    );
     expect(hashApiAccessToken(secret)).not.toContain(secret);
   });
 
   it("rejects malformed credentials and unsafe display names", () => {
-    expect(isApiAccessTokenSecret("rssapp_api_short")).toBe(false);
+    expect(isApiAccessTokenSecret("currentfold_api_short")).toBe(false);
     expect(isApiAccessTokenSecret("password")).toBe(false);
     expect(normalizeApiAccessTokenName("  NetNewsWire   on  Mac  ")).toBe(
       "NetNewsWire on Mac",

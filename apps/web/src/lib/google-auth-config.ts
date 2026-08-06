@@ -33,9 +33,9 @@ export function googleAuthNotice(
     case "account-unavailable":
       return "That Google sign-in is not available for this account.";
     case "link-required":
-      return "This email already has an rssapp account. Sign in with your password, then connect Google from Settings.";
+      return "This email already has a Currentfold account. Sign in with your password, then connect Google from Settings.";
     case "account-not-found":
-      return "No rssapp account is connected to that Google account yet. Create one with Google below.";
+      return "No Currentfold account is connected to that Google account yet. Create one with Google below.";
     case "registration-closed":
       return "This reader is not accepting new accounts right now.";
     case "invite-required":
@@ -54,7 +54,7 @@ export function googleAccountSettingsNotice(
     case "connected":
       return "Google is now connected to this account.";
     case "already-connected":
-      return "That Google account is already connected to a different rssapp account.";
+      return "That Google account is already connected to a different Currentfold account.";
     case "link-expired":
       return "Your Google connection request expired. Please try again.";
     default:

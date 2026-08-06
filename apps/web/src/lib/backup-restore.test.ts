@@ -9,7 +9,7 @@ const timestamp = "2026-07-14T10:00:00.000Z";
 
 function validBackup() {
   return {
-    format: "rssapp-backup",
+    format: "currentfold-backup",
     version: 1,
     exportedAt: timestamp,
     user: { email: "reader@example.com", settings: {}, createdAt: timestamp },

@@ -141,8 +141,8 @@ export async function sendVerificationEmail({
   const link = accountEmailUrl("/verify-email", token);
   await sendEmailMessage({
     to,
-    subject: "Verify your rssapp email",
-    text: `Verify your email to keep your rssapp account secure:\n\n${link}\n\nThis link expires in 24 hours.`,
+    subject: "Verify your Currentfold email",
+    text: `Verify your email to keep your Currentfold account secure:\n\n${link}\n\nThis link expires in 24 hours.`,
   });
 }
 
@@ -156,8 +156,8 @@ export async function sendPasswordResetEmail({
   const link = accountEmailUrl("/reset-password", token);
   await sendEmailMessage({
     to,
-    subject: "Reset your rssapp password",
-    text: `Use this link to set a new rssapp password:\n\n${link}\n\nThis link expires in 1 hour. If you did not request it, you can ignore this email.`,
+    subject: "Reset your Currentfold password",
+    text: `Use this link to set a new Currentfold password:\n\n${link}\n\nThis link expires in 1 hour. If you did not request it, you can ignore this email.`,
   });
 }
 
@@ -171,8 +171,8 @@ export async function sendEmailChangeVerification({
   const link = accountEmailUrl("/verify-email", token);
   await sendEmailMessage({
     to,
-    subject: "Confirm your new rssapp email",
-    text: `Confirm this email address for your rssapp account:\n\n${link}\n\nYour current address stays active until you use this link. It expires in 1 hour.`,
+    subject: "Confirm your new Currentfold email",
+    text: `Confirm this email address for your Currentfold account:\n\n${link}\n\nYour current address stays active until you use this link. It expires in 1 hour.`,
   });
 }
 
@@ -187,7 +187,7 @@ export async function sendAccountInvitationEmail({
   url.searchParams.set("invite", token);
   await sendEmailMessage({
     to,
-    subject: "You’re invited to rssapp",
-    text: `You have been invited to join an rssapp reader:\n\n${url}\n\nThis invitation expires in 7 days. If you were not expecting it, you can ignore this email.`,
+    subject: "You’re invited to Currentfold",
+    text: `You have been invited to join a Currentfold reader:\n\n${url}\n\nThis invitation expires in 7 days. If you were not expecting it, you can ignore this email.`,
   });
 }

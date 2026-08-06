@@ -31,7 +31,7 @@ export async function verifyEmailAction(
     ok: true,
     message:
       result === "changed"
-        ? "Email address confirmed. You can keep using rssapp."
+        ? "Email address confirmed. You can keep using Currentfold."
         : "Email address verified. You can sign in.",
   };
 }

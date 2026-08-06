@@ -10,7 +10,7 @@ import {
   setOfflineReadLaterAutoDownloadLimit,
 } from "@/lib/offline-library";
 
-const BACKGROUND_SYNC_TAG = "rssapp-offline-mutations";
+const BACKGROUND_SYNC_TAG = "currentfold-offline-mutations";
 
 interface BackgroundSyncRegistration {
   sync?: { register: (tag: string) => Promise<void> };

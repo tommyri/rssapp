@@ -53,9 +53,9 @@ insecure constant so the app runs without config — generate a real one with
 `npx auth secret` before deploying.
 
 **Optional Google sign-in.** Configure both values below to show **Continue with
-Google** on sign-in and sign-up. Add `https://your-domain/api/auth/callback/google`
-as an authorized redirect URI in Google Cloud (or
-`http://localhost:3000/api/auth/callback/google` locally):
+Google** on sign-in and sign-up. Add
+`https://app.currentfold.com/api/auth/callback/google` as an authorized redirect URI in
+Google Cloud (or `http://localhost:3000/api/auth/callback/google` locally):
 
 ```bash
 AUTH_GOOGLE_ID=...
@@ -73,9 +73,9 @@ can set a local password later from Settings.
 HTTP API (no SMTP dependency). Configure these for production:
 
 ```bash
-APP_URL=https://reader.example.com
+APP_URL=https://app.currentfold.com
 RESEND_API_KEY=re_...
-EMAIL_FROM="rssapp <accounts@reader.example.com>"
+EMAIL_FROM="Currentfold <accounts@send.currentfold.com>"
 ```
 
 For delivery safety, each account can request each kind of account email at most once
@@ -214,7 +214,7 @@ Set the resulting values in the deployment environment (the public key is shared
 with opted-in browsers; the private key stays server-side):
 
 ```bash
-VAPID_SUBJECT=mailto:alerts@reader.example.com
+VAPID_SUBJECT=mailto:alerts@currentfold.com
 VAPID_PUBLIC_KEY=...
 VAPID_PRIVATE_KEY=...
 ```

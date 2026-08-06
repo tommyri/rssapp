@@ -41,6 +41,32 @@ version section verbatim, so this file is the release record rather than an afte
 
 ### Changed
 
+- **The reader is now Currentfold, and it lives at `app.currentfold.com`.** The name in
+  the window title, on the sign-in page, in the sidebar, on the installed app's icon
+  label, and in every message the reader sends changes with it. The address is not a
+  redirect from the old one — to a browser the new origin is simply a different place —
+  so everything the browser was holding starts over there. Sign in again; reinstall the
+  home-screen app if you use one; let offline copies download again; and turn push
+  notifications back on for each device you want them on. Nothing inside the account
+  moves: subscriptions, folders, articles and their read/starred/Read later state, saved
+  pages, highlights, rules, and notification settings are all as you left them. The old
+  address stops serving the reader once the new one is confirmed working.
+- Account email now comes from Currentfold and says so. Verification, password reset,
+  email change, invitations, and the notification digest all carry the new name, sent
+  from the product's own domain rather than the old one.
+- Backups are written in a new format, `currentfold-backup`, under matching filenames,
+  and restore accepts only that format. Backups exported before this release are still
+  ordinary readable JSON — keep them if you want the record — but they are history now,
+  not something this release will restore from. Download a fresh backup once you have
+  signed in at the new address.
+- App passwords for Google Reader–compatible clients now begin with `currentfold_api_`,
+  and passwords carrying the old prefix are refused. Point each native client at
+  `https://app.currentfold.com/api/greader` and create it a new app password from
+  **Settings → Account**.
+- Smaller things that carry the name: subscription exports are titled and filed under
+  Currentfold, the Settings bookmarklet reads **Save to Currentfold**, push alerts are
+  labelled Currentfold, and the feed fetcher now introduces itself to publishers as
+  `Currentfold/<version>` instead of the old name.
 - Posts read during the current visit now stay in the unread list instead of
   disappearing one by one as you move to the next article. The list clears them the next
   time it is opened — navigating to another feed or view, or reloading the page. Marking

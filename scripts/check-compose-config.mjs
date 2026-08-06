@@ -3,8 +3,8 @@ import { fileURLToPath } from "node:url";
 
 const repositoryRoot = fileURLToPath(new URL("..", import.meta.url));
 const expectedEnvironment = {
-  APPLE_NATIVE_CLIENT_ID: "no.currentfold.reader",
-  APPLE_TEAM_ID: "ABCDE12345",
+  APPLE_NATIVE_CLIENT_ID: "com.currentfold.reader",
+  APPLE_TEAM_ID: "K2Z3B4RGA8",
 };
 
 const output = execFileSync(

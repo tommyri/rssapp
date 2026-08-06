@@ -25,7 +25,7 @@ settingGroups:
   # same way the app does — through AppConfiguration, out of its own Info.plist — so a build
   # cannot point "Save to Currentfold" at a different Currentfold than the reader.
   currentfoldService:
-    CURRENTFOLD_SERVER_URL: https://rssapp.badask.no
+    CURRENTFOLD_SERVER_URL: https://app.currentfold.com
     MARKETING_VERSION: 2026.7.3
     CURRENT_PROJECT_VERSION: 1
     TARGETED_DEVICE_FAMILY: "1,2"
@@ -51,7 +51,7 @@ targets:
         INFOPLIST_FILE: Currentfold/Support/Info.plist
         GENERATE_INFOPLIST_FILE: false
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
-        CURRENTFOLD_ASSOCIATED_DOMAIN: rssapp.badask.no
+        CURRENTFOLD_ASSOCIATED_DOMAIN: app.currentfold.com
         CURRENTFOLD_GOOGLE_CLIENT_ID: ""
         CURRENTFOLD_GOOGLE_SERVER_CLIENT_ID: ""
         CURRENTFOLD_GOOGLE_REVERSED_CLIENT_ID: ""

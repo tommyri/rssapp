@@ -13,8 +13,11 @@ import { GET } from "./route";
 describe("GET /api/health", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.stubEnv("RSSAPP_VERSION", "2026.7.3");
-    vi.stubEnv("RSSAPP_REVISION", "4cc354b7dd824f72bfa3db88d8350a8a151f0505");
+    vi.stubEnv("CURRENTFOLD_VERSION", "2026.7.3");
+    vi.stubEnv(
+      "CURRENTFOLD_REVISION",
+      "4cc354b7dd824f72bfa3db88d8350a8a151f0505",
+    );
   });
 
   it("reports ready only when Postgres is reachable", async () => {

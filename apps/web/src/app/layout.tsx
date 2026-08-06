@@ -25,8 +25,9 @@ const newsreader = Newsreader({
 });
 
 export const metadata: Metadata = {
-  title: "rssapp",
-  description: "A self-hosted RSS reader",
+  title: "Currentfold",
+  description:
+    "A focused reader for following, saving, and returning to the open web.",
 };
 
 export default function RootLayout({

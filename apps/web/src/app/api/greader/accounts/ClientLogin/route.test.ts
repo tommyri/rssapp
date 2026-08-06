@@ -19,17 +19,17 @@ describe("Google Reader ClientLogin", () => {
     });
     const formData = new FormData();
     formData.set("Email", "Reader@Example.com");
-    formData.set("Passwd", "rssapp_api_secret");
+    formData.set("Passwd", "currentfold_api_secret");
 
     const response = await POST(
-      new Request("https://rssapp.test/api/greader/accounts/ClientLogin", {
+      new Request("https://currentfold.test/api/greader/accounts/ClientLogin", {
         method: "POST",
         body: formData,
       }),
     );
 
     expect(response.status).toBe(200);
-    expect(await response.text()).toContain("Auth=rssapp_api_secret");
+    expect(await response.text()).toContain("Auth=currentfold_api_secret");
   });
 
   it("never falls back to the account password", async () => {
@@ -39,7 +39,7 @@ describe("Google Reader ClientLogin", () => {
     formData.set("Passwd", "an-account-password");
 
     const response = await POST(
-      new Request("https://rssapp.test/api/greader/accounts/ClientLogin", {
+      new Request("https://currentfold.test/api/greader/accounts/ClientLogin", {
         method: "POST",
         body: formData,
       }),
