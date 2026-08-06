@@ -298,10 +298,10 @@ check, not legal trademark clearance.
 | Visual identity | Folded-current C, Newsreader wordmark, paper/ink/coral system | **Confirmed and documented** |
 | Canonical domain | Reader at **`app.currentfold.com`**; apex **`currentfold.com`** reserved for the marketing site (see 2026-08-06 decisions) | **Confirmed** |
 | Sender | `accounts@send.currentfold.com` | Confirmed target; Resend verification at cutover |
-| Data transition | One-time PostgreSQL transfer if personal state matters; otherwise fresh start | Pending |
-| Rollback retention | Keep stopped old stack and final dump for 14 days | Pending |
-| Cloudflare scope | DNS + proxy + strict TLS + conservative WAF baseline | Pending confirmation |
-| Public signup | Keep controlled during early product validation | Pending |
+| Data transition | One-time PostgreSQL transfer — the owner's reading state moves | **Confirmed 2026-08-06** |
+| Rollback retention | Keep stopped old stack and final dump for 14 days | **Confirmed 2026-08-06** |
+| Cloudflare scope | DNS + proxy + strict TLS + conservative WAF baseline | **Confirmed 2026-08-06** |
+| Public signup | Keep controlled during early product validation | **Confirmed 2026-08-06** |
 
 ## Runbook handoff
 
@@ -310,3 +310,7 @@ this plan into an operator runbook with exact repository/image names, DNS record
 Caddy/Nginx blocks, Compose identifiers, database commands, environment files,
 deployment and validation commands, cleanup steps, and rollback commands. The final
 runbook must contain no placeholder values.
+
+That runbook now exists: [currentfold-cutover-runbook.md](currentfold-cutover-runbook.md)
+executes Phases 0–4 against `app.currentfold.com` and is the document the owner follows on
+cutover day.
