@@ -17,6 +17,24 @@ version section verbatim, so this file is the release record rather than an afte
   folder; rows arrive with a ready-made preview and reading-time estimate computed the
   same way the web computes them; and star, Read later and **Mark all read** — including
   its older-than variants — are all writable in batches.
+- The first-party API also carries reading depth now: **saved pages**, so a Currentfold
+  app can save any link and read its copy inline — the same one queue as on the web, with
+  the same **Remove**; **adding a source from any URL**, with the same autodiscovery the
+  web uses, and a list of feeds to choose from when a site advertises more than one
+  instead of quietly picking the first; and **reading position**, so a piece you started
+  on the phone resumes where you left it in the browser and the other way round.
+- Currentfold for iOS grew from a foundation into a reader. The Library opens on Unread
+  with All, Starred and Read later a tap away; sources and folders open their own article
+  lists; star, Read later and read state are one swipe, long-press or toolbar tap
+  everywhere, with **Mark all read** and its older-than variants behind a confirmation
+  that says exactly what it will do. Rows carry the same preview and reading time as the
+  web. Read later is the same single queue as the browser's — saved pages included — and
+  **Save to Currentfold** now sits in the system share sheet. A source can be added from
+  any URL on the phone, reading position follows the account across devices, and reader
+  typography (serif or sans, size, column width) is adjustable from the article. The
+  whole app now wears the brand's paper-and-ink surfaces in light and dark, with every
+  text and control color measured against its background and pinned by tests;
+  [design-ux-ios.md](docs/design-ux-ios.md) records the system.
 - Focused reading has a keyboard shortcut. **f** toggles it, and with nothing open it
   starts focused reading on the article **j** would have opened. **f** and Escape now
   appear in the **?** shortcuts overlay alongside the rest of the keyboard canon.
