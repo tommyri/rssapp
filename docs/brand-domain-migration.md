@@ -253,6 +253,33 @@ partially written data between stacks without a separate recovery decision.
 
 ## Decision gate
 
+### Domain and identity decisions — 2026-08-06
+
+Availability was re-verified (RDAP `404` for `currentfold.com`, `.app`, `.no`, `.dev`;
+the `currentfold` GitHub organization unclaimed) and the open decisions settled:
+
+- **Canonical domain: `currentfold.com`**, purchased at Cloudflare Registrar
+  (at-cost pricing; the registrar requires Cloudflare authoritative DNS, which this
+  plan already chose). **`currentfold.no` is deliberately not registered** — this is
+  an international product, and a Norwegian ccTLD would only split the identity.
+- **The reader lives at `app.currentfold.com`; the apex is reserved for the marketing
+  site.** The apex/subdomain split must be decided at cutover time because everything
+  origin-bound — sessions, PWA state, push subscriptions, offline data, and the
+  associated domain baked into the iOS build — resets exactly once, now, while there
+  are no external users. App Store submission independently requires public support
+  and privacy-policy URLs, so a small static marketing site at the apex (Cloudflare
+  Pages; potentially `apps/site` in the monorepo) is on the App Store critical path
+  regardless.
+- **The app identity moved to `com.currentfold.reader`** the same day (bundle
+  identifiers, keychain groups, entitlements, the served AASA `appID`, and provider
+  documentation), because a bundle identifier is permanent after a store upload and
+  nothing had shipped yet. The `no.currentfold.*` App IDs briefly registered in the
+  developer portal are abandoned.
+- The transactional sender becomes `accounts@send.currentfold.com`, pending Resend
+  verification at cutover.
+
+Trademark clearance remains a separate, still-open step before any paid launch.
+
 ### Preliminary Currentfold check — 2026-07-22
 
 An exact-name web search found no meaningful software, reading-product, or company
@@ -267,10 +294,10 @@ check, not legal trademark clearance.
 | Rebrand scope | Rename all active public and internal identifiers | **Confirmed** |
 | Old domain | Remove after successful validation; no redirect | **Confirmed** |
 | Staging | Defer until after the identity cutover | **Confirmed** |
-| Product name and slug | **Currentfold** / `currentfold`; complete external availability and legal checks before purchase or announcement | Direction confirmed; check pending |
+| Product name and slug | **Currentfold** / `currentfold`; availability re-verified and purchase begun 2026-08-06; trademark clearance still open before paid launch | **Confirmed** |
 | Visual identity | Folded-current C, Newsreader wordmark, paper/ink/coral system | **Confirmed and documented** |
-| Canonical domain | Brand apex unless a product reason favors `reader.<brand-domain>` | Pending |
-| Sender | `accounts@send.<brand-domain>` | Pending on name/domain |
+| Canonical domain | Reader at **`app.currentfold.com`**; apex **`currentfold.com`** reserved for the marketing site (see 2026-08-06 decisions) | **Confirmed** |
+| Sender | `accounts@send.currentfold.com` | Confirmed target; Resend verification at cutover |
 | Data transition | One-time PostgreSQL transfer if personal state matters; otherwise fresh start | Pending |
 | Rollback retention | Keep stopped old stack and final dump for 14 days | Pending |
 | Cloudflare scope | DNS + proxy + strict TLS + conservative WAF baseline | Pending confirmation |
