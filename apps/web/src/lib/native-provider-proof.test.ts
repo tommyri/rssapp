@@ -36,7 +36,7 @@ import {
 describe("native provider proof", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.stubEnv("APPLE_NATIVE_CLIENT_ID", "no.currentfold.reader");
+    vi.stubEnv("APPLE_NATIVE_CLIENT_ID", "com.currentfold.reader");
     vi.stubEnv("AUTH_GOOGLE_ID", "server-client.apps.googleusercontent.com");
     mocks.consumeChallenge.mockResolvedValue([{ id: 1 }]);
   });
@@ -83,7 +83,7 @@ describe("native provider proof", () => {
       "apple-key-set",
       {
         issuer: "https://appleid.apple.com",
-        audience: "no.currentfold.reader",
+        audience: "com.currentfold.reader",
         algorithms: ["RS256"],
       },
     );

@@ -240,7 +240,7 @@ Currentfold's verification and password-reset links work as ordinary HTTPS pages
 Apple configuration. To open those same links directly in the installed iOS app, set
 `APPLE_TEAM_ID` to the 10-character Team ID shown in the Apple Developer account. The
 service then publishes `/.well-known/apple-app-site-association` for the
-`no.currentfold.reader` bundle identifier. The iOS build's
+`com.currentfold.reader` bundle identifier. The iOS build's
 `CURRENTFOLD_ASSOCIATED_DOMAIN` must match the hostname in `APP_URL`; change it in
 `apps/ios/project.yml`, regenerate the Xcode project, and sign with an App ID that has
 the Associated Domains capability.
@@ -249,7 +249,7 @@ To also enable **Sign in with Apple**, enable that capability for the same App I
 set the server audience to the native bundle identifier:
 
 ```dotenv
-APPLE_NATIVE_CLIENT_ID=no.currentfold.reader
+APPLE_NATIVE_CLIENT_ID=com.currentfold.reader
 ```
 
 After redeploying, `GET /api/v1/auth/providers` should report `"apple": true`. The
@@ -316,7 +316,7 @@ no Google API needs to be enabled for this feature.
 
 For native iOS Google sign-in, keep that Web application client as the token's server
 audience and create one additional **iOS** client for bundle ID
-`no.currentfold.reader`. Configure these public build settings in
+`com.currentfold.reader`. Configure these public build settings in
 `apps/ios/project.yml` (or as Xcode build overrides), then run
 `npm run ios:generate`:
 

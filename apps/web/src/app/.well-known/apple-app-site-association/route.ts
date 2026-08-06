@@ -19,7 +19,7 @@ export async function GET() {
         apps: [],
         details: [
           {
-            appID: `${teamId}.no.currentfold.reader`,
+            appID: `${teamId}.com.currentfold.reader`,
             components: [
               { "/": "/verify-email", comment: "Email verification" },
               { "/": "/reset-password", comment: "Password recovery" },

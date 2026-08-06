@@ -58,8 +58,8 @@ setup must also be completed. The source-of-truth checklist is
 [`docs/sign-in-with-apple.md`](../../docs/sign-in-with-apple.md).
 
 1. Enable **Sign in with Apple** and **Associated Domains** for the
-   `no.currentfold.reader` App ID in the Apple Developer portal.
-2. Set `APPLE_NATIVE_CLIENT_ID=no.currentfold.reader` and `APPLE_TEAM_ID=<10-character
+   `com.currentfold.reader` App ID in the Apple Developer portal.
+2. Set `APPLE_NATIVE_CLIENT_ID=com.currentfold.reader` and `APPLE_TEAM_ID=<10-character
    team ID>` in the server environment, then redeploy it.
 3. Sign the iOS target with that App ID. The checked-in entitlement requests Sign in
    with Apple and the associated domain from `CURRENTFOLD_ASSOCIATED_DOMAIN`.
@@ -74,7 +74,7 @@ Google uses two public OAuth client IDs; no client secret belongs in the iOS app
 
 1. Keep the existing Google **Web application** client ID in server
    `AUTH_GOOGLE_ID`. This is the server audience for the iOS identity token.
-2. Create a Google **iOS** OAuth client for bundle ID `no.currentfold.reader`.
+2. Create a Google **iOS** OAuth client for bundle ID `com.currentfold.reader`.
 3. Put its client ID and reversed client ID, plus the Web client ID, into the public
    Xcode build settings in `project.yml` (or supply them as build overrides):
 

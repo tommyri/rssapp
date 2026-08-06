@@ -858,7 +858,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 2026.7.3;
-				PRODUCT_BUNDLE_IDENTIFIER = no.currentfold.reader;
+				PRODUCT_BUNDLE_IDENTIFIER = com.currentfold.reader;
 				PRODUCT_NAME = Currentfold;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -879,7 +879,7 @@
 					"@executable_path/../../Frameworks",
 				);
 				MARKETING_VERSION = 2026.7.3;
-				PRODUCT_BUNDLE_IDENTIFIER = no.currentfold.reader.share;
+				PRODUCT_BUNDLE_IDENTIFIER = com.currentfold.reader.share;
 				PRODUCT_NAME = CurrentfoldShare;
 				SDKROOT = iphoneos;
 				SKIP_INSTALL = YES;
@@ -897,7 +897,7 @@
 					"@executable_path/Frameworks",
 					"@loader_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = no.currentfold.reader.tests;
+				PRODUCT_BUNDLE_IDENTIFIER = com.currentfold.reader.tests;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Currentfold.app/Currentfold";
@@ -918,7 +918,7 @@
 					"@executable_path/../../Frameworks",
 				);
 				MARKETING_VERSION = 2026.7.3;
-				PRODUCT_BUNDLE_IDENTIFIER = no.currentfold.reader.share;
+				PRODUCT_BUNDLE_IDENTIFIER = com.currentfold.reader.share;
 				PRODUCT_NAME = CurrentfoldShare;
 				SDKROOT = iphoneos;
 				SKIP_INSTALL = YES;
@@ -1002,7 +1002,7 @@
 					"@executable_path/Frameworks",
 					"@loader_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = no.currentfold.reader.tests;
+				PRODUCT_BUNDLE_IDENTIFIER = com.currentfold.reader.tests;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Currentfold.app/Currentfold";
@@ -1088,7 +1088,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 2026.7.3;
-				PRODUCT_BUNDLE_IDENTIFIER = no.currentfold.reader;
+				PRODUCT_BUNDLE_IDENTIFIER = com.currentfold.reader;
 				PRODUCT_NAME = Currentfold;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";

@@ -8,8 +8,8 @@
 	     before ever opening the reader — see KeychainCredentialStore. -->
 	<key>keychain-access-groups</key>
 	<array>
-		<string>$(AppIdentifierPrefix)no.currentfold.reader.shared</string>
-		<string>$(AppIdentifierPrefix)no.currentfold.reader</string>
+		<string>$(AppIdentifierPrefix)com.currentfold.reader.shared</string>
+		<string>$(AppIdentifierPrefix)com.currentfold.reader</string>
 	</array>
 </dict>
 </plist>

@@ -1,6 +1,6 @@
 name: Currentfold
 options:
-  bundleIdPrefix: no.currentfold
+  bundleIdPrefix: com.currentfold
   deploymentTarget:
     iOS: "17.0"
   groupSortPosition: top
@@ -46,7 +46,7 @@ targets:
       groups:
         - currentfoldService
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: no.currentfold.reader
+        PRODUCT_BUNDLE_IDENTIFIER: com.currentfold.reader
         PRODUCT_NAME: Currentfold
         INFOPLIST_FILE: Currentfold/Support/Info.plist
         GENERATE_INFOPLIST_FILE: false
@@ -74,7 +74,7 @@ targets:
       groups:
         - currentfoldService
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: no.currentfold.reader.share
+        PRODUCT_BUNDLE_IDENTIFIER: com.currentfold.reader.share
         PRODUCT_NAME: CurrentfoldShare
         INFOPLIST_FILE: CurrentfoldShare/Support/Info.plist
         GENERATE_INFOPLIST_FILE: false
@@ -91,7 +91,7 @@ targets:
       - target: Currentfold
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: no.currentfold.reader.tests
+        PRODUCT_BUNDLE_IDENTIFIER: com.currentfold.reader.tests
         GENERATE_INFOPLIST_FILE: true
 schemes:
   Currentfold:

@@ -27,7 +27,7 @@ describe("Apple app-site association", () => {
         apps: [],
         details: [
           {
-            appID: "A1B2C3D4E5.no.currentfold.reader",
+            appID: "A1B2C3D4E5.com.currentfold.reader",
             components: [
               { "/": "/verify-email", comment: "Email verification" },
               { "/": "/reset-password", comment: "Password recovery" },

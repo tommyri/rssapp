@@ -15,8 +15,8 @@
 	     shared group explicitly; see KeychainCredentialStore for the migration. -->
 	<key>keychain-access-groups</key>
 	<array>
-		<string>$(AppIdentifierPrefix)no.currentfold.reader</string>
-		<string>$(AppIdentifierPrefix)no.currentfold.reader.shared</string>
+		<string>$(AppIdentifierPrefix)com.currentfold.reader</string>
+		<string>$(AppIdentifierPrefix)com.currentfold.reader.shared</string>
 	</array>
 </dict>
 </plist>

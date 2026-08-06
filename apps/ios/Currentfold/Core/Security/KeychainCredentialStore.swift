@@ -26,16 +26,16 @@ import Security
 /// is what such a build reads and writes: exactly what this file did before. Nothing is
 /// shared in that build, because nothing can be.
 actor KeychainCredentialStore {
-    private let service = "no.currentfold.reader.native-session"
+    private let service = "com.currentfold.reader.native-session"
     private let account = "currentfold-session"
 
     /// The group the app and the share extension share. Must match `keychain-access-groups`
     /// in both `Currentfold.entitlements` and `CurrentfoldShare.entitlements`.
-    private static let sharedGroupSuffix = "no.currentfold.reader.shared"
+    private static let sharedGroupSuffix = "com.currentfold.reader.shared"
 
     /// The app's own application-identifier group: where a session written before the share
     /// extension existed still is, and the only reason this file has a migration path.
-    private static let appGroupSuffix = "no.currentfold.reader"
+    private static let appGroupSuffix = "com.currentfold.reader"
 
     /// The team prefix, trailing dot included, as Xcode expands it into the built Info.plist —
     /// empty when there is no provisioning profile, which is also how `$(AppIdentifierPrefix)`
@@ -93,7 +93,7 @@ actor KeychainCredentialStore {
     func deleteLegacyCredential() throws {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: "no.currentfold.reader.api-token",
+            kSecAttrService as String: "com.currentfold.reader.api-token",
             kSecAttrAccount as String: "currentfold-api",
         ]
         let status = SecItemDelete(query as CFDictionary)

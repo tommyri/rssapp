@@ -11,7 +11,7 @@ complete; the capability-driven iOS UI then keeps the Apple button hidden.
 
 - The first implementation is native iOS authentication, not Sign in with Apple on the
   web.
-- The explicit app identifier is `no.currentfold.reader`.
+- The explicit app identifier is `com.currentfold.reader`.
 - Apple proves identity, while Currentfold remains the account authority and issues its
   own rotating device session.
 - Provider identities are keyed by Apple's stable subject. A matching email address
@@ -49,7 +49,7 @@ lifecycle required for production distribution.
 
 ## Apple account and signing
 
-- [ ] Register the explicit App ID `no.currentfold.reader` in Certificates, Identifiers
+- [ ] Register the explicit App ID `com.currentfold.reader` in Certificates, Identifiers
   & Profiles.
 - [ ] Enable **Sign in with Apple** and configure the App ID as the primary App ID.
 - [ ] Enable **Associated Domains** for the same App ID.
@@ -88,7 +88,7 @@ lifecycle required for production distribution.
   email reaches people who choose **Hide My Email**.
 - [ ] Set the signed build's `CURRENTFOLD_ASSOCIATED_DOMAIN` to the canonical hostname,
   regenerate the Xcode project, and keep it aligned with the server's `APP_URL`.
-- [ ] Add `APPLE_NATIVE_CLIENT_ID=no.currentfold.reader` and the 10-character
+- [ ] Add `APPLE_NATIVE_CLIENT_ID=com.currentfold.reader` and the 10-character
   `APPLE_TEAM_ID` to the protected production environment, then redeploy.
 - [ ] Verify `/.well-known/apple-app-site-association` returns the correct Team ID and
   bundle ID without a redirect.
