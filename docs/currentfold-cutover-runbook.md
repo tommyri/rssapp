@@ -356,10 +356,14 @@ version on the box.
    and enter only `app.currentfold.com`. The apex is served by a redirect rule, not by
    this origin, and a wildcard would hand one VPS a certificate for subdomains it does not
    serve.
-3. **Certificate Validity: 5 years.** Cloudflare offers 15; five is long enough that the
+3. **Certificate Validity: 15 years** — the dashboard's default; a 5-year option was not
+   offered at issuance time (checked 2026-08-07). The rotation discipline the shorter
+   validity was meant to enforce moves to the calendar instead: the ledger holds a
+   deliberate 5-year review date even though the certificate itself runs to 2041.
+   (Original reasoning, kept for context: five is long enough that the
    renewal is a non-event and short enough that a long-lived origin key still gets rotated
-   inside a sane horizon. The date is recorded in
-   [the key ledger](#key-and-certificate-ledger).
+   inside a sane horizon. The review date is recorded in
+   [the key ledger](#key-and-certificate-ledger).)
 4. **Key Format: PEM.**
 5. Copy the **Origin Certificate** block. There is no private key to copy — Cloudflare
    signed the one that stayed on the VPS.
@@ -1357,7 +1361,7 @@ Fill this in as you go; it is what Phase 4 item 4 asks the runbook to carry forw
 
 | Secret / certificate | Created | Next action | Due |
 | --- | --- | --- | --- |
-| Origin CA certificate `app.currentfold.com` | cutover date | Reissue (repeat steps 3.5–3.6) | cutover date + 5 years |
+| Origin CA certificate `app.currentfold.com` | 2026-08-07 (15-year validity, expires 2041-08-03) | Deliberate key rotation review — reissue via steps 3.5–3.6; do not wait for expiry | 2031-08-07 |
 | `AUTH_SECRET` | cutover date | Review / rotate | cutover date + 1 year |
 | `POSTGRES_PASSWORD` (currentfold) | cutover date | Rotate with an intentional `psql` password change plus a matching `DATABASE_URL` edit | as needed |
 | VAPID pair | cutover date | Rotate only with a deliberate re-subscribe; rotating invalidates every push subscription | — |
