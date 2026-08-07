@@ -110,6 +110,17 @@ Applies across all phases; items here are independently shippable polish.
       **Still device-or-human-only:** real VoiceOver walkthrough (order/announcement
       feel), bright-daylight raised-card check, share-extension card render, and a
       contract gap — article HTML carries no `lang`, so VoiceOver guesses the voice.
+- [ ] **View-switcher discoverability** *(found 7 Aug, device test)* — the owner could
+      not find Read Later: the Library's toolbar Menu titled with the active view name
+      reads as a title, not a control, so the whole Unread/All/Starred/Read Later
+      switcher is invisible. The web solves this structurally (views live in the
+      sidebar above sources). Candidate directions, to be decided as a design pass,
+      not a quick patch: give the title-menu a visible affordance (chevron/prominence);
+      or mirror the web by giving the Sources tab a Views section above the folders
+      (Unread / All / Starred / Read Later as rows — matches the web's sidebar mental
+      model and gives Read Later a durable home); or promote Read Later further. Bear
+      the row markers in mind: a reader who stars/saves from swipes needs to *find*
+      those queues later.
 - [ ] **iPad decision** (open) — `TabView` on iPad is a stretched phone. Either commit
       to `NavigationSplitView` (sidebar → list → article maps perfectly) or ship
       TestFlight iPhone-only (`TARGETED_DEVICE_FAMILY = 1`) and design iPad properly
@@ -169,9 +180,11 @@ contract-first.
       ahead; plain lists are the degenerate case, so all lists share one pagination
       path). Saved-page rows (link marker, `saved <time>`, quiet pending copy,
       row-level Retry), detail view with bounded visibility-gated poll, Remove as
-      session-stable red destructive verb. **TestFlight gate: keychain-group behavior
-      must be re-verified on a signed device; `Retry-After` header still unread
-      (transport discards headers; body message shown instead).**
+      session-stable red destructive verb. ~~TestFlight gate: keychain-group behavior
+      must be re-verified on a signed device~~ **verified on real hardware 7 Aug 2026**
+      — signed device build against app.currentfold.com, share sheet saved and
+      dismissed with no sign-in prompt. Remaining nit: `Retry-After` header still
+      unread (transport discards headers; body message shown instead).
   - [x] API *(done 6 Aug)*: `GET/POST /saved-pages` (POST answers before fetching via
         `after()` so a share sheet dismisses instantly; per-account save budget shared
         with web, `429 save_limit_reached` + `Retry-After`), `DELETE /saved-pages/{id}`,
