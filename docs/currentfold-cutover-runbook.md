@@ -299,11 +299,15 @@ today.
 ip -6 addr show scope global
 ```
 
-Today this returns nothing — the VPS is IPv4-only, and `dig +short AAAA rssapp.badask.no`
-is correspondingly empty. **Do not create an AAAA record for `app`.** Cloudflare serves
-IPv6 to visitors regardless of what the origin speaks; a proxied AAAA pointing at an
-address the VPS does not hold would break exactly the clients IPv6 was meant to help. Add
-one only if that `ip -6` command starts printing a global address.
+Checked on 2026-08-07: the interface **does** hold a global address
+(`2a0a:4cc0:c2:78ac::/64` on `eth0`) that was never published in DNS. **Do not create an
+AAAA record for `app` anyway.** The record is proxied, so an origin AAAA changes nothing
+for visitors — Cloudflare serves them IPv6 at the edge either way — it only gives
+Cloudflare's edge a second, never-tested path to dial the origin, and a subtly broken v6
+path (provider routing, a firewall that only opened 443 over IPv4) surfaces as
+intermittent 52x errors with no compensating benefit. Origin IPv6 is a calm post-cutover
+errand: prove the path first (outbound `ping -6 2606:4700:4700::1111`, inbound `curl -6`
+against Caddy from outside, firewall rules), then add the AAAA deliberately.
 
 ### 3.4 Create the reader record — **[Cloudflare dashboard]**
 
