@@ -721,9 +721,17 @@ openssl s_client -connect 127.0.0.1:443 -servername app.currentfold.com </dev/nu
   | openssl x509 -noout -subject -issuer -dates
 ```
 
-Subject `CN = app.currentfold.com`, issuer `CloudFlare Origin SSL Certificate Authority`,
-unexpired. Those are exactly Full (strict)'s three requirements. Do not proceed until this
-output is right.
+Issuer `CloudFlare Origin SSL Certificate Authority` and unexpired dates. The subject will
+read `CN = CloudFlare Origin Certificate` — Origin CA rewrites the CSR's subject and puts
+the hostname in the SAN, which is what validation actually uses — so check that too:
+
+```bash
+openssl x509 -in /etc/caddy/origin/app.currentfold.com.crt -noout -text \
+  | grep -A1 "Subject Alternative Name"
+```
+
+`DNS:app.currentfold.com` must appear. Issuer, SAN, and dates are Full (strict)'s three
+requirements. Do not proceed until all three are right.
 
 ### 4.9 Switch the zone to Full (strict) — **[Cloudflare dashboard]**
 
