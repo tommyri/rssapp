@@ -330,12 +330,16 @@ The private key is generated on the machine that will use it and never leaves it
 Cloudflare generate the key would put it through a browser and a clipboard for no benefit.
 
 ```bash
-install -d -m 700 /etc/caddy/origin
+# root-owned, caddy-group readable: the running caddy process (user caddy, not
+# root) must traverse this directory and read the key at reload time. A 700
+# root-only directory validates fine as root and then fails the real reload.
+install -d -o root -g caddy -m 750 /etc/caddy/origin
 openssl req -new -newkey rsa:2048 -nodes \
   -keyout /etc/caddy/origin/app.currentfold.com.key \
   -out    /etc/caddy/origin/app.currentfold.com.csr \
   -subj "/CN=app.currentfold.com"
-chmod 600 /etc/caddy/origin/app.currentfold.com.key
+chgrp caddy /etc/caddy/origin/app.currentfold.com.key
+chmod 640 /etc/caddy/origin/app.currentfold.com.key
 cat /etc/caddy/origin/app.currentfold.com.csr
 ```
 
