@@ -698,14 +698,21 @@ forwarding headers before requests reach application rate limiting", made concre
 carry the trusted value, or a request that arrives at the origin directly can choose its
 own rate-limit bucket by inventing the first one.
 
-Create the log directory and reload:
+Create the log directory, validate **as the service user**, and reload:
 
 ```bash
 systemctl show -p User --value caddy          # normally: caddy
 install -d -o caddy -g caddy -m 750 /var/log/caddy
-caddy validate --adapter caddyfile --config /etc/caddy/Caddyfile
+sudo -u caddy caddy validate --adapter caddyfile --config /etc/caddy/Caddyfile
 systemctl reload caddy
 ```
+
+Validating as root looks stricter and is actually weaker: provisioning runs as whoever
+invokes it, so root silently *creates* `/var/log/caddy/<host>.log` owned by root — which
+then denies the caddy service at reload — and root can read certificate files the service
+cannot. `sudo -u caddy` makes validation fail exactly where the reload would. If a
+root-owned log file already exists from an earlier root validation,
+`chown caddy:caddy /var/log/caddy/app.currentfold.com.log` clears it.
 
 ### 4.8 Prove the origin presents the certificate — **[VPS shell]**
 
@@ -1134,7 +1141,7 @@ the plan reserved email routing for.
 ```bash
 cp -a /etc/caddy/Caddyfile "$evidence/Caddyfile.before-old-host-removal"
 sudoedit /etc/caddy/Caddyfile          # delete the whole rssapp.badask.no { … } block
-caddy validate --adapter caddyfile --config /etc/caddy/Caddyfile
+sudo -u caddy caddy validate --adapter caddyfile --config /etc/caddy/Caddyfile
 systemctl reload caddy
 
 curl -sS -o /dev/null -w '%{http_code}\n' https://rssapp.badask.no/api/health || echo "old host no longer served"
@@ -1270,7 +1277,7 @@ written on the new origin in case the failure turns out to be recoverable forwar
 
 ```bash
 cp -a "$evidence/Caddyfile.pre-cutover" /etc/caddy/Caddyfile
-caddy validate --adapter caddyfile --config /etc/caddy/Caddyfile
+sudo -u caddy caddy validate --adapter caddyfile --config /etc/caddy/Caddyfile
 systemctl reload caddy
 ```
 
