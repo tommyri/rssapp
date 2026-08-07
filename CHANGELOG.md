@@ -94,6 +94,11 @@ version section verbatim, so this file is the release record rather than an afte
 
 ### Fixed
 
+- Signing in behind the new edge no longer builds its return address from the
+  container's internal address. The sign-in page's `callbackUrl` carried
+  `https://0.0.0.0:3000/` — harmless, since the reader refuses to follow any address
+  that isn't its own, but it cost the return trip: landing on a deep link while signed
+  out now brings you back to that page after signing in instead of the front page.
 - **k** at the top of an unread-only list now says where the earlier reads went instead
   of silently reopening the same article. Articles read during the visit stay in the list
   and **k** walks back through them; anything read before it — after a reload, a view
